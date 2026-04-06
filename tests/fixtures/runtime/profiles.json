@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "id": "claude-prod",
+      "name": "prod",
+      "platform": "claude",
+      "source": {
+        "baseURL": "https://gateway.example.com/api",
+        "token": "sk-live-123456"
+      },
+      "apply": {
+        "ANTHROPIC_AUTH_TOKEN": "sk-live-123456",
+        "ANTHROPIC_BASE_URL": "https://gateway.example.com/api"
+      },
+      "meta": {
+        "createdAt": "2026-04-04T00:00:00.000Z",
+        "updatedAt": "2026-04-04T00:00:00.000Z"
+      }
+    }
+  ]
+}

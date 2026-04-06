@@ -1,0 +1,5 @@
+{
+  "theme": "dark",
+  "ANTHROPIC_AUTH_TOKEN": "sk-old-0000",
+  "ANTHROPIC_BASE_URL": "https://old.example.com/api"
+}

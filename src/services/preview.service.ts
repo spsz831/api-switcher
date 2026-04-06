@@ -1,0 +1,38 @@
+import { evaluateRisk } from '../domain/risk-engine'
+import { AdapterRegistry } from '../registry/adapter-registry'
+import { ProfileService } from './profile.service'
+import type { CommandResult, PreviewCommandOutput } from '../types/command'
+
+export class PreviewService {
+  constructor(
+    private readonly profileService = new ProfileService(),
+    private readonly registry = new AdapterRegistry(),
+  ) {}
+
+  async preview(selector: string): Promise<CommandResult<PreviewCommandOutput>> {
+    try {
+      const profile = await this.profileService.resolve(selector)
+      const adapter = this.registry.get(profile.platform)
+      const validation = await adapter.validate(profile)
+      const preview = await adapter.preview(profile)
+      const decision = evaluateRisk(preview, validation)
+
+      return {
+        ok: validation.ok,
+        action: 'preview',
+        data: { profile, validation, preview },
+        warnings: decision.reasons,
+        limitations: decision.limitations,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        action: 'preview',
+        error: {
+          code: 'PREVIEW_FAILED',
+          message: error instanceof Error ? error.message : 'preview 执行失败',
+        },
+      }
+    }
+  }
+}
