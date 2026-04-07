@@ -148,6 +148,14 @@ describe('codex preview/use/rollback integration', () => {
     const result = await new SwitchService().use('codex-prod', { force: true })
     expect(result.ok).toBe(true)
     expect(result.data?.backupId).toMatch(/^snapshot-codex-/)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: true,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
+    expect(result.data?.risk.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(result.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(result.data?.preview.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
     expect(result.data?.preview.secretReferences).toEqual([

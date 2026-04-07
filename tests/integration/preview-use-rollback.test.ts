@@ -342,6 +342,12 @@ describe('preview/use/rollback integration', () => {
     const result = await new SwitchService().use('claude-prod', { force: true })
     expect(result.ok).toBe(true)
     expect(result.data?.backupId).toMatch(/^snapshot-claude-/)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: true,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 
     const content = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8'))
     expect(content.ANTHROPIC_AUTH_TOKEN).toBe('sk-live-123456')

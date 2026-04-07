@@ -37,11 +37,19 @@ export interface PreviewCommandOutput {
   risk: PreviewRiskSummary
 }
 
+export interface UseRiskSummary {
+  allowed: boolean
+  riskLevel: RiskLevel
+  reasons: string[]
+  limitations: string[]
+}
+
 export interface UseCommandOutput {
   profile: Profile
   backupId?: string
   validation?: ValidationResult
   preview: PreviewResult
+  risk: UseRiskSummary
   changedFiles: string[]
   noChanges: boolean
 }

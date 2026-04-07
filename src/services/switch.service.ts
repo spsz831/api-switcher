@@ -35,16 +35,22 @@ export class SwitchService {
 
       const preview = await adapter.preview(profile)
       const decision = evaluateRisk(preview, validation, { force: options.force })
+      const risk = {
+        allowed: decision.allowed,
+        riskLevel: decision.riskLevel,
+        reasons: Array.from(new Set(decision.reasons)),
+        limitations: Array.from(new Set(decision.limitations)),
+      }
       if (!decision.allowed) {
         return {
           ok: false,
           action: 'use',
-          warnings: decision.reasons,
-          limitations: decision.limitations,
+          warnings: risk.reasons,
+          limitations: risk.limitations,
           error: {
             code: 'CONFIRMATION_REQUIRED',
             message: '当前切换需要确认或 --force。',
-            details: decision,
+            details: risk,
           },
         }
       }
@@ -57,11 +63,12 @@ export class SwitchService {
             profile,
             validation,
             preview,
+            risk,
             changedFiles: preview.diffSummary.flatMap((item) => (item.hasChanges ? [item.path] : [])),
             noChanges: Boolean(preview.noChanges),
           },
-          warnings: decision.reasons,
-          limitations: decision.limitations,
+          warnings: risk.reasons,
+          limitations: risk.limitations,
         }
       }
 
@@ -73,11 +80,12 @@ export class SwitchService {
             profile,
             validation,
             preview,
+            risk,
             changedFiles: [],
             noChanges: true,
           },
-          warnings: decision.reasons,
-          limitations: decision.limitations,
+          warnings: risk.reasons,
+          limitations: risk.limitations,
         }
       }
 
@@ -98,12 +106,12 @@ export class SwitchService {
       }
 
       const warnings = Array.from(new Set([
-        ...decision.reasons,
+        ...risk.reasons,
         ...collectIssueMessages(applyResult.warnings),
         ...backup.warnings,
       ]))
       const limitations = Array.from(new Set([
-        ...decision.limitations,
+        ...risk.limitations,
         ...collectIssueMessages(applyResult.limitations),
         ...backup.limitations,
       ]))
@@ -121,6 +129,11 @@ export class SwitchService {
           backupId: backup.backupId,
           validation,
           preview,
+          risk: {
+            ...risk,
+            reasons: warnings,
+            limitations,
+          },
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
         },

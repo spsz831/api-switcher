@@ -390,6 +390,12 @@ const usePayload: UseCommandOutput = {
   profile: previewPayload.profile,
   backupId: 'snapshot-gemini-001',
   preview: previewPayload.preview,
+  risk: {
+    allowed: true,
+    riskLevel: 'medium',
+    reasons: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
   changedFiles: ['C:/Users/test/.gemini/settings.json'],
   noChanges: false,
 }
@@ -975,6 +981,7 @@ describe('text renderer', () => {
     expect(outputUse).toContain('- 配置: gemini-prod (gemini)')
     expect(outputUse).toContain('  备份ID: snapshot-gemini-001')
     expect(outputUse).toContain('  无变更: 否')
+    expect(outputUse).toContain('  风险等级: medium')
     expect(outputUse).toContain('  已变更文件:')
     expect(outputUse).toContain('  - C:/Users/test/.gemini/settings.json')
     expect(outputUse).toContain('  生效配置:')
@@ -991,9 +998,9 @@ describe('text renderer', () => {
     expect(outputUse).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputUse).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(outputUse).toContain('附加提示:')
-    expect(outputUse).toContain('  - 切换后建议核对环境变量')
+    expect(outputUse).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputUse).toContain('限制说明:')
-    expect(outputUse).toContain('  - 切换完成后请确认运行环境中的 GEMINI_API_KEY。')
+    expect(outputUse).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('use 无变化时显示未创建备份与无变更文件', () => {

@@ -526,6 +526,12 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       profile: Profile
       backupId?: string
+      risk: {
+        allowed: boolean
+        riskLevel: string
+        reasons: string[]
+        limitations: string[]
+      }
       changedFiles: string[]
       preview?: {
         managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[] }>
@@ -541,6 +547,14 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.data?.profile.id).toBe('codex-prod')
     expect(payload.data?.backupId).toMatch(/^snapshot-codex-/)
+    expect(payload.data?.risk).toEqual(expect.objectContaining({
+      allowed: true,
+      riskLevel: 'medium',
+    }))
+    expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
+    expect(payload.data?.risk.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(payload.data?.preview?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
     expect(payload.data?.preview?.secretReferences).toEqual([
@@ -553,6 +567,10 @@ describe('cli commands integration', () => {
     ])
     expect(payload.data?.preview?.limitations?.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(payload.data?.preview?.warnings?.some((item) => item.code === 'multi-file-overwrite')).toBe(true)
+    expect(payload.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.warnings).toContain('Codex 将修改多个目标文件。')
+    expect(payload.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
 
     const state = await new StateStore().read()
     expect(state.current.codex).toBe('codex-prod')
@@ -1698,6 +1716,11 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('[use] 成功')
     expect(result.stdout).toContain('- 配置: claude-prod (claude)')
     expect(result.stdout).toContain('  备份ID: snapshot-claude-')
+    expect(result.stdout).toContain('  风险等级: medium')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - 当前 Claude 配置存在非托管字段：theme')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.stdout).toContain('  已变更文件:')
     expect(result.stdout).toContain(`  - ${claudeProjectSettingsPath}`)
     expect(result.stdout).toContain('  生效配置:')

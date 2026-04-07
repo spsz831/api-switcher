@@ -199,11 +199,14 @@ function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitati
 
 
 function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
+  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
+
   const lines = [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  备份ID: ${data.backupId ?? '未创建'}`,
     `  无变更: ${data.noChanges ? '是' : '否'}`,
-    `  风险等级: ${data.preview.riskLevel}`,
+    `  风险等级: ${data.risk.riskLevel}`,
     `  计划备份: ${data.preview.backupPlanned ? '是' : '否'}`,
     ...(data.changedFiles.length > 0 ? ['  已变更文件:', ...data.changedFiles.map((item) => `  - ${item}`)] : ['  已变更文件: 无']),
     ...renderEffectiveConfig(data.preview.effectiveConfig),
@@ -212,8 +215,8 @@ function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: st
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('警告', data.preview.warnings),
     ...renderValidationIssues('限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', warnings),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', riskWarnings),
+    ...renderCommandLimitations(riskLimitations),
   ]
 
   return lines.join('\n')

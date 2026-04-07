@@ -145,6 +145,12 @@ describe('gemini preview/use/rollback integration', () => {
     const result = await new SwitchService().use('gemini-prod', { force: true })
     expect(result.ok).toBe(true)
     expect(result.data?.backupId).toMatch(/^snapshot-gemini-/)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: true,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(result.data?.risk.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(result.data?.changedFiles).toEqual([geminiSettingsPath])
     expect(result.data?.preview.managedBoundaries).toEqual([
       expect.objectContaining({
