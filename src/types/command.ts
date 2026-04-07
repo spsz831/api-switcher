@@ -56,7 +56,6 @@ export interface ValidateCommandItem {
   profileId: string
   platform: PlatformName
   validation: ValidationResult
-  limitations?: string[]
 }
 
 export interface ValidateCommandOutput {

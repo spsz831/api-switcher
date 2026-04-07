@@ -255,6 +255,7 @@ describe('cli commands integration', () => {
           ok: boolean
           warnings: Array<{ code: string }>
           errors: Array<{ code: string }>
+          limitations: Array<{ code: string; message: string }>
           effectiveConfig?: {
             stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
             effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean; shadowed?: boolean }>
@@ -264,7 +265,6 @@ describe('cli commands integration', () => {
           managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
           secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
         }
-        limitations?: string[]
       }>
     }>(result.stdout)
 
@@ -318,8 +318,8 @@ describe('cli commands integration', () => {
         maskedValue: 'gm-l***56',
       },
     ])
-    expect(payload.data?.items[0]?.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
-    expect(payload.data?.items[0]?.limitations).toContain('当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。')
+    expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。')
   })
 
   it('validate --json 失败时返回错误状态并设置 exitCode 1', async () => {
@@ -1393,8 +1393,7 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    托管字段: enforcedAuthType')
     expect(result.stdout).toContain('  敏感字段引用:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
-    expect(result.stdout).toContain('  平台限制:')
-    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(result.stdout).not.toContain('  平台限制:')
   })
 
   it('validate 失败时输出 explainable 校验详情并设置 exitCode 1', async () => {
@@ -1415,7 +1414,7 @@ describe('cli commands integration', () => {
     expect(result.stdout).not.toContain('    覆盖说明:')
     expect(result.stdout).toContain('  敏感字段引用:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY:  (source=env, present=no)')
-    expect(result.stdout).toContain('  平台限制:')
+    expect(result.stdout).not.toContain('  平台限制:')
   })
 
   it('export 输出名称、校验摘要与限制说明', async () => {

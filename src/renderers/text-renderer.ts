@@ -285,8 +285,6 @@ function renderValidate(data: ValidateCommandOutput, limitations?: string[]): st
       ...renderEffectiveConfig(item.validation.effectiveConfig),
       ...renderManagedBoundaries(item.validation.managedBoundaries),
       ...renderSecretReferences(item.validation.secretReferences),
-      ...(item.limitations && item.limitations.length > 0 ? ['  平台限制:'] : []),
-      ...renderLimitations(item.limitations),
     ].join('\n')).join('\n'),
     ...renderCommandLimitations(limitations),
   ].filter(Boolean).join('\n')

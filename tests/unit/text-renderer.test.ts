@@ -568,7 +568,6 @@ const validatePayload: ValidateCommandOutput = {
           },
         ],
       },
-      limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
     },
   ],
 }
@@ -1044,8 +1043,7 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('    说明: Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。')
     expect(outputValidate).toContain('  敏感字段引用:')
     expect(outputValidate).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
-    expect(outputValidate).toContain('  平台限制:')
-    expect(outputValidate).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(outputValidate).not.toContain('  平台限制:')
     expect(outputValidate).toContain('限制说明:')
     expect(outputValidate).toContain('  - validate 只校验当前已实现的平台写入契约。')
   })
