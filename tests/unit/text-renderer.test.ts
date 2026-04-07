@@ -642,25 +642,24 @@ const exportPayload: ExportCommandOutput = {
           overrides: [],
           shadowedKeys: [],
         },
+        managedBoundaries: [
+          {
+            target: 'C:/Users/test/.claude/settings.json',
+            type: 'scope-aware',
+            managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+            preservedKeys: ['theme'],
+            notes: ['当前写入目标为 Claude 项目级配置文件。'],
+          },
+        ],
+        secretReferences: [
+          {
+            key: 'ANTHROPIC_AUTH_TOKEN',
+            source: 'inline',
+            present: true,
+            maskedValue: 'sk-a***z9',
+          },
+        ],
       },
-      limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
-      managedBoundaries: [
-        {
-          target: 'C:/Users/test/.claude/settings.json',
-          type: 'scope-aware',
-          managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
-          preservedKeys: ['theme'],
-          notes: ['当前写入目标为 Claude 项目级配置文件。'],
-        },
-      ],
-      secretReferences: [
-        {
-          key: 'ANTHROPIC_AUTH_TOKEN',
-          source: 'inline',
-          present: true,
-          maskedValue: 'sk-a***z9',
-        },
-      ],
     },
   ],
 }
@@ -780,6 +779,12 @@ const addPayloadWithLimitations: AddCommandOutput = {
         message: '预览阶段无法确认运行时 CLI 参数覆盖。',
       },
     ],
+  },
+  risk: {
+    allowed: false,
+    riskLevel: 'medium',
+    reasons: ['建议先执行 preview 或 validate 再确认'],
+    limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
 }
 
@@ -1116,6 +1121,10 @@ describe('text renderer', () => {
   it('add 会渲染 validation 与 preview 的 limitations', () => {
     expect(outputAddWithLimitations).toContain('  限制: 新增配置不会自动验证所有运行时覆盖源。')
     expect(outputAddWithLimitations).toContain('  预览限制: 预览阶段无法确认运行时 CLI 参数覆盖。')
+    expect(outputAddWithLimitations).toContain('附加提示:')
+    expect(outputAddWithLimitations).toContain('  - 建议先执行 preview 或 validate 再确认')
+    expect(outputAddWithLimitations).toContain('限制说明:')
+    expect(outputAddWithLimitations).toContain('  - 新增配置后仍建议执行 preview 校验 effective config。')
   })
 
   it('渲染 list 结果时输出配置列表与状态摘要', () => {

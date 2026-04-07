@@ -368,10 +368,9 @@ describe('cli commands integration', () => {
             stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
             effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean; shadowed?: boolean }>
           }
+          managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[] }>
+          secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
         }
-        limitations?: string[]
-        managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[] }>
-        secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
       }>
     }>(result.stdout)
 
@@ -380,6 +379,9 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('export')
     expect(payload.data?.profiles).toHaveLength(4)
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(payload.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
 
     const claudeProfile = payload.data?.profiles.find((item) => item.profile.id === 'claude-prod')
     const codexProfile = payload.data?.profiles.find((item) => item.profile.id === 'codex-prod')
@@ -396,8 +398,7 @@ describe('cli commands integration', () => {
       scope: 'project',
       secret: true,
     })
-    expect(claudeProfile?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
-    expect(claudeProfile?.managedBoundaries).toEqual(expect.arrayContaining([
+    expect(claudeProfile?.validation?.managedBoundaries).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: 'scope-aware',
         managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
@@ -405,13 +406,13 @@ describe('cli commands integration', () => {
     ]))
 
     expect(codexProfile?.profile.source).toEqual({ apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' })
-    expect(codexProfile?.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
-    expect(codexProfile?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
+    expect(codexProfile?.validation?.limitations.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(codexProfile?.validation?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
 
     expect(geminiProfile?.profile.source).toEqual({ apiKey: 'gm-live-123456', authType: 'gemini-api-key' })
-    expect(geminiProfile?.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
-    expect(geminiProfile?.managedBoundaries?.[0]?.managedKeys).toEqual(['enforcedAuthType'])
-    expect(claudeProfile?.secretReferences).toEqual([
+    expect(geminiProfile?.validation?.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(geminiProfile?.validation?.managedBoundaries?.[0]?.managedKeys).toEqual(['enforcedAuthType'])
+    expect(claudeProfile?.validation?.secretReferences).toEqual([
       {
         key: 'ANTHROPIC_AUTH_TOKEN',
         source: 'inline',
@@ -419,7 +420,7 @@ describe('cli commands integration', () => {
         maskedValue: 'sk-l***56',
       },
     ])
-    expect(codexProfile?.secretReferences).toEqual([
+    expect(codexProfile?.validation?.secretReferences).toEqual([
       {
         key: 'OPENAI_API_KEY',
         source: 'inline',
@@ -427,7 +428,7 @@ describe('cli commands integration', () => {
         maskedValue: 'sk-c***56',
       },
     ])
-    expect(geminiProfile?.secretReferences).toEqual([
+    expect(geminiProfile?.validation?.secretReferences).toEqual([
       {
         key: 'GEMINI_API_KEY',
         source: 'env',
@@ -695,6 +696,8 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  变更摘要:')
     expect(result.stdout).toContain('  预览警告: 当前 Claude 配置存在非托管字段：theme')
     expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - 当前 Claude 配置存在非托管字段：theme')
+    expect(result.stdout).toContain('限制说明:')
 
     const profiles = await new ProfilesStore().list()
     expect(profiles.some((item) => item.id === 'claude-new-prod')).toBe(true)
@@ -737,7 +740,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
-      risk?: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -766,7 +769,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
-      risk?: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -789,6 +792,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -799,13 +803,17 @@ describe('cli commands integration', () => {
     expect(payload.data?.validation.ok).toBe(true)
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings.some((item) => item.code === 'url-path-warning')).toBe(true)
+    expect(payload.data?.risk.allowed).toBe(false)
+    expect(payload.data?.risk.riskLevel).toBe('medium')
+    expect(payload.data?.risk.reasons).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.diffSummary[0]?.path).toBe(claudeProjectSettingsPath)
-    expect(payload.warnings?.length).toBeGreaterThan(0)
+    expect(payload.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
   })
+
 
   it('add --json 为 claude 在空现有配置下返回低风险摘要', async () => {
     await fs.writeFile(claudeProjectSettingsPath, JSON.stringify({}, null, 2), 'utf8')
@@ -848,6 +856,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -867,13 +876,17 @@ describe('cli commands integration', () => {
     expect(payload.data?.validation.ok).toBe(true)
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings.some((item) => item.code === 'url-path-warning')).toBe(true)
+    expect(payload.data?.risk.allowed).toBe(false)
+    expect(payload.data?.risk.riskLevel).toBe('medium')
+    expect(payload.data?.risk.reasons).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.diffSummary[0]?.path).toBe(claudeProjectSettingsPath)
-    expect(payload.warnings?.length).toBeGreaterThan(0)
+    expect(payload.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
   })
+
 
 
   it('add --json 复用当前设置时返回 noChanges 摘要', async () => {
@@ -1029,14 +1042,19 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.data?.validation.warnings.some((item) => item.code === 'url-path-warning')).toBe(true)
+    expect(payload.data?.risk.allowed).toBe(false)
+    expect(payload.data?.risk.riskLevel).toBe('medium')
+    expect(payload.data?.risk.reasons).toContain('base_url 可能缺少 /v1 或 /openai/v1 后缀。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
   })
+
 
   it('add JSON 输出会保留 preview 的 backupPlanned=false 情况', async () => {
     await fs.writeFile(
@@ -1103,6 +1121,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1120,6 +1139,10 @@ describe('cli commands integration', () => {
       enforcedAuthType: 'gemini-api-key',
     })
     expect(payload.data?.validation.ok).toBe(true)
+    expect(payload.data?.risk.allowed).toBe(false)
+    expect(payload.data?.risk.riskLevel).toBe('medium')
+    expect(payload.data?.risk.reasons).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.data?.risk.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
@@ -1127,6 +1150,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.preview.warnings.some((item) => item.code === 'env-auth-required')).toBe(true)
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
   })
+
 
   it('add 非法 platform 时返回 stderr 并设置 exitCode 2', async () => {
     const result = await runCli(['add', '--platform', 'openai', '--name', 'bad-platform', '--key', 'sk-bad-123'])

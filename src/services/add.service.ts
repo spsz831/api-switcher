@@ -26,8 +26,12 @@ export class AddService {
     const validation = await adapter.validate(profile)
     const preview = await adapter.preview(profile)
     const decision = evaluateRisk(preview, validation)
-    const warnings = Array.from(new Set(decision.reasons))
-    const limitations = Array.from(new Set(decision.limitations))
+    const risk = {
+      allowed: decision.allowed,
+      riskLevel: decision.riskLevel,
+      reasons: Array.from(new Set(decision.reasons)),
+      limitations: Array.from(new Set(decision.limitations)),
+    }
 
     await this.profileService.add(profile)
 
@@ -38,15 +42,10 @@ export class AddService {
         profile,
         validation,
         preview,
-        risk: {
-          allowed: decision.allowed,
-          riskLevel: decision.riskLevel,
-          reasons: warnings,
-          limitations,
-        },
+        risk,
       },
-      warnings,
-      limitations,
+      warnings: risk.reasons,
+      limitations: risk.limitations,
     }
   }
 }

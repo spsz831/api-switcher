@@ -217,7 +217,8 @@ function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: st
 }
 
 function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const riskLevel = data.risk?.riskLevel ?? data.preview.riskLevel
+  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
+  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
 
   return [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
@@ -226,7 +227,7 @@ function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: st
     ...renderValidationIssues('错误', data.validation.errors),
     ...renderValidationIssues('警告', data.validation.warnings),
     ...renderValidationIssues('限制', data.validation.limitations),
-    `  风险等级: ${riskLevel}`,
+    `  风险等级: ${data.risk.riskLevel}`,
     `  需要确认: ${data.preview.requiresConfirmation ? '是' : '否'}`,
     `  计划备份: ${data.preview.backupPlanned ? '是' : '否'}`,
     `  无变更: ${data.preview.noChanges ? '是' : '否'}`,
@@ -237,8 +238,8 @@ function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: st
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('预览警告', data.preview.warnings),
     ...renderValidationIssues('预览限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', warnings),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', riskWarnings),
+    ...renderCommandLimitations(riskLimitations),
   ].join('\n')
 }
 
@@ -266,9 +267,9 @@ function renderExport(data: ExportCommandOutput, limitations?: string[]): string
         ...item.validation.warnings.map((warning) => `  警告: ${warning.message}`),
         ...item.validation.limitations.map((issue) => `  限制: ${issue.message}`),
         ...renderEffectiveConfig(item.validation.effectiveConfig),
+        ...renderManagedBoundaries(item.validation.managedBoundaries),
+        ...renderSecretReferences(item.validation.secretReferences),
       ] : []),
-      ...renderManagedBoundaries(item.managedBoundaries),
-      ...renderSecretReferences(item.secretReferences),
     ].join('\n')).join('\n'),
     ...renderCommandLimitations(limitations),
   ].filter(Boolean).join('\n')

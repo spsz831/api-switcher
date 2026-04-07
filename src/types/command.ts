@@ -1,9 +1,7 @@
 import type {
   CurrentProfileResult,
-  ManagedBoundary,
   PreviewResult,
   RollbackResult,
-  SecretReference,
   ValidationResult,
 } from './adapter'
 import type { HealthStatus, PlatformName, RiskLevel } from './platform'
@@ -65,9 +63,6 @@ export interface ValidateCommandOutput {
 export interface ExportedProfileItem {
   profile: Profile
   validation?: ValidationResult
-  limitations?: string[]
-  managedBoundaries?: ManagedBoundary[]
-  secretReferences?: SecretReference[]
 }
 
 export interface ExportCommandOutput {
@@ -85,7 +80,7 @@ export interface AddCommandOutput {
   profile: Profile
   validation: ValidationResult
   preview: PreviewResult
-  risk?: AddRiskSummary
+  risk: AddRiskSummary
 }
 
 export interface ListCommandItem {
