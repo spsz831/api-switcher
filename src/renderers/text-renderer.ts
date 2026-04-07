@@ -217,6 +217,8 @@ function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: st
 }
 
 function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const riskLevel = data.risk?.riskLevel ?? data.preview.riskLevel
+
   return [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  名称: ${data.profile.name}`,
@@ -224,7 +226,7 @@ function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: st
     ...renderValidationIssues('错误', data.validation.errors),
     ...renderValidationIssues('警告', data.validation.warnings),
     ...renderValidationIssues('限制', data.validation.limitations),
-    `  风险等级: ${data.preview.riskLevel}`,
+    `  风险等级: ${riskLevel}`,
     `  需要确认: ${data.preview.requiresConfirmation ? '是' : '否'}`,
     `  计划备份: ${data.preview.backupPlanned ? '是' : '否'}`,
     `  无变更: ${data.preview.noChanges ? '是' : '否'}`,
@@ -258,8 +260,13 @@ function renderExport(data: ExportCommandOutput, limitations?: string[]): string
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
-      ...(item.limitations && item.limitations.length > 0 ? ['  平台限制:'] : []),
-      ...renderLimitations(item.limitations),
+      ...(item.validation ? [
+        `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
+        ...item.validation.errors.map((error) => `  错误: ${error.message}`),
+        ...item.validation.warnings.map((warning) => `  警告: ${warning.message}`),
+        ...item.validation.limitations.map((issue) => `  限制: ${issue.message}`),
+        ...renderEffectiveConfig(item.validation.effectiveConfig),
+      ] : []),
       ...renderManagedBoundaries(item.managedBoundaries),
       ...renderSecretReferences(item.secretReferences),
     ].join('\n')).join('\n'),

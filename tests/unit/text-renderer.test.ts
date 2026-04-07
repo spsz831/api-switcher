@@ -608,6 +608,42 @@ const exportPayload: ExportCommandOutput = {
         source: {},
         apply: {},
       },
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        limitations: [
+          {
+            code: 'scope-aware-limitation',
+            level: 'limitation',
+            message: '当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。',
+          },
+        ],
+        effectiveConfig: {
+          stored: [
+            {
+              key: 'ANTHROPIC_AUTH_TOKEN',
+              value: 'sk-old-000',
+              maskedValue: 'sk-o***00',
+              source: 'stored',
+              scope: 'project',
+              secret: true,
+            },
+          ],
+          effective: [
+            {
+              key: 'ANTHROPIC_AUTH_TOKEN',
+              value: 'sk-live-123456',
+              maskedValue: 'sk-l***56',
+              source: 'scope-project',
+              scope: 'project',
+              secret: true,
+            },
+          ],
+          overrides: [],
+          shadowedKeys: [],
+        },
+      },
       limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
       managedBoundaries: [
         {
@@ -715,6 +751,12 @@ const addPayload: AddCommandOutput = {
     requiresConfirmation: false,
     backupPlanned: true,
     noChanges: false,
+  },
+  risk: {
+    allowed: true,
+    riskLevel: 'low',
+    reasons: [],
+    limitations: [],
   },
 }
 
@@ -1016,12 +1058,17 @@ describe('text renderer', () => {
     expect(outputEmptyValidate).toBe('[validate] 成功\n')
   })
 
-  it('渲染 export 结果时输出名称与平台限制说明', () => {
+  it('渲染 export 结果时输出名称与校验摘要说明', () => {
     expect(outputExport).toContain('[export] 成功')
     expect(outputExport).toContain('- claude-prod (claude)')
     expect(outputExport).toContain('  名称: Claude 生产')
-    expect(outputExport).toContain('  平台限制:')
-    expect(outputExport).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(outputExport).toContain('  校验结果: 通过')
+    expect(outputExport).toContain('  限制: 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(outputExport).toContain('  生效配置:')
+    expect(outputExport).toContain('    已写入:')
+    expect(outputExport).toContain('    - ANTHROPIC_AUTH_TOKEN: sk-o***00 (scope=project, source=stored, secret)')
+    expect(outputExport).toContain('    最终生效:')
+    expect(outputExport).toContain('    - ANTHROPIC_AUTH_TOKEN: sk-l***56 (scope=project, source=scope-project, secret)')
     expect(outputExport).toContain('  托管边界:')
     expect(outputExport).toContain('  - 类型: scope-aware / 目标: C:/Users/test/.claude/settings.json')
     expect(outputExport).toContain('    托管字段: ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL')

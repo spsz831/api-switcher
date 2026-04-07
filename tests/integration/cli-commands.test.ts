@@ -359,6 +359,16 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       profiles: Array<{
         profile: Profile
+        validation?: {
+          ok: boolean
+          errors: Array<{ code: string }>
+          warnings: Array<{ code: string }>
+          limitations: Array<{ code: string; message: string }>
+          effectiveConfig?: {
+            stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
+            effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean; shadowed?: boolean }>
+          }
+        }
         limitations?: string[]
         managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[] }>
         secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
@@ -376,6 +386,16 @@ describe('cli commands integration', () => {
     const geminiProfile = payload.data?.profiles.find((item) => item.profile.id === 'gemini-prod')
 
     expect(claudeProfile?.profile.source).toEqual({ token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' })
+    expect(claudeProfile?.validation?.ok).toBe(true)
+    expect(claudeProfile?.validation?.errors).toEqual([])
+    expect(claudeProfile?.validation?.warnings).toEqual([])
+    expect(claudeProfile?.validation?.limitations.map((item) => item.message)).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(claudeProfile?.validation?.effectiveConfig?.stored?.[0]).toMatchObject({
+      key: 'ANTHROPIC_AUTH_TOKEN',
+      source: 'stored',
+      scope: 'project',
+      secret: true,
+    })
     expect(claudeProfile?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(claudeProfile?.managedBoundaries).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -717,6 +737,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
+      risk?: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -726,6 +747,10 @@ describe('cli commands integration', () => {
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings).toEqual([])
     expect(payload.data?.preview.riskLevel).toBe('low')
+    expect(payload.data?.risk?.allowed).toBe(true)
+    expect(payload.data?.risk?.riskLevel).toBe('low')
+    expect(payload.data?.risk?.reasons).toEqual([])
+    expect(payload.data?.risk?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
@@ -733,12 +758,15 @@ describe('cli commands integration', () => {
     expect(payload.warnings).toEqual([])
   })
 
+
+
   it('add --json 在现有非托管字段下返回 medium 风险摘要', async () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'json-with-theme', '--key', 'sk-json-theme-123', '--url', 'https://new.example.com/api', '--json'])
     const payload = parseJsonResult<{
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
+      risk?: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -746,10 +774,14 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.validation.warnings).toEqual([])
     expect(payload.data?.preview.riskLevel).toBe('medium')
+    expect(payload.data?.risk?.riskLevel).toBe('medium')
+    expect(payload.data?.risk?.allowed).toBe(false)
+    expect(payload.data?.risk?.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.warnings.some((item) => item.code === 'unmanaged-current-file')).toBe(true)
     expect(payload.warnings).toContain('当前 Claude 配置存在非托管字段：theme')
   })
+
 
   it('add --json 为 claude 传入非 /api url 时返回 validation warning', async () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'json-claude-warning', '--key', 'sk-new-123', '--url', 'https://new.example.com', '--json'])
@@ -1386,7 +1418,7 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  平台限制:')
   })
 
-  it('export 输出名称与平台限制', async () => {
+  it('export 输出名称、校验摘要与限制说明', async () => {
     const result = await runCli(['export'])
 
     expect(result.stderr).toBe('')
@@ -1394,20 +1426,23 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('[export] 成功')
     expect(result.stdout).toContain('- claude-prod (claude)')
     expect(result.stdout).toContain('  名称: claude-prod')
+    expect(result.stdout).toContain('  校验结果: 通过')
+    expect(result.stdout).toContain('  生效配置:')
+    expect(result.stdout).toContain('    已写入:')
+    expect(result.stdout).toContain('    - ANTHROPIC_AUTH_TOKEN: sk-l***56 (scope=project, source=stored, secret)')
+    expect(result.stdout).toContain('  限制: 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.stdout).toContain('- codex-prod (codex)')
-    expect(result.stdout).toContain('  名称: codex-prod')
     expect(result.stdout).toContain('- gemini-prod (gemini)')
-    expect(result.stdout).toContain('  名称: gemini-prod')
-    expect(result.stdout).toContain('  平台限制:')
-    expect(result.stdout).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
-    expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
-    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(result.stdout).toContain('  托管边界:')
     expect(result.stdout).toContain(`  - 类型: scope-aware / 目标: ${claudeProjectSettingsPath}`)
     expect(result.stdout).toContain('    托管字段: ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL')
     expect(result.stdout).toContain('    说明: 当前写入目标为 Claude 项目级配置文件。')
     expect(result.stdout).toContain('  敏感字段引用:')
     expect(result.stdout).toContain('  - ANTHROPIC_AUTH_TOKEN: sk-l***56 (source=inline, present=yes)')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('preview 输出风险、explainable 细节与附加提示', async () => {
