@@ -54,10 +54,16 @@ export interface UseCommandOutput {
   noChanges: boolean
 }
 
+export interface RollbackSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface RollbackCommandOutput {
   backupId: string
   restoredFiles: string[]
   rollback?: RollbackResult
+  summary: RollbackSummary
 }
 
 export interface CurrentCommandOutput {

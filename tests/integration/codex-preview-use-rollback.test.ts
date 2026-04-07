@@ -215,6 +215,10 @@ describe('codex preview/use/rollback integration', () => {
 
     const rollbackResult = await new RollbackService().rollback(backupId)
     expect(rollbackResult.ok).toBe(true)
+    expect(rollbackResult.data?.summary.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(rollbackResult.data?.summary.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(rollbackResult.data?.summary.warnings).toContain('Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(rollbackResult.data?.summary.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(rollbackResult.data?.restoredFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(rollbackResult.data?.rollback?.targetFiles).toEqual(expect.arrayContaining([
       expect.objectContaining({

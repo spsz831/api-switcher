@@ -362,6 +362,8 @@ describe('preview/use/rollback integration', () => {
     await fs.writeFile(claudeProjectSettingsPath, JSON.stringify({ theme: 'light' }, null, 2), 'utf8')
     const rollbackResult = await new RollbackService().rollback(backupId)
     expect(rollbackResult.ok).toBe(true)
+    expect(rollbackResult.data?.summary.warnings).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(rollbackResult.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 
     const restored = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8'))
     expect(restored.ANTHROPIC_AUTH_TOKEN).toBe('sk-old-000')

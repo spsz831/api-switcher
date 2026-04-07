@@ -250,6 +250,9 @@ function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: st
 }
 
 function renderRollback(data: RollbackCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
+  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
+
   return [
     `- 备份ID: ${data.backupId}`,
     ...(data.restoredFiles.length > 0 ? ['  已恢复文件:', ...data.restoredFiles.map((item) => `  - ${item}`)] : ['  已恢复文件: 无']),
@@ -257,8 +260,8 @@ function renderRollback(data: RollbackCommandOutput, warnings?: string[], limita
     ...renderManagedBoundaries(data.rollback?.managedBoundaries),
     ...renderValidationIssues('回滚警告', data.rollback?.warnings ?? []),
     ...renderValidationIssues('回滚限制', data.rollback?.limitations ?? []),
-    ...renderWarnings('附加提示:', warnings),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', summaryWarnings),
+    ...renderCommandLimitations(summaryLimitations),
   ].join('\n')
 }
 

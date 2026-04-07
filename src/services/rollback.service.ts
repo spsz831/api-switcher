@@ -83,6 +83,10 @@ export class RollbackService {
           backupId: targetBackupId,
           restoredFiles: result.restoredFiles,
           rollback: result,
+          summary: {
+            warnings,
+            limitations,
+          },
         },
         warnings,
         limitations,

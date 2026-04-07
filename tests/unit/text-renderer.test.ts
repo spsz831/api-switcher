@@ -483,11 +483,19 @@ const rollbackPayload: RollbackCommandOutput = {
       },
     ],
   },
+  summary: {
+    warnings: ['已恢复快照中的托管文件'],
+    limitations: ['回滚仅恢复快照覆盖的托管文件。'],
+  },
 }
 
 const emptyRollbackPayload: RollbackCommandOutput = {
   backupId: 'snapshot-gemini-002',
   restoredFiles: [],
+  summary: {
+    warnings: [],
+    limitations: [],
+  },
 }
 
 const validatePayload: ValidateCommandOutput = {

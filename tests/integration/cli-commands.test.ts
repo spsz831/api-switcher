@@ -599,6 +599,10 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       backupId: string
       restoredFiles: string[]
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
       rollback?: {
         targetFiles?: Array<{ path: string; managedKeys?: string[]; role?: string }>
         managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[] }>
@@ -612,6 +616,10 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('rollback')
     expect(payload.data?.backupId).toBe(usePayload.data?.backupId)
+    expect(payload.data?.summary.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.data?.summary.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.data?.summary.warnings).toContain('Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(payload.data?.summary.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(payload.data?.restoredFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(payload.data?.rollback?.targetFiles).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -643,6 +651,10 @@ describe('cli commands integration', () => {
     expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('user_id'))).toBe(true)
     expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('config.toml 与 auth.json'))).toBe(true)
     expect(payload.data?.rollback?.limitations?.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.warnings).toContain('Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(payload.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
 
     const state = await new StateStore().read()
     expect(state.current.codex).toBeUndefined()
