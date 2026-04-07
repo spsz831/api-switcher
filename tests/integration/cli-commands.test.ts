@@ -167,6 +167,10 @@ describe('cli commands integration', () => {
     const result = await runCli(['current', '--json'])
     const payload = parseJsonResult<{
       current: Record<string, string>
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
       detections: Array<{
         platform: string
         managed: boolean
@@ -190,6 +194,10 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('current')
     expect(payload.data?.current.gemini).toBe('gemini-prod')
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
 
     const geminiDetection = payload.data?.detections.find((item) => item.platform === 'gemini')
     expect(geminiDetection?.managed).toBe(true)
@@ -243,6 +251,45 @@ describe('cli commands integration', () => {
     expect(geminiDetection?.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
     expect(geminiDetection?.warnings?.map((item) => item.message)).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(geminiDetection?.limitations?.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('list --json 输出结构化 profiles 与 explainable 摘要', async () => {
+    await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+
+    const result = await runCli(['list', '--json'])
+    const payload = parseJsonResult<{
+      profiles: Array<{
+        profile: Profile
+        current: boolean
+        healthStatus: string
+        riskLevel: string
+      }>
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('list')
+    expect(payload.data?.profiles).toHaveLength(4)
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+
+    const geminiProfile = payload.data?.profiles.find((item) => item.profile.id === 'gemini-prod')
+    expect(geminiProfile?.current).toBe(true)
+    expect(geminiProfile?.healthStatus).toBe('valid')
+    expect(geminiProfile?.riskLevel).toBe('low')
+
+    const claudeProfile = payload.data?.profiles.find((item) => item.profile.id === 'claude-prod')
+    expect(claudeProfile?.current).toBe(false)
+    expect(claudeProfile?.healthStatus).toBe('unknown')
+    expect(claudeProfile?.riskLevel).toBe('low')
   })
 
   it('validate --json 成功时返回带 explainable 元数据的结构化 items', async () => {
@@ -320,6 +367,23 @@ describe('cli commands integration', () => {
     ])
     expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。')
+  })
+
+  it('list 文本输出配置列表与 explainable 摘要', async () => {
+    await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+
+    const result = await runCli(['list'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[list] 成功')
+    expect(result.stdout).toContain('- gemini-prod (gemini)')
+    expect(result.stdout).toContain('  当前生效: 是')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('validate --json 失败时返回错误状态并设置 exitCode 1', async () => {
@@ -1361,27 +1425,33 @@ describe('cli commands integration', () => {
     expect(payload.data?.profiles[0]?.profile.meta?.healthStatus).toBe('invalid')
   })
 
-  it('list 空列表时输出空正文', async () => {
+  it('list 空列表时输出限制说明', async () => {
     await new ProfilesStore().write({ version: 1, profiles: [] })
 
     const result = await runCli(['list'])
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toBe('[list] 成功\n\n')
+    expect(result.stdout).toContain('[list] 成功')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('list --json 空列表时返回空数组', async () => {
     await new ProfilesStore().write({ version: 1, profiles: [] })
 
     const result = await runCli(['list', '--json'])
-    const payload = parseJsonResult<{ profiles: Array<unknown> }>(result.stdout)
+    const payload = parseJsonResult<{ profiles: Array<unknown>; summary: { warnings: string[]; limitations: string[] } }>(result.stdout)
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('list')
     expect(payload.data?.profiles).toEqual([])
+    expect(payload.data?.summary.warnings).toEqual([])
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
   it('list --platform 输出按平台过滤后的文本结果', async () => {

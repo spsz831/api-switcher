@@ -59,6 +59,16 @@ export interface RollbackSummary {
   limitations: string[]
 }
 
+export interface CurrentSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
+export interface ListSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface RollbackCommandOutput {
   backupId: string
   restoredFiles: string[]
@@ -70,6 +80,7 @@ export interface CurrentCommandOutput {
   current: Partial<Record<PlatformName, string>>
   lastSwitch?: LastSwitchRecord
   detections: CurrentProfileResult[]
+  summary: CurrentSummary
 }
 
 export interface ValidateCommandItem {
@@ -114,6 +125,7 @@ export interface ListCommandItem {
 
 export interface ListCommandOutput {
   profiles: ListCommandItem[]
+  summary: ListSummary
 }
 
 export interface AddProfileInput {

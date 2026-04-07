@@ -117,6 +117,10 @@ const currentPayload: CurrentCommandOutput = {
     time: '2026-04-04T22:00:00.000Z',
     status: 'success',
   },
+  summary: {
+    warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
   detections: [
     {
       platform: 'gemini',
@@ -209,6 +213,10 @@ const currentPayload: CurrentCommandOutput = {
 
 const emptyCurrentPayload: CurrentCommandOutput = {
   current: {},
+  summary: {
+    warnings: [],
+    limitations: [],
+  },
   detections: [],
 }
 
@@ -835,10 +843,18 @@ const listPayload: ListCommandOutput = {
       riskLevel: 'medium',
     },
   ],
+  summary: {
+    warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
 }
 
 const emptyListPayload: ListCommandOutput = {
   profiles: [],
+  summary: {
+    warnings: [],
+    limitations: [],
+  },
 }
 
 const genericSuccessResult: CommandResult<{ foo: string }> = {
@@ -923,10 +939,10 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('    托管字段: enforcedAuthType')
     expect(outputCurrent).toContain('    保留字段: ui.theme')
     expect(outputCurrent).toContain('    说明: Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。')
-    expect(outputCurrent).toContain('  敏感字段引用:')
-    expect(outputCurrent).toContain('  - GEMINI_API_KEY: gm-***1234 (source=env, present=yes)')
-    expect(outputCurrent).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
-    expect(outputCurrent).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(outputCurrent).toContain('附加提示:')
+    expect(outputCurrent).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(outputCurrent).toContain('限制说明:')
+    expect(outputCurrent).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('渲染空 current 结果时提示无已标记配置', () => {
@@ -1160,6 +1176,10 @@ describe('text renderer', () => {
     expect(outputList).toContain('  当前生效: 否')
     expect(outputList).toContain('  健康状态: warning')
     expect(outputList).toContain('  风险等级: medium')
+    expect(outputList).toContain('附加提示:')
+    expect(outputList).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(outputList).toContain('限制说明:')
+    expect(outputList).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('空 list 结果返回空正文', () => {

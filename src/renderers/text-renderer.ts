@@ -144,7 +144,10 @@ function renderDetection(item: CurrentProfileResult): string[] {
   ]
 }
 
-function renderCurrent(data: CurrentCommandOutput): string {
+function renderCurrent(data: CurrentCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
+  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
+
   const lines = ['当前 state:']
 
   if (Object.keys(data.current).length === 0) {
@@ -166,8 +169,12 @@ function renderCurrent(data: CurrentCommandOutput): string {
     }
   }
 
+  lines.push(...renderWarnings('附加提示:', summaryWarnings))
+  lines.push(...renderCommandLimitations(summaryLimitations))
+
   return lines.join('\n')
 }
+
 
 function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitations?: string[]): string {
   const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
@@ -300,14 +307,21 @@ function renderValidate(data: ValidateCommandOutput, limitations?: string[]): st
   ].filter(Boolean).join('\n')
 }
 
-function renderList(data: ListCommandOutput): string {
-  return data.profiles.map((item) => [
-    `- ${item.profile.id} (${item.profile.platform})`,
-    `  名称: ${item.profile.name}`,
-    `  当前生效: ${item.current ? '是' : '否'}`,
-    `  健康状态: ${item.healthStatus}`,
-    `  风险等级: ${item.riskLevel}`,
-  ].join('\n')).join('\n')
+function renderList(data: ListCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
+  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
+
+  return [
+    data.profiles.map((item) => [
+      `- ${item.profile.id} (${item.profile.platform})`,
+      `  名称: ${item.profile.name}`,
+      `  当前生效: ${item.current ? '是' : '否'}`,
+      `  健康状态: ${item.healthStatus}`,
+      `  风险等级: ${item.riskLevel}`,
+    ].join('\n')).join('\n'),
+    ...renderWarnings('附加提示:', summaryWarnings),
+    ...renderCommandLimitations(summaryLimitations),
+  ].filter(Boolean).join('\n')
 }
 
 
@@ -315,7 +329,7 @@ export function renderText(result: CommandResult): string {
   const status = result.ok ? '成功' : '失败'
 
   if (result.action === 'current' && result.data) {
-    return `[${result.action}] ${status}\n${renderCurrent(result.data as CurrentCommandOutput)}`
+    return `[${result.action}] ${status}\n${renderCurrent(result.data as CurrentCommandOutput, result.warnings, result.limitations)}`
   }
 
   if (result.action === 'preview' && result.data) {
@@ -343,7 +357,7 @@ export function renderText(result: CommandResult): string {
   }
 
   if (result.action === 'list' && result.data) {
-    return `[${result.action}] ${status}\n${renderList(result.data as ListCommandOutput)}`
+    return `[${result.action}] ${status}\n${renderList(result.data as ListCommandOutput, result.warnings, result.limitations)}`
   }
 
   if (!result.ok) {

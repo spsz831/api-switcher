@@ -1,6 +1,6 @@
 import { AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
-import type { CurrentProfileResult } from '../types/adapter'
+import type { CurrentProfileResult, ValidationIssue } from '../types/adapter'
 import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandOutput } from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
@@ -18,6 +18,7 @@ export class CurrentStateService {
   async getCurrent(): Promise<CommandResult<CurrentCommandOutput>> {
     try {
       const context = await this.collectStateContext()
+      const summary = this.buildCurrentSummary(context.detections)
 
       return {
         ok: true,
@@ -26,7 +27,10 @@ export class CurrentStateService {
           current: context.state.current,
           lastSwitch: context.state.lastSwitch,
           detections: context.detections,
+          summary,
         },
+        warnings: summary.warnings,
+        limitations: summary.limitations,
       }
     } catch (error) {
       return {
@@ -44,11 +48,17 @@ export class CurrentStateService {
     try {
       const context = await this.collectStateContext()
       const data = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
+      const summary = this.buildCurrentSummary(context.detections)
 
       return {
         ok: true,
         action: 'list',
-        data,
+        data: {
+          ...data,
+          summary,
+        },
+        warnings: summary.warnings,
+        limitations: summary.limitations,
       }
     } catch (error) {
       return {
@@ -86,6 +96,17 @@ export class CurrentStateService {
     }
   }
 
+  private buildCurrentSummary(detections: CurrentProfileResult[]): CurrentCommandOutput['summary'] {
+    return {
+      warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
+      limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+    }
+  }
+
+  private collectIssueMessages(issues: ValidationIssue[]): string[] {
+    return Array.from(new Set(issues.map((item) => item.message).filter(Boolean)))
+  }
+
   private buildListData(
     profiles: Profile[],
     current: Partial<Record<PlatformName, string>>,
@@ -110,7 +131,7 @@ export class CurrentStateService {
       return left.profile.id.localeCompare(right.profile.id)
     })
 
-    return { profiles: items }
+    return { profiles: items, summary: { warnings: [], limitations: [] } }
   }
 
   private buildListItem(
