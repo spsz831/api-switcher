@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ClaudeAdapter } from '../../src/adapters/claude/claude.adapter'
 import { PreviewService } from '../../src/services/preview.service'
 import { RollbackService } from '../../src/services/rollback.service'
 import { SwitchService } from '../../src/services/switch.service'
@@ -64,11 +65,268 @@ afterEach(async () => {
 })
 
 describe('preview/use/rollback integration', () => {
-  it('preview 能返回统一结果', async () => {
+  it('preview 能返回 Claude scope-aware explainable 结果', async () => {
     const result = await new PreviewService().preview('claude-prod')
     expect(result.ok).toBe(true)
-    expect(result.data?.preview.targetFiles).toHaveLength(1)
-    expect(result.data?.preview.targetFiles[0]?.path).toBe(claudeProjectSettingsPath)
+    expect(result.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: claudeProjectSettingsPath,
+        scope: 'project',
+        role: 'settings',
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        preservedKeys: ['theme'],
+      }),
+    ])
+    expect(result.data?.preview.diffSummary).toEqual([
+      expect.objectContaining({
+        path: claudeProjectSettingsPath,
+        changedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        preservedKeys: ['theme'],
+        hasChanges: true,
+      }),
+    ])
+    expect(result.data?.preview.managedBoundaries).toEqual([
+      expect.objectContaining({
+        target: claudeProjectSettingsPath,
+        type: 'scope-aware',
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        preservedKeys: ['theme'],
+        notes: ['当前写入目标为 Claude 项目级配置文件。'],
+      }),
+    ])
+    expect(result.data?.preview.secretReferences).toEqual([
+      {
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        source: 'inline',
+        present: true,
+        maskedValue: 'sk-l***56',
+      },
+    ])
+    expect(result.data?.preview.effectiveConfig?.stored).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-o***00',
+        source: 'stored',
+        scope: 'project',
+        secret: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://old.example.com/api',
+        source: 'stored',
+        scope: 'project',
+        secret: false,
+      }),
+    ]))
+    expect(result.data?.preview.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-l***56',
+        source: 'scope-project',
+        scope: 'project',
+        secret: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://gateway.example.com/api',
+        source: 'scope-project',
+        scope: 'project',
+        secret: false,
+      }),
+    ]))
+    expect(result.data?.preview.effectiveConfig?.overrides).toEqual([])
+    expect(result.data?.preview.preservedFields).toEqual(['theme'])
+    expect(result.data?.preview.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'unmanaged-current-file',
+        message: '当前 Claude 配置存在非托管字段：theme',
+      }),
+    ]))
+    expect(result.data?.preview.limitations.map((item) => item.message)).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(result.data?.preview.riskLevel).toBe('medium')
+    expect(result.data?.preview.requiresConfirmation).toBe(true)
+    expect(result.data?.preview.backupPlanned).toBe(true)
+    expect(result.data?.preview.noChanges).toBe(false)
+  })
+
+  it('preview 会标记被更高优先级 Claude local scope 覆盖的字段', async () => {
+    await fs.writeFile(
+      claudeLocalSettingsPath,
+      JSON.stringify({ ANTHROPIC_AUTH_TOKEN: 'sk-local-999999' }, null, 2),
+      'utf8',
+    )
+
+    const result = await new PreviewService().preview('claude-prod')
+    expect(result.ok).toBe(true)
+    expect(result.data?.preview.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-l***99',
+        source: 'scope-local',
+        scope: 'local',
+        secret: true,
+        shadowed: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://gateway.example.com/api',
+        source: 'scope-project',
+        scope: 'project',
+        secret: false,
+        shadowed: false,
+      }),
+    ]))
+    expect(result.data?.preview.effectiveConfig?.overrides).toEqual([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        kind: 'scope',
+        source: 'scope-local',
+        shadowed: true,
+        targetScope: 'project',
+      }),
+    ])
+    expect(result.data?.preview.effectiveConfig?.shadowedKeys).toEqual(['ANTHROPIC_AUTH_TOKEN'])
+    expect(result.data?.preview.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'shadowed-by-higher-scope',
+        message: '以下字段写入 Claude 项目级后仍会被更高优先级作用域覆盖：ANTHROPIC_AUTH_TOKEN',
+        source: 'scope-project',
+      }),
+    ]))
+    expect(result.warnings).toContain('以下字段写入 Claude 项目级后仍会被更高优先级作用域覆盖：ANTHROPIC_AUTH_TOKEN')
+  })
+
+  it('detectCurrent 能返回 Claude 当前生效 scope 与未匹配 profile 的现状', async () => {
+    const profiles = await new ProfilesStore().list()
+    const result = await new ClaudeAdapter().detectCurrent(profiles)
+
+    expect(result).toEqual(expect.objectContaining({
+      platform: 'claude',
+      matchedProfileId: undefined,
+      managed: false,
+      currentScope: 'project',
+      targetFiles: expect.arrayContaining([
+        expect.objectContaining({
+          path: claudeUserSettingsPath,
+          scope: 'user',
+          role: 'settings',
+        }),
+        expect.objectContaining({
+          path: claudeProjectSettingsPath,
+          scope: 'project',
+          role: 'settings',
+        }),
+        expect.objectContaining({
+          path: claudeLocalSettingsPath,
+          scope: 'local',
+          role: 'settings',
+        }),
+      ]),
+      managedBoundaries: [
+        expect.objectContaining({
+          target: claudeProjectSettingsPath,
+          type: 'scope-aware',
+          managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+          notes: ['当前生效配置来自 Claude 项目级配置文件。'],
+        }),
+      ],
+      secretReferences: [
+        expect.objectContaining({
+          key: 'ANTHROPIC_AUTH_TOKEN',
+          maskedValue: 'sk-o***00',
+          source: 'inline',
+          present: true,
+        }),
+      ],
+    }))
+    expect(result?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-o***00',
+        source: 'scope-project',
+        scope: 'project',
+        secret: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://old.example.com/api',
+        source: 'scope-project',
+        scope: 'project',
+        secret: false,
+      }),
+    ]))
+  })
+
+  it('detectCurrent 会在切换后返回匹配的 Claude profile', async () => {
+    await new SwitchService().use('claude-prod', { force: true })
+
+    const profiles = await new ProfilesStore().list()
+    const result = await new ClaudeAdapter().detectCurrent(profiles)
+
+    expect(result).toEqual(expect.objectContaining({
+      platform: 'claude',
+      matchedProfileId: 'claude-prod',
+      managed: true,
+      currentScope: 'project',
+    }))
+    expect(result?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-l***56',
+        source: 'scope-project',
+        scope: 'project',
+        secret: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://gateway.example.com/api',
+        source: 'scope-project',
+        scope: 'project',
+        secret: false,
+      }),
+    ]))
+  })
+
+  it('detectCurrent 会在 local scope 覆盖时返回 local currentScope', async () => {
+    await fs.writeFile(
+      claudeLocalSettingsPath,
+      JSON.stringify({ ANTHROPIC_AUTH_TOKEN: 'sk-local-999999' }, null, 2),
+      'utf8',
+    )
+
+    const profiles = await new ProfilesStore().list()
+    const result = await new ClaudeAdapter().detectCurrent(profiles)
+
+    expect(result).toEqual(expect.objectContaining({
+      platform: 'claude',
+      matchedProfileId: undefined,
+      managed: false,
+      currentScope: 'local',
+      managedBoundaries: [
+        expect.objectContaining({
+          target: claudeLocalSettingsPath,
+          type: 'scope-aware',
+          notes: ['当前生效配置来自 Claude 本地级配置文件。'],
+        }),
+      ],
+    }))
+    expect(result?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'ANTHROPIC_AUTH_TOKEN',
+        maskedValue: 'sk-l***99',
+        source: 'scope-local',
+        scope: 'local',
+        secret: true,
+      }),
+      expect.objectContaining({
+        key: 'ANTHROPIC_BASE_URL',
+        maskedValue: 'https://old.example.com/api',
+        source: 'scope-project',
+        scope: 'project',
+        secret: false,
+      }),
+    ]))
   })
 
   it('use 能创建 snapshot、写入文件并更新 state', async () => {
