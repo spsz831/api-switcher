@@ -47,6 +47,10 @@ function toIssues(messages: string[] | undefined, prefix: string, level: Validat
   }))
 }
 
+function listPreservedKeys(current: Record<string, unknown>, managedKeys: readonly string[]): string[] {
+  return Object.keys(current).filter((key) => !managedKeys.includes(key))
+}
+
 export class CodexAdapter extends BasePlatformAdapter {
   readonly platform = 'codex' as const
 
@@ -158,8 +162,8 @@ export class CodexAdapter extends BasePlatformAdapter {
     const allManaged = { ...configManaged, ...authManaged }
     const currentManaged = { ...pickCodexConfigFields(currentConfig), ...pickCodexAuthFields(currentAuth) }
     const nextManaged = { ...pickCodexConfigFields(nextConfig), ...pickCodexAuthFields(nextAuth) }
-    const unmanagedConfigKeys = Object.keys(currentConfig).filter((key) => !(key in configManaged))
-    const unmanagedAuthKeys = Object.keys(currentAuth).filter((key) => !(key in authManaged))
+    const unmanagedConfigKeys = listPreservedKeys(currentConfig, CODEX_CONFIG_MANAGED_KEYS)
+    const unmanagedAuthKeys = listPreservedKeys(currentAuth, CODEX_AUTH_MANAGED_KEYS)
     const configDiff = diffManagedFields(configPath, currentConfig, nextConfig, {
       managedKeys: [...CODEX_CONFIG_MANAGED_KEYS],
       preservedKeys: unmanagedConfigKeys,
@@ -271,8 +275,8 @@ export class CodexAdapter extends BasePlatformAdapter {
         effective: currentManaged,
       }),
       managedBoundaries: this.buildManagedBoundaries(configPath, authPath, {
-        config: Object.keys(currentConfig).filter((key) => !(key in pickCodexConfigFields(currentConfig))),
-        auth: Object.keys(currentAuth).filter((key) => !(key in pickCodexAuthFields(currentAuth))),
+        config: listPreservedKeys(currentConfig, CODEX_CONFIG_MANAGED_KEYS),
+        auth: listPreservedKeys(currentAuth, CODEX_AUTH_MANAGED_KEYS),
       }),
       secretReferences: collectSecretReferences(currentManaged),
       warnings: [],
@@ -286,12 +290,14 @@ export class CodexAdapter extends BasePlatformAdapter {
 
   async apply(profile: Profile, _context: ApplyContext): Promise<ApplyResult> {
     const { configPath, authPath } = resolveCodexTargets()
-    const currentConfig = parseCodexConfig(await readTextFile(configPath))
-    const currentAuth = parseCodexAuth(await readTextFile(authPath))
+    const currentConfigContent = await readTextFile(configPath)
+    const currentAuthContent = await readTextFile(authPath)
+    const currentConfig = parseCodexConfig(currentConfigContent)
+    const currentAuth = parseCodexAuth(currentAuthContent)
     const nextConfig = mergeCodexConfig(currentConfig, profile.apply)
     const nextAuth = mergeCodexAuth(currentAuth, profile.apply)
-    const unmanagedConfigKeys = Object.keys(currentConfig).filter((key) => !(key in pickCodexConfigFields(profile.apply)))
-    const unmanagedAuthKeys = Object.keys(currentAuth).filter((key) => !(key in pickCodexAuthFields(profile.apply)))
+    const unmanagedConfigKeys = listPreservedKeys(currentConfig, CODEX_CONFIG_MANAGED_KEYS)
+    const unmanagedAuthKeys = listPreservedKeys(currentAuth, CODEX_AUTH_MANAGED_KEYS)
     const configDiff = diffManagedFields(configPath, currentConfig, nextConfig, {
       managedKeys: [...CODEX_CONFIG_MANAGED_KEYS],
       preservedKeys: unmanagedConfigKeys,
@@ -327,7 +333,7 @@ export class CodexAdapter extends BasePlatformAdapter {
     }
 
     if (configDiff.hasChanges) {
-      await atomicWrite(configPath, stringifyCodexConfig(nextConfig))
+      await atomicWrite(configPath, stringifyCodexConfig(nextConfig, currentConfigContent))
     }
 
     if (authDiff.hasChanges) {

@@ -381,41 +381,110 @@ describe('cli commands integration', () => {
     ])
   })
 
-  it('preview --json 输出结构化预览结果与 warnings', async () => {
-    const result = await runCli(['preview', 'gemini-prod', '--json'])
+  it('preview --json 输出 Codex 结构化预览结果与 warnings', async () => {
+    const result = await runCli(['preview', 'codex-prod', '--json'])
     const payload = parseJsonResult<{
       profile: Profile
-      preview: { riskLevel: string; diffSummary: Array<{ path: string }> }
+      preview: {
+        riskLevel: string
+        requiresConfirmation: boolean
+        backupPlanned: boolean
+        noChanges?: boolean
+        diffSummary: Array<{ path: string; changedKeys: string[]; managedKeys?: string[]; preservedKeys?: string[] }>
+        managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
+        secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
+        limitations?: Array<{ code: string; message: string }>
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('preview')
-    expect(payload.data?.profile.id).toBe('gemini-prod')
+    expect(payload.data?.profile.id).toBe('codex-prod')
     expect(payload.data?.preview.riskLevel).toBe('medium')
-    expect(payload.data?.preview.diffSummary[0]?.path).toBe(geminiSettingsPath)
-    expect(payload.warnings?.length).toBeGreaterThan(0)
+    expect(payload.data?.preview.requiresConfirmation).toBe(true)
+    expect(payload.data?.preview.backupPlanned).toBe(true)
+    expect(payload.data?.preview.noChanges).toBe(false)
+    expect(payload.data?.preview.diffSummary).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: codexConfigPath,
+        changedKeys: ['base_url'],
+        managedKeys: ['base_url'],
+        preservedKeys: ['default_provider'],
+      }),
+      expect.objectContaining({
+        path: codexAuthPath,
+        changedKeys: ['OPENAI_API_KEY'],
+        managedKeys: ['OPENAI_API_KEY'],
+        preservedKeys: ['user_id'],
+      }),
+    ]))
+    expect(payload.data?.preview.managedBoundaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'multi-file-transaction',
+        managedKeys: ['base_url', 'OPENAI_API_KEY'],
+      }),
+      expect.objectContaining({
+        target: codexConfigPath,
+        managedKeys: ['base_url'],
+        preservedKeys: ['default_provider'],
+      }),
+      expect.objectContaining({
+        target: codexAuthPath,
+        managedKeys: ['OPENAI_API_KEY'],
+        preservedKeys: ['user_id'],
+      }),
+    ]))
+    expect(payload.data?.preview.secretReferences).toEqual([
+      {
+        key: 'OPENAI_API_KEY',
+        source: 'inline',
+        present: true,
+        maskedValue: 'sk-c***56',
+      },
+    ])
+    expect(payload.data?.preview.limitations?.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.warnings).toContain('Codex 将修改多个目标文件。')
   })
 
-  it('use --json 在 --force 下返回结构化执行结果并写入 state', async () => {
-    const result = await runCli(['use', 'claude-prod', '--force', '--json'])
+  it('use --json 在 --force 下返回 Codex 结构化执行结果并写入 state', async () => {
+    const result = await runCli(['use', 'codex-prod', '--force', '--json'])
     const payload = parseJsonResult<{
       profile: Profile
       backupId?: string
       changedFiles: string[]
+      preview?: {
+        managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[] }>
+        secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
+        limitations?: Array<{ code: string; message: string }>
+        warnings?: Array<{ code: string; message: string }>
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('use')
-    expect(payload.data?.profile.id).toBe('claude-prod')
-    expect(payload.data?.backupId).toMatch(/^snapshot-claude-/)
-    expect(payload.data?.changedFiles).toContain(claudeProjectSettingsPath)
+    expect(payload.data?.profile.id).toBe('codex-prod')
+    expect(payload.data?.backupId).toMatch(/^snapshot-codex-/)
+    expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
+    expect(payload.data?.preview?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
+    expect(payload.data?.preview?.secretReferences).toEqual([
+      {
+        key: 'OPENAI_API_KEY',
+        source: 'inline',
+        present: true,
+        maskedValue: 'sk-c***56',
+      },
+    ])
+    expect(payload.data?.preview?.limitations?.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.data?.preview?.warnings?.some((item) => item.code === 'multi-file-overwrite')).toBe(true)
 
     const state = await new StateStore().read()
-    expect(state.current.claude).toBe('claude-prod')
+    expect(state.current.codex).toBe('codex-prod')
   })
 
   it('use --json 无 --force 时返回失败对象并设置 exitCode 1', async () => {
@@ -430,19 +499,20 @@ describe('cli commands integration', () => {
     expect(payload.error?.message).toBe('当前切换需要确认或 --force。')
   })
 
-  it('rollback --json 输出结构化恢复结果并更新 state', async () => {
-    const useResult = await runCli(['use', 'claude-prod', '--force', '--json'])
+  it('rollback --json 输出 Codex 结构化恢复结果并更新 state', async () => {
+    const useResult = await runCli(['use', 'codex-prod', '--force', '--json'])
     const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
     expect(usePayload.data?.backupId).toBeTruthy()
 
-    await fs.writeFile(claudeProjectSettingsPath, JSON.stringify({ theme: 'light' }, null, 2), 'utf8')
+    await fs.writeFile(codexConfigPath, 'default_provider = "other"\n', 'utf8')
+    await fs.writeFile(codexAuthPath, JSON.stringify({ OPENAI_API_KEY: 'sk-other' }, null, 2), 'utf8')
     const result = await runCli(['rollback', usePayload.data!.backupId!, '--json'])
     const payload = parseJsonResult<{
       backupId: string
       restoredFiles: string[]
       rollback?: {
-        targetFiles?: Array<{ path: string; managedKeys?: string[] }>
-        managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[] }>
+        targetFiles?: Array<{ path: string; managedKeys?: string[]; role?: string }>
+        managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[] }>
         warnings?: Array<{ code: string; message: string }>
         limitations?: Array<{ code: string; message: string }>
       }
@@ -453,20 +523,40 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('rollback')
     expect(payload.data?.backupId).toBe(usePayload.data?.backupId)
-    expect(payload.data?.restoredFiles).toContain(claudeProjectSettingsPath)
-    expect(payload.data?.rollback?.targetFiles?.[0]?.path).toBe(claudeProjectSettingsPath)
-    expect(payload.data?.rollback?.targetFiles?.[0]?.managedKeys).toEqual(['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'])
-    expect(payload.data?.rollback?.managedBoundaries).toEqual(expect.arrayContaining([
+    expect(payload.data?.restoredFiles).toEqual([codexConfigPath, codexAuthPath])
+    expect(payload.data?.rollback?.targetFiles).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        type: 'scope-aware',
-        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        path: codexConfigPath,
+        managedKeys: ['base_url'],
+        role: 'config',
+      }),
+      expect.objectContaining({
+        path: codexAuthPath,
+        managedKeys: ['OPENAI_API_KEY'],
+        role: 'auth',
       }),
     ]))
-    expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('当前 Claude 配置存在非托管字段：theme'))).toBe(true)
-    expect(payload.data?.rollback?.limitations?.map((item) => item.message)).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(payload.data?.rollback?.managedBoundaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'multi-file-transaction',
+        managedKeys: ['base_url', 'OPENAI_API_KEY'],
+      }),
+      expect.objectContaining({
+        target: codexConfigPath,
+        preservedKeys: ['default_provider'],
+      }),
+      expect.objectContaining({
+        target: codexAuthPath,
+        preservedKeys: ['user_id'],
+      }),
+    ]))
+    expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('default_provider'))).toBe(true)
+    expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('user_id'))).toBe(true)
+    expect(payload.data?.rollback?.warnings?.some((item) => item.message.includes('config.toml 与 auth.json'))).toBe(true)
+    expect(payload.data?.rollback?.limitations?.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
 
     const state = await new StateStore().read()
-    expect(state.current.claude).toBeUndefined()
+    expect(state.current.codex).toBeUndefined()
     expect(state.lastSwitch?.status).toBe('rolled-back')
   })
 
@@ -1299,6 +1389,141 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=inline, present=yes)')
     expect(result.stdout).toContain('  变更摘要:')
     expect(result.stdout).toContain('附加提示:')
+  })
+
+  it('preview 输出 Codex 双文件 explainable 摘要', async () => {
+    const result = await runCli(['preview', 'codex-prod'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[preview] 成功')
+    expect(result.stdout).toContain('- 配置: codex-prod (codex)')
+    expect(result.stdout).toContain('  校验结果: 通过')
+    expect(result.stdout).toContain('  风险等级: medium')
+    expect(result.stdout).toContain('  需要确认: 是')
+    expect(result.stdout).toContain('  计划备份: 是')
+    expect(result.stdout).toContain('  无变更: 否')
+    expect(result.stdout).toContain('  目标文件:')
+    expect(result.stdout).toContain(`  - ${codexConfigPath}`)
+    expect(result.stdout).toContain(`  - ${codexAuthPath}`)
+    expect(result.stdout).toContain('  生效配置:')
+    expect(result.stdout).toContain('    已写入:')
+    expect(result.stdout).toContain('    - base_url: https://old.example.com/v1 (source=stored)')
+    expect(result.stdout).toContain('    - OPENAI_API_KEY: sk-o***00 (source=stored, secret)')
+    expect(result.stdout).toContain('    最终生效:')
+    expect(result.stdout).toContain('    - base_url: https://gateway.example.com/openai/v1 (source=effective)')
+    expect(result.stdout).toContain('    - OPENAI_API_KEY: sk-c***56 (source=effective, secret)')
+    expect(result.stdout).toContain('  托管边界:')
+    expect(result.stdout).toContain('  - 类型: multi-file-transaction')
+    expect(result.stdout).toContain('    托管字段: base_url, OPENAI_API_KEY')
+    expect(result.stdout).toContain('    说明: Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexConfigPath}`)
+    expect(result.stdout).toContain('    托管字段: base_url')
+    expect(result.stdout).toContain('    保留字段: default_provider')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexAuthPath}`)
+    expect(result.stdout).toContain('    托管字段: OPENAI_API_KEY')
+    expect(result.stdout).toContain('    保留字段: user_id')
+    expect(result.stdout).toContain('  敏感字段引用:')
+    expect(result.stdout).toContain('  - OPENAI_API_KEY: sk-c***56 (source=inline, present=yes)')
+    expect(result.stdout).toContain('  变更摘要:')
+    expect(result.stdout).toContain(`  - ${codexConfigPath}: base_url`)
+    expect(result.stdout).toContain(`  - ${codexAuthPath}: OPENAI_API_KEY`)
+    expect(result.stdout).toContain('  警告: 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  警告: 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  警告: Codex 将修改多个目标文件。')
+    expect(result.stdout).toContain('  限制: 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  - 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  - Codex 将修改多个目标文件。')
+  })
+
+  it('use 输出 Codex 双文件 explainable 摘要并写入 state', async () => {
+    const result = await runCli(['use', 'codex-prod', '--force'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[use] 成功')
+    expect(result.stdout).toContain('- 配置: codex-prod (codex)')
+    expect(result.stdout).toContain('  备份ID: snapshot-codex-')
+    expect(result.stdout).toContain('  无变更: 否')
+    expect(result.stdout).toContain('  风险等级: medium')
+    expect(result.stdout).toContain('  计划备份: 是')
+    expect(result.stdout).toContain('  已变更文件:')
+    expect(result.stdout).toContain(`  - ${codexConfigPath}`)
+    expect(result.stdout).toContain(`  - ${codexAuthPath}`)
+    expect(result.stdout).toContain('  生效配置:')
+    expect(result.stdout).toContain('    已写入:')
+    expect(result.stdout).toContain('    - base_url: https://old.example.com/v1 (source=stored)')
+    expect(result.stdout).toContain('    - OPENAI_API_KEY: sk-o***00 (source=stored, secret)')
+    expect(result.stdout).toContain('    最终生效:')
+    expect(result.stdout).toContain('    - base_url: https://gateway.example.com/openai/v1 (source=effective)')
+    expect(result.stdout).toContain('    - OPENAI_API_KEY: sk-c***56 (source=effective, secret)')
+    expect(result.stdout).toContain('  托管边界:')
+    expect(result.stdout).toContain('  - 类型: multi-file-transaction')
+    expect(result.stdout).toContain('    托管字段: base_url, OPENAI_API_KEY')
+    expect(result.stdout).toContain('    说明: Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexConfigPath}`)
+    expect(result.stdout).toContain('    保留字段: default_provider')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexAuthPath}`)
+    expect(result.stdout).toContain('    保留字段: user_id')
+    expect(result.stdout).toContain('  敏感字段引用:')
+    expect(result.stdout).toContain('  - OPENAI_API_KEY: sk-c***56 (source=inline, present=yes)')
+    expect(result.stdout).toContain('  变更摘要:')
+    expect(result.stdout).toContain(`  - ${codexConfigPath}: base_url`)
+    expect(result.stdout).toContain(`  - ${codexAuthPath}: OPENAI_API_KEY`)
+    expect(result.stdout).toContain('  警告: 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  警告: 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  警告: Codex 将修改多个目标文件。')
+    expect(result.stdout).toContain('  限制: 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  - 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  - Codex 将修改多个目标文件。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+
+    const state = await new StateStore().read()
+    expect(state.current.codex).toBe('codex-prod')
+  })
+
+  it('rollback 输出 Codex 双文件恢复摘要并更新 state', async () => {
+    const useResult = await runCli(['use', 'codex-prod', '--force'])
+    const backupIdMatch = useResult.stdout.match(/备份ID: (snapshot-codex-[^\n]+)/)
+    expect(backupIdMatch?.[1]).toBeTruthy()
+
+    await fs.writeFile(codexConfigPath, 'default_provider = "other"\n', 'utf8')
+    await fs.writeFile(codexAuthPath, JSON.stringify({ OPENAI_API_KEY: 'sk-other' }, null, 2), 'utf8')
+    const result = await runCli(['rollback', backupIdMatch![1]])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[rollback] 成功')
+    expect(result.stdout).toContain(`- 备份ID: ${backupIdMatch![1]}`)
+    expect(result.stdout).toContain('  已恢复文件:')
+    expect(result.stdout).toContain(`  - ${codexConfigPath}`)
+    expect(result.stdout).toContain(`  - ${codexAuthPath}`)
+    expect(result.stdout).toContain('  托管边界:')
+    expect(result.stdout).toContain('  - 类型: multi-file-transaction')
+    expect(result.stdout).toContain('    托管字段: base_url, OPENAI_API_KEY')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexConfigPath}`)
+    expect(result.stdout).toContain('    保留字段: default_provider')
+    expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${codexAuthPath}`)
+    expect(result.stdout).toContain('    保留字段: user_id')
+    expect(result.stdout).toContain('  回滚警告: 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  回滚警告: 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  回滚警告: Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('  回滚限制: 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - 当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.stdout).toContain('  - 当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.stdout).toContain('  - Codex 配置切换会联动 config.toml 与 auth.json。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
+
+    const state = await new StateStore().read()
+    expect(state.current.codex).toBeUndefined()
+    expect(state.lastSwitch?.status).toBe('rolled-back')
   })
 
   it('preview 校验失败时仍输出预览摘要并设置 exitCode 1', async () => {
