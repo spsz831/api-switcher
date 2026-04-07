@@ -174,7 +174,13 @@ describe('cli commands integration', () => {
         targetFiles: Array<{ path: string }>
         managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
         secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
-        effectiveConfig?: { stored: Array<{ key: string; maskedValue: string }>; effective: Array<{ key: string; maskedValue: string }>; overrides: Array<{ key: string; kind: string; source: string; message: string }> }
+        effectiveConfig?: {
+          stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
+          effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean; shadowed?: boolean }>
+          overrides: Array<{ key: string; kind: string; source: string; message: string; shadowed?: boolean }>
+          shadowedKeys?: string[]
+        }
+        warnings?: Array<{ code: string; message: string }>
         limitations?: Array<{ code: string; message: string }>
       }>
     }>(result.stdout)
@@ -192,7 +198,14 @@ describe('cli commands integration', () => {
     expect(geminiDetection?.managedBoundaries?.[0]?.type).toBe('managed-fields')
     expect(geminiDetection?.managedBoundaries?.[0]?.managedKeys).toContain('enforcedAuthType')
     expect(geminiDetection?.managedBoundaries?.[0]?.preservedKeys).toContain('ui')
-    expect(geminiDetection?.secretReferences).toEqual([])
+    expect(geminiDetection?.secretReferences).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        source: 'env',
+        present: true,
+        maskedValue: 'gm-l***56',
+      },
+    ])
     expect(geminiDetection?.effectiveConfig?.stored).toHaveLength(1)
     expect(geminiDetection?.effectiveConfig?.stored?.[0]).toMatchObject({
       key: 'enforcedAuthType',
@@ -201,15 +214,34 @@ describe('cli commands integration', () => {
       scope: 'user',
       secret: false,
     })
-    expect(geminiDetection?.effectiveConfig?.effective).toHaveLength(1)
-    expect(geminiDetection?.effectiveConfig?.effective?.[0]).toMatchObject({
-      key: 'enforcedAuthType',
-      maskedValue: 'gemini-api-key',
-      source: 'effective',
-      scope: 'user',
-      secret: false,
-    })
-    expect(geminiDetection?.effectiveConfig?.overrides).toEqual([])
+    expect(geminiDetection?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'gemini-api-key',
+        source: 'effective',
+        scope: 'user',
+        secret: false,
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***56',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+        shadowed: true,
+      }),
+    ]))
+    expect(geminiDetection?.effectiveConfig?.overrides).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        kind: 'env',
+        source: 'env',
+        message: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
+        shadowed: true,
+      },
+    ])
+    expect(geminiDetection?.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
+    expect(geminiDetection?.warnings?.map((item) => item.message)).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(geminiDetection?.limitations?.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
@@ -225,8 +257,9 @@ describe('cli commands integration', () => {
           errors: Array<{ code: string }>
           effectiveConfig?: {
             stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
-            effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
-            overrides: Array<{ key: string; kind: string; source: string; message: string }>
+            effective: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean; shadowed?: boolean }>
+            overrides: Array<{ key: string; kind: string; source: string; message: string; shadowed?: boolean }>
+            shadowedKeys?: string[]
           }
           managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
           secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
@@ -255,9 +288,10 @@ describe('cli commands integration', () => {
       expect.objectContaining({
         key: 'GEMINI_API_KEY',
         maskedValue: 'gm-l***56',
-        source: 'effective',
-        scope: 'user',
+        source: 'env',
+        scope: 'runtime',
         secret: true,
+        shadowed: true,
       }),
     ]))
     expect(payload.data?.items[0]?.validation.effectiveConfig?.overrides).toEqual([
@@ -266,18 +300,20 @@ describe('cli commands integration', () => {
         kind: 'env',
         source: 'env',
         message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+        shadowed: true,
       },
     ])
+    expect(payload.data?.items[0]?.validation.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
     expect(payload.data?.items[0]?.validation.managedBoundaries?.[0]).toMatchObject({
       type: 'managed-fields',
       managedKeys: ['enforcedAuthType'],
-      preservedKeys: [],
+      preservedKeys: ['ui'],
       notes: ['Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。'],
     })
     expect(payload.data?.items[0]?.validation.secretReferences).toEqual([
       {
         key: 'GEMINI_API_KEY',
-        source: 'inline',
+        source: 'env',
         present: true,
         maskedValue: 'gm-l***56',
       },
@@ -374,7 +410,7 @@ describe('cli commands integration', () => {
     expect(geminiProfile?.secretReferences).toEqual([
       {
         key: 'GEMINI_API_KEY',
-        source: 'inline',
+        source: 'env',
         present: true,
         maskedValue: 'gm-l***56',
       },
@@ -1290,11 +1326,18 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
     expect(result.stdout).toContain('    最终生效:')
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=effective)')
+    expect(result.stdout).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=runtime, source=env, secret, shadowed)')
+    expect(result.stdout).toContain('    覆盖说明:')
+    expect(result.stdout).toContain('    - GEMINI_API_KEY: 最终生效的 API key 取决于环境变量，而不是 settings.json。')
+    expect(result.stdout).toContain('    被覆盖字段: GEMINI_API_KEY')
     expect(result.stdout).toContain('  托管边界:')
     expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${geminiSettingsPath}`)
     expect(result.stdout).toContain('    托管字段: enforcedAuthType')
     expect(result.stdout).toContain('    保留字段: ui')
     expect(result.stdout).toContain('    说明: Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。')
+    expect(result.stdout).toContain('  敏感字段引用:')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
+    expect(result.stdout).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(result.stdout).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
@@ -1309,14 +1352,15 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    已写入:')
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
     expect(result.stdout).toContain('    最终生效:')
-    expect(result.stdout).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=user, source=effective, secret)')
+    expect(result.stdout).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=runtime, source=env, secret, shadowed)')
     expect(result.stdout).toContain('    覆盖说明:')
     expect(result.stdout).toContain('    - GEMINI_API_KEY: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(result.stdout).toContain('    被覆盖字段: GEMINI_API_KEY')
     expect(result.stdout).toContain('  托管边界:')
     expect(result.stdout).toContain(`  - 类型: managed-fields / 目标: ${geminiSettingsPath}`)
     expect(result.stdout).toContain('    托管字段: enforcedAuthType')
     expect(result.stdout).toContain('  敏感字段引用:')
-    expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=inline, present=yes)')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
     expect(result.stdout).toContain('  平台限制:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
@@ -1335,9 +1379,10 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
     expect(result.stdout).toContain('    最终生效:')
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
+    expect(result.stdout).not.toContain('    - GEMINI_API_KEY:')
     expect(result.stdout).not.toContain('    覆盖说明:')
     expect(result.stdout).toContain('  敏感字段引用:')
-    expect(result.stdout).toContain('  - GEMINI_API_KEY:  (source=inline, present=no)')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY:  (source=env, present=no)')
     expect(result.stdout).toContain('  平台限制:')
   })
 
@@ -1378,6 +1423,7 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
     expect(result.stdout).toContain('    最终生效:')
     expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=effective)')
+    expect(result.stdout).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=user, source=effective, secret)')
     expect(result.stdout).toContain('    覆盖说明:')
     expect(result.stdout).toContain('    - GEMINI_API_KEY: 最终生效的 API key 取决于环境变量，而不是 settings.json。')
     expect(result.stdout).toContain('  托管边界:')

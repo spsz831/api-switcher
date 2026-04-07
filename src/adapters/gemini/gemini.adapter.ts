@@ -1,18 +1,20 @@
 import { diffManagedFields } from '../../domain/diff-engine'
 import {
-  buildEffectiveConfigView,
   collectSecretReferences,
   maskRecord,
+  toConfigFieldView,
   toConfigFieldViews,
 } from '../../domain/masking'
 import type {
   ApplyContext,
   ApplyResult,
   CurrentProfileResult,
+  EffectiveConfigView,
   ManagedBoundary,
   PreviewResult,
   RollbackContext,
   RollbackResult,
+  SecretReference,
   TargetFileInfo,
   ValidationIssue,
   ValidationResult,
@@ -35,6 +37,13 @@ function toIssues(messages: string[] | undefined, prefix: string, level: Validat
   }))
 }
 
+type GeminiState = {
+  settingsPath: string
+  currentSettings: Record<string, unknown>
+  currentManaged: Record<string, unknown>
+  unmanagedKeys: string[]
+}
+
 export class GeminiAdapter extends BasePlatformAdapter {
   readonly platform = 'gemini' as const
 
@@ -55,20 +64,90 @@ export class GeminiAdapter extends BasePlatformAdapter {
     }]
   }
 
-  private buildManagedBoundaries(settingsPath: string, preservedKeys: string[] = []): ManagedBoundary[] {
+  private buildManagedBoundaries(settingsPath: string, preservedKeys: string[] = [], note?: string): ManagedBoundary[] {
     return [
       {
         target: settingsPath,
         type: 'managed-fields',
         managedKeys: [...GEMINI_SETTINGS_MANAGED_KEYS],
         preservedKeys,
-        notes: ['Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。'],
+        notes: [note ?? 'Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。'],
       },
     ]
   }
 
-  async validate(profile: Profile): Promise<ValidationResult> {
+  private async readState(): Promise<GeminiState> {
     const settingsPath = resolveGeminiSettingsPath()
+    const currentSettings = parseGeminiSettings(await readTextFile(settingsPath))
+    const currentManaged = pickGeminiSettingsFields(currentSettings)
+
+    return {
+      settingsPath,
+      currentSettings,
+      currentManaged,
+      unmanagedKeys: Object.keys(currentSettings).filter((key) => !(key in currentManaged)),
+    }
+  }
+
+  private buildEnvWarning(): ValidationIssue {
+    return {
+      code: 'env-auth-required',
+      level: 'warning',
+      message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+    }
+  }
+
+  private buildSecretReferences(apiKey: unknown, source: SecretReference['source']): SecretReference[] {
+    return [{
+      key: 'GEMINI_API_KEY',
+      source,
+      present: apiKey !== undefined && apiKey !== null && String(apiKey).length > 0,
+      maskedValue: maskRecord({ GEMINI_API_KEY: apiKey }).GEMINI_API_KEY,
+    }]
+  }
+
+  private buildEffectiveConfig(input: {
+    stored: Record<string, unknown>
+    effectiveManaged?: Record<string, unknown>
+    apiKey?: unknown
+    apiKeySource?: 'effective' | 'env'
+    overrideMessage?: string
+    shadowedApiKey?: boolean
+  }): EffectiveConfigView {
+    const effectiveManaged = input.effectiveManaged ?? input.stored
+    const shadowedKeys = input.shadowedApiKey && input.apiKey ? ['GEMINI_API_KEY'] : []
+
+    return {
+      stored: toConfigFieldViews(input.stored, 'stored', { scope: 'user' }),
+      effective: [
+        ...Object.entries(effectiveManaged).map(([key, value]) => toConfigFieldView(key, value, 'effective', { scope: 'user' })),
+        ...(input.apiKey
+          ? [toConfigFieldView(
+              'GEMINI_API_KEY',
+              input.apiKey,
+              input.apiKeySource ?? 'effective',
+              {
+                scope: input.apiKeySource === 'env' ? 'runtime' : 'user',
+                shadowed: shadowedKeys.includes('GEMINI_API_KEY'),
+              },
+            )]
+          : []),
+      ],
+      overrides: input.overrideMessage && input.apiKey
+        ? [{
+            key: 'GEMINI_API_KEY',
+            kind: 'env',
+            source: 'env',
+            message: input.overrideMessage,
+            shadowed: input.shadowedApiKey,
+          }]
+        : [],
+      shadowedKeys,
+    }
+  }
+
+  async validate(profile: Profile): Promise<ValidationResult> {
+    const { settingsPath, unmanagedKeys } = await this.readState()
     const issues: ValidationIssue[] = []
     const apiKey = profile.apply.GEMINI_API_KEY
     const enforcedAuthType = profile.apply.enforcedAuthType
@@ -107,37 +186,28 @@ export class GeminiAdapter extends BasePlatformAdapter {
       errors: issues.filter((item) => item.level === 'error'),
       warnings: issues.filter((item) => item.level === 'warning'),
       limitations,
-      effectiveConfig: buildEffectiveConfigView({
+      effectiveConfig: this.buildEffectiveConfig({
         stored: managedFields,
-        effective: {
-          ...managedFields,
-          ...(apiKey ? { GEMINI_API_KEY: apiKey } : {}),
-        },
-        overrides: apiKey ? [{
-          key: 'GEMINI_API_KEY',
-          kind: 'env',
-          source: 'env',
-          message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
-        }] : [],
-        scope: 'user',
+        apiKey,
+        apiKeySource: 'env',
+        overrideMessage: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+        shadowedApiKey: true,
       }),
-      managedBoundaries: this.buildManagedBoundaries(settingsPath),
-      secretReferences: collectSecretReferences({ ...managedFields, GEMINI_API_KEY: apiKey }),
-      preservedFields: [],
+      managedBoundaries: this.buildManagedBoundaries(settingsPath, unmanagedKeys),
+      secretReferences: this.buildSecretReferences(apiKey, 'env'),
+      preservedFields: unmanagedKeys,
       retainedZones: [],
     }
   }
 
   async preview(profile: Profile): Promise<PreviewResult> {
-    const settingsPath = resolveGeminiSettingsPath()
-    const currentSettings = parseGeminiSettings(await readTextFile(settingsPath))
+    const { settingsPath, currentSettings, currentManaged, unmanagedKeys } = await this.readState()
     const nextSettings = mergeGeminiSettings(currentSettings, profile.apply)
+    const nextManaged = pickGeminiSettingsFields(nextSettings)
     const validation = await this.validate(profile)
     const warnings = [...validation.warnings]
     const limitations = [...validation.limitations]
     const managedFields = pickGeminiSettingsFields(profile.apply)
-    const currentManaged = pickGeminiSettingsFields(currentSettings)
-    const unmanagedKeys = Object.keys(currentSettings).filter((key) => !(key in managedFields))
     const diff = diffManagedFields(settingsPath, currentSettings, nextSettings, {
       managedKeys: [...GEMINI_SETTINGS_MANAGED_KEYS],
       preservedKeys: unmanagedKeys,
@@ -189,19 +259,12 @@ export class GeminiAdapter extends BasePlatformAdapter {
           source: 'profile',
         })),
       storedConfig: toConfigFieldViews(currentSettings, 'stored', { scope: 'user' }),
-      effectiveConfig: buildEffectiveConfigView({
+      effectiveConfig: this.buildEffectiveConfig({
         stored: currentManaged,
-        effective: {
-          ...managedFields,
-          ...(profile.apply.GEMINI_API_KEY !== undefined ? { GEMINI_API_KEY: profile.apply.GEMINI_API_KEY } : {}),
-        },
-        overrides: profile.apply.GEMINI_API_KEY !== undefined ? [{
-          key: 'GEMINI_API_KEY',
-          kind: 'env',
-          source: 'env',
-          message: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
-        }] : [],
-        scope: 'user',
+        effectiveManaged: nextManaged,
+        apiKey: profile.apply.GEMINI_API_KEY,
+        apiKeySource: 'effective',
+        overrideMessage: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
       }),
       managedBoundaries: this.buildManagedBoundaries(settingsPath, unmanagedKeys),
       secretReferences: collectSecretReferences({ ...managedFields, GEMINI_API_KEY: profile.apply.GEMINI_API_KEY }),
@@ -218,14 +281,15 @@ export class GeminiAdapter extends BasePlatformAdapter {
   }
 
   async detectCurrent(profiles: Profile[] = []): Promise<CurrentProfileResult | null> {
-    const settingsPath = resolveGeminiSettingsPath()
-    const currentSettings = parseGeminiSettings(await readTextFile(settingsPath))
-    const currentManaged = pickGeminiSettingsFields(currentSettings)
+    const { settingsPath, currentSettings, currentManaged, unmanagedKeys } = await this.readState()
 
     const matchedProfile = profiles.find((profile) => {
       const managedFields = pickGeminiSettingsFields(profile.apply)
       return Object.entries(managedFields).every(([key, value]) => currentSettings[key] === value)
     })
+
+    const apiKey = matchedProfile?.apply.GEMINI_API_KEY
+    const warnings = apiKey ? [this.buildEnvWarning()] : []
 
     return {
       platform: this.platform,
@@ -235,14 +299,16 @@ export class GeminiAdapter extends BasePlatformAdapter {
       details: currentSettings,
       currentScope: 'user',
       storedConfig: toConfigFieldViews(currentSettings, 'stored', { scope: 'user' }),
-      effectiveConfig: buildEffectiveConfigView({
+      effectiveConfig: this.buildEffectiveConfig({
         stored: currentManaged,
-        effective: currentManaged,
-        scope: 'user',
+        apiKey,
+        apiKeySource: 'env',
+        overrideMessage: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
+        shadowedApiKey: Boolean(apiKey),
       }),
-      managedBoundaries: this.buildManagedBoundaries(settingsPath, Object.keys(currentSettings).filter((key) => !(key in currentManaged))),
-      secretReferences: collectSecretReferences(currentSettings),
-      warnings: [],
+      managedBoundaries: this.buildManagedBoundaries(settingsPath, unmanagedKeys),
+      secretReferences: apiKey ? this.buildSecretReferences(apiKey, 'env') : [],
+      warnings,
       limitations: getPlatformLimitationIssues(this.platform),
     }
   }
@@ -252,11 +318,9 @@ export class GeminiAdapter extends BasePlatformAdapter {
   }
 
   async apply(profile: Profile, _context: ApplyContext): Promise<ApplyResult> {
-    const settingsPath = resolveGeminiSettingsPath()
-    const currentSettings = parseGeminiSettings(await readTextFile(settingsPath))
+    const { settingsPath, currentSettings, currentManaged, unmanagedKeys } = await this.readState()
     const nextSettings = mergeGeminiSettings(currentSettings, profile.apply)
-    const currentManaged = pickGeminiSettingsFields(currentSettings)
-    const unmanagedKeys = Object.keys(currentSettings).filter((key) => !(key in pickGeminiSettingsFields(profile.apply)))
+    const nextManaged = pickGeminiSettingsFields(nextSettings)
     const diff = diffManagedFields(settingsPath, currentSettings, nextSettings, {
       managedKeys: [...GEMINI_SETTINGS_MANAGED_KEYS],
       preservedKeys: unmanagedKeys,
@@ -272,10 +336,11 @@ export class GeminiAdapter extends BasePlatformAdapter {
         diffSummary: [diff],
         targetFiles,
         storedConfig: toConfigFieldViews(currentSettings, 'stored', { scope: 'user' }),
-        effectiveConfig: buildEffectiveConfigView({
+        effectiveConfig: this.buildEffectiveConfig({
           stored: currentManaged,
-          effective: currentManaged,
-          scope: 'user',
+          apiKey: profile.apply.GEMINI_API_KEY,
+          apiKeySource: 'effective',
+          overrideMessage: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
         }),
         managedBoundaries: this.buildManagedBoundaries(settingsPath, unmanagedKeys),
         limitations,
@@ -291,19 +356,11 @@ export class GeminiAdapter extends BasePlatformAdapter {
       diffSummary: [diff],
       targetFiles,
       storedConfig: toConfigFieldViews(nextSettings, 'stored', { scope: 'user' }),
-      effectiveConfig: buildEffectiveConfigView({
-        stored: pickGeminiSettingsFields(nextSettings),
-        effective: {
-          ...pickGeminiSettingsFields(nextSettings),
-          ...(profile.apply.GEMINI_API_KEY !== undefined ? { GEMINI_API_KEY: profile.apply.GEMINI_API_KEY } : {}),
-        },
-        overrides: profile.apply.GEMINI_API_KEY !== undefined ? [{
-          key: 'GEMINI_API_KEY',
-          kind: 'env',
-          source: 'env',
-          message: 'Gemini API key 仍由环境变量决定。',
-        }] : [],
-        scope: 'user',
+      effectiveConfig: this.buildEffectiveConfig({
+        stored: nextManaged,
+        apiKey: profile.apply.GEMINI_API_KEY,
+        apiKeySource: 'effective',
+        overrideMessage: 'Gemini API key 仍由环境变量决定。',
       }),
       managedBoundaries: this.buildManagedBoundaries(settingsPath, unmanagedKeys),
       limitations,
@@ -327,6 +384,9 @@ export class GeminiAdapter extends BasePlatformAdapter {
       restoredFiles.push(target.originalPath)
     }
 
+    const { settingsPath, currentManaged, unmanagedKeys } = await this.readState()
+    const apiKey = record.manifest.secretReferences?.find((item) => item.key === 'GEMINI_API_KEY')?.maskedValue
+
     return {
       ok: true,
       backupId,
@@ -340,9 +400,32 @@ export class GeminiAdapter extends BasePlatformAdapter {
         role: target.role,
         managedKeys: target.managedKeys,
       })),
-      managedBoundaries: record.manifest.managedBoundaries,
-      warnings: toIssues(record.manifest.warnings, 'snapshot-warning', 'warning'),
-      limitations: toIssues(record.manifest.limitations, 'snapshot-limitation', 'limitation'),
+      effectiveConfig: this.buildEffectiveConfig({
+        stored: currentManaged,
+        apiKey,
+        apiKeySource: 'env',
+        overrideMessage: 'Gemini API key 仍由环境变量决定。',
+        shadowedApiKey: Boolean(apiKey),
+      }),
+      managedBoundaries: this.buildManagedBoundaries(
+        settingsPath,
+        unmanagedKeys,
+        '回滚仅恢复 Gemini settings.json 中的托管字段。',
+      ),
+      warnings: [
+        {
+          code: 'rollback-restored-managed-files',
+          level: 'warning',
+          message: '已按快照清单恢复托管文件。',
+        },
+      ],
+      limitations: [
+        {
+          code: 'rollback-env-not-restored',
+          level: 'limitation',
+          message: '回滚不会恢复环境变量。',
+        },
+      ],
     }
   }
 }

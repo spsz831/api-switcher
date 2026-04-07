@@ -58,18 +58,115 @@ describe('gemini adapter', () => {
     expect(result.noChanges).toBe(true)
   })
 
-  it('validate 会提示未确认的 base url 与不支持的 auth type', async () => {
-    const result = await new GeminiAdapter().validate({
-      ...baseProfile,
-      apply: {
-        GEMINI_API_KEY: 'gm-live-123456',
-        enforcedAuthType: 'oauth-personal',
-        GEMINI_BASE_URL: 'https://example.com',
-      },
-    })
+  it('validate 会返回 env-first explainable 元数据', async () => {
+    await fs.writeFile(settingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+
+    const result = await new GeminiAdapter().validate(baseProfile)
 
     expect(result.ok).toBe(true)
-    expect(result.warnings.map((item) => item.code)).toContain('unsupported-auth-type')
-    expect(result.warnings.map((item) => item.code)).toContain('unsupported-base-url')
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.effectiveConfig?.stored).toEqual([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'gemini-api-key',
+        source: 'stored',
+        scope: 'user',
+      }),
+    ])
+    expect(result.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'gemini-api-key',
+        source: 'effective',
+        scope: 'user',
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***56',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+        shadowed: true,
+      }),
+    ]))
+    expect(result.effectiveConfig?.overrides).toEqual([
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        kind: 'env',
+        source: 'env',
+        message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+        shadowed: true,
+      }),
+    ])
+    expect(result.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
+    expect(result.secretReferences).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        source: 'env',
+        present: true,
+        maskedValue: 'gm-l***56',
+      },
+    ])
+    expect(result.managedBoundaries).toEqual([
+      expect.objectContaining({
+        type: 'managed-fields',
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+      }),
+    ])
+  })
+
+  it('detectCurrent 会返回 env-first 当前态 explainable 结果', async () => {
+    await fs.writeFile(settingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+
+    const result = await new GeminiAdapter().detectCurrent([baseProfile])
+
+    expect(result).toEqual(expect.objectContaining({
+      platform: 'gemini',
+      matchedProfileId: 'gemini-prod',
+      managed: true,
+      currentScope: 'user',
+    }))
+    expect(result?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'gemini-api-key',
+        source: 'effective',
+        scope: 'user',
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***56',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+        shadowed: true,
+      }),
+    ]))
+    expect(result?.effectiveConfig?.overrides).toEqual([
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        kind: 'env',
+        source: 'env',
+        message: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
+        shadowed: true,
+      }),
+    ])
+    expect(result?.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
+    expect(result?.secretReferences).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        source: 'env',
+        present: true,
+        maskedValue: 'gm-l***56',
+      },
+    ])
+    expect(result?.warnings).toEqual([
+      expect.objectContaining({
+        code: 'env-auth-required',
+        message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+      }),
+    ])
   })
 })

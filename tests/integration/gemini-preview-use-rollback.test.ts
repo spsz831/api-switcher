@@ -45,19 +45,119 @@ afterEach(async () => {
 })
 
 describe('gemini preview/use/rollback integration', () => {
-  it('preview 能返回 Gemini settings 结果并提示 env 鉴权限制', async () => {
+  it('preview 能返回 Gemini env-first explainable 结果', async () => {
     const result = await new PreviewService().preview('gemini-prod')
     expect(result.ok).toBe(true)
-    expect(result.data?.preview.targetFiles).toHaveLength(1)
-    expect(result.data?.preview.diffSummary).toHaveLength(1)
-    expect(result.data?.preview.warnings.some((item) => item.code === 'env-auth-required')).toBe(true)
+    expect(result.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiSettingsPath,
+        scope: 'user',
+        role: 'settings',
+        managedKeys: ['enforcedAuthType'],
+      }),
+    ])
+    expect(result.data?.preview.diffSummary).toEqual([
+      expect.objectContaining({
+        path: geminiSettingsPath,
+        changedKeys: ['enforcedAuthType'],
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+        hasChanges: true,
+      }),
+    ])
+    expect(result.data?.preview.managedBoundaries).toEqual([
+      expect.objectContaining({
+        target: geminiSettingsPath,
+        type: 'managed-fields',
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+        notes: ['Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。'],
+      }),
+    ])
+    expect(result.data?.preview.secretReferences).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        source: 'inline',
+        present: true,
+        maskedValue: 'gm-l***56',
+      },
+    ])
+    expect(result.data?.preview.effectiveConfig?.stored).toEqual([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'oauth-personal',
+        source: 'stored',
+        scope: 'user',
+        secret: false,
+      }),
+    ])
+    expect(result.data?.preview.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'gemini-api-key',
+        source: 'effective',
+        scope: 'user',
+        secret: false,
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***56',
+        source: 'effective',
+        scope: 'user',
+        secret: true,
+      }),
+    ]))
+    expect(result.data?.preview.effectiveConfig?.overrides).toEqual([
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        kind: 'env',
+        source: 'env',
+        message: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
+      }),
+    ])
+    expect(result.data?.preview.effectiveConfig?.shadowedKeys).toEqual([])
+    expect(result.data?.preview.preservedFields).toEqual(['ui'])
+    expect(result.data?.preview.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'env-auth-required',
+        message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。',
+      }),
+      expect.objectContaining({
+        code: 'unmanaged-current-file',
+        message: '当前 Gemini settings.json 存在非托管字段：ui',
+      }),
+    ]))
+    expect(result.data?.preview.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(result.data?.preview.riskLevel).toBe('medium')
+    expect(result.data?.preview.requiresConfirmation).toBe(true)
+    expect(result.data?.preview.backupPlanned).toBe(true)
+    expect(result.data?.preview.noChanges).toBe(false)
   })
 
-  it('use 能写入 settings.json 并更新 state', async () => {
+  it('use 能写入 settings.json 并返回 Gemini explainable 结果', async () => {
     const result = await new SwitchService().use('gemini-prod', { force: true })
     expect(result.ok).toBe(true)
     expect(result.data?.backupId).toMatch(/^snapshot-gemini-/)
-    expect(result.data?.changedFiles).toHaveLength(1)
+    expect(result.data?.changedFiles).toEqual([geminiSettingsPath])
+    expect(result.data?.preview.managedBoundaries).toEqual([
+      expect.objectContaining({
+        target: geminiSettingsPath,
+        type: 'managed-fields',
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+      }),
+    ])
+    expect(result.data?.preview.secretReferences).toEqual([
+      {
+        key: 'GEMINI_API_KEY',
+        source: 'inline',
+        present: true,
+        maskedValue: 'gm-l***56',
+      },
+    ])
+    expect(result.data?.preview.warnings.some((item) => item.code === 'env-auth-required')).toBe(true)
+    expect(result.data?.preview.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(result.data?.noChanges).toBe(false)
 
     const settings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
     expect(settings.enforcedAuthType).toBe('gemini-api-key')
@@ -67,7 +167,7 @@ describe('gemini preview/use/rollback integration', () => {
     expect(state.current.gemini).toBe('gemini-prod')
   })
 
-  it('rollback 能恢复 settings.json 并清空 current', async () => {
+  it('rollback 能恢复 settings.json 并返回 Gemini explainable 元数据', async () => {
     const switchResult = await new SwitchService().use('gemini-prod', { force: true })
     const backupId = switchResult.data?.backupId
     expect(backupId).toBeTruthy()
@@ -76,7 +176,69 @@ describe('gemini preview/use/rollback integration', () => {
 
     const rollbackResult = await new RollbackService().rollback(backupId)
     expect(rollbackResult.ok).toBe(true)
-    expect(rollbackResult.data?.restoredFiles).toHaveLength(1)
+    expect(rollbackResult.data?.restoredFiles).toEqual([geminiSettingsPath])
+    expect(rollbackResult.data?.rollback?.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiSettingsPath,
+        managedKeys: ['enforcedAuthType'],
+        role: 'settings',
+      }),
+    ])
+    expect(rollbackResult.data?.rollback?.effectiveConfig?.stored).toEqual([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'oauth-personal',
+        source: 'stored',
+        scope: 'user',
+      }),
+    ])
+    expect(rollbackResult.data?.rollback?.effectiveConfig?.effective).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'oauth-personal',
+        source: 'effective',
+        scope: 'user',
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***56',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+        shadowed: true,
+      }),
+    ]))
+    expect(rollbackResult.data?.rollback?.effectiveConfig?.overrides).toEqual([
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        kind: 'env',
+        source: 'env',
+        message: 'Gemini API key 仍由环境变量决定。',
+        shadowed: true,
+      }),
+    ])
+    expect(rollbackResult.data?.rollback?.effectiveConfig?.shadowedKeys).toEqual(['GEMINI_API_KEY'])
+    expect(rollbackResult.data?.rollback?.managedBoundaries).toEqual([
+      expect.objectContaining({
+        target: geminiSettingsPath,
+        type: 'managed-fields',
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+        notes: ['回滚仅恢复 Gemini settings.json 中的托管字段。'],
+      }),
+    ])
+    expect(rollbackResult.data?.rollback?.warnings).toEqual([
+      expect.objectContaining({
+        code: 'rollback-restored-managed-files',
+        message: '已按快照清单恢复托管文件。',
+      }),
+    ])
+    expect(rollbackResult.data?.rollback?.limitations).toEqual([
+      expect.objectContaining({
+        code: 'rollback-env-not-restored',
+        message: '回滚不会恢复环境变量。',
+      }),
+    ])
 
     const restored = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
     expect(restored.enforcedAuthType).toBe('oauth-personal')

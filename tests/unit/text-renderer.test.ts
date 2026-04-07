@@ -200,7 +200,7 @@ const currentPayload: CurrentCommandOutput = {
         {
           code: 'env-first-limitation',
           level: 'limitation',
-          message: 'Gemini settings.json 仅托管已确认字段。',
+          message: 'GEMINI_API_KEY 仍需通过环境变量生效。',
         },
       ],
     },
@@ -313,7 +313,7 @@ const previewPayload: PreviewCommandOutput = {
       {
         code: 'env-first-limitation',
         level: 'limitation',
-        message: 'Gemini settings.json 仅托管已确认字段。',
+        message: 'GEMINI_API_KEY 仍需通过环境变量生效。',
       },
     ],
     riskLevel: 'medium',
@@ -410,8 +410,8 @@ const rollbackPayload: RollbackCommandOutput = {
       stored: [
         {
           key: 'enforcedAuthType',
-          value: 'gemini-api-key',
-          maskedValue: 'gemini-api-key',
+          value: 'oauth-personal',
+          maskedValue: 'oauth-personal',
           source: 'stored',
           scope: 'user',
           secret: false,
@@ -420,11 +420,20 @@ const rollbackPayload: RollbackCommandOutput = {
       effective: [
         {
           key: 'enforcedAuthType',
-          value: 'gemini-api-key',
-          maskedValue: 'gemini-api-key',
+          value: 'oauth-personal',
+          maskedValue: 'oauth-personal',
           source: 'effective',
           scope: 'user',
           secret: false,
+        },
+        {
+          key: 'GEMINI_API_KEY',
+          value: '<SECRET>',
+          maskedValue: 'gm-l***56',
+          source: 'env',
+          scope: 'runtime',
+          secret: true,
+          shadowed: true,
         },
       ],
       overrides: [
@@ -433,14 +442,17 @@ const rollbackPayload: RollbackCommandOutput = {
           kind: 'env',
           source: 'env',
           message: 'Gemini API key 仍由环境变量决定。',
+          shadowed: true,
         },
       ],
+      shadowedKeys: ['GEMINI_API_KEY'],
     },
     managedBoundaries: [
       {
         target: 'C:/Users/test/.gemini/settings.json',
         type: 'managed-fields',
         managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
         notes: ['回滚仅恢复 Gemini settings.json 中的托管字段。'],
       },
     ],
@@ -848,7 +860,7 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('  敏感字段引用:')
     expect(outputCurrent).toContain('  - GEMINI_API_KEY: gm-***1234 (source=env, present=yes)')
     expect(outputCurrent).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
-    expect(outputCurrent).toContain('  限制: Gemini settings.json 仅托管已确认字段。')
+    expect(outputCurrent).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('渲染空 current 结果时提示无已标记配置', () => {
@@ -884,7 +896,7 @@ describe('text renderer', () => {
     expect(outputPreview).toContain('  变更摘要:')
     expect(outputPreview).toContain('  - C:/Users/test/.gemini/settings.json: enforcedAuthType')
     expect(outputPreview).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
-    expect(outputPreview).toContain('  限制: Gemini settings.json 仅托管已确认字段。')
+    expect(outputPreview).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(outputPreview).toContain('附加提示:')
     expect(outputPreview).toContain('  - 高风险操作需要确认')
     expect(outputPreview).toContain('限制说明:')
@@ -918,12 +930,14 @@ describe('text renderer', () => {
     expect(outputUse).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
     expect(outputUse).toContain('    最终生效:')
     expect(outputUse).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=user, source=effective, secret)')
+    expect(outputUse).toContain('    覆盖说明:')
+    expect(outputUse).toContain('    - GEMINI_API_KEY: 最终生效的 API key 取决于环境变量，而不是 settings.json。')
     expect(outputUse).toContain('  托管边界:')
     expect(outputUse).toContain('    保留字段: ui')
     expect(outputUse).toContain('  敏感字段引用:')
     expect(outputUse).toContain('  - GEMINI_API_KEY: gm-l***56 (source=inline, present=yes)')
     expect(outputUse).toContain('  警告: Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
-    expect(outputUse).toContain('  限制: Gemini settings.json 仅托管已确认字段。')
+    expect(outputUse).toContain('  限制: GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(outputUse).toContain('附加提示:')
     expect(outputUse).toContain('  - 切换后建议核对环境变量')
     expect(outputUse).toContain('限制说明:')
@@ -943,10 +957,12 @@ describe('text renderer', () => {
     expect(outputRollback).toContain('  - C:/Users/test/.gemini/settings.json')
     expect(outputRollback).toContain('  生效配置:')
     expect(outputRollback).toContain('    已写入:')
-    expect(outputRollback).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
+    expect(outputRollback).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
     expect(outputRollback).toContain('    最终生效:')
+    expect(outputRollback).toContain('    - GEMINI_API_KEY: gm-l***56 (scope=runtime, source=env, secret, shadowed)')
     expect(outputRollback).toContain('    覆盖说明:')
     expect(outputRollback).toContain('    - GEMINI_API_KEY: Gemini API key 仍由环境变量决定。')
+    expect(outputRollback).toContain('    被覆盖字段: GEMINI_API_KEY')
     expect(outputRollback).toContain('  托管边界:')
     expect(outputRollback).toContain('  - 类型: managed-fields / 目标: C:/Users/test/.gemini/settings.json')
     expect(outputRollback).toContain('    托管字段: enforcedAuthType')
