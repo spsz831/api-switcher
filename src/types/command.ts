@@ -23,10 +23,18 @@ export interface CommandResult<T = unknown> {
   error?: CommandError
 }
 
+export interface PreviewRiskSummary {
+  allowed: boolean
+  riskLevel: RiskLevel
+  reasons: string[]
+  limitations: string[]
+}
+
 export interface PreviewCommandOutput {
   profile: Profile
   validation: ValidationResult
   preview: PreviewResult
+  risk: PreviewRiskSummary
 }
 
 export interface UseCommandOutput {

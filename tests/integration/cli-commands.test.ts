@@ -442,6 +442,12 @@ describe('cli commands integration', () => {
     const result = await runCli(['preview', 'codex-prod', '--json'])
     const payload = parseJsonResult<{
       profile: Profile
+      risk: {
+        allowed: boolean
+        riskLevel: string
+        reasons: string[]
+        limitations: string[]
+      }
       preview: {
         riskLevel: string
         requiresConfirmation: boolean
@@ -459,6 +465,14 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('preview')
     expect(payload.data?.profile.id).toBe('codex-prod')
+    expect(payload.data?.risk).toEqual(expect.objectContaining({
+      allowed: false,
+      riskLevel: 'medium',
+    }))
+    expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
+    expect(payload.data?.risk.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)

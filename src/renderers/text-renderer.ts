@@ -170,13 +170,16 @@ function renderCurrent(data: CurrentCommandOutput): string {
 }
 
 function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitations?: string[]): string {
+  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
+  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
+
   const lines = [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,
     ...renderValidationIssues('错误', data.validation.errors),
     ...renderValidationIssues('校验警告', data.validation.warnings),
     ...renderValidationIssues('限制', data.validation.limitations),
-    `  风险等级: ${data.preview.riskLevel}`,
+    `  风险等级: ${data.risk.riskLevel}`,
     `  需要确认: ${data.preview.requiresConfirmation ? '是' : '否'}`,
     `  计划备份: ${data.preview.backupPlanned ? '是' : '否'}`,
     `  无变更: ${data.preview.noChanges ? '是' : '否'}`,
@@ -187,8 +190,8 @@ function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitati
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('警告', data.preview.warnings),
     ...renderValidationIssues('限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', warnings),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', riskWarnings),
+    ...renderCommandLimitations(riskLimitations),
   ]
 
   return lines.join('\n')

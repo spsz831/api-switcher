@@ -68,6 +68,12 @@ describe('preview/use/rollback integration', () => {
   it('preview 能返回 Claude scope-aware explainable 结果', async () => {
     const result = await new PreviewService().preview('claude-prod')
     expect(result.ok).toBe(true)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: false,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.data?.preview.targetFiles).toEqual([
       expect.objectContaining({
         path: claudeProjectSettingsPath,
@@ -150,6 +156,7 @@ describe('preview/use/rollback integration', () => {
     expect(result.data?.preview.noChanges).toBe(false)
   })
 
+
   it('preview 会标记被更高优先级 Claude local scope 覆盖的字段', async () => {
     await fs.writeFile(
       claudeLocalSettingsPath,
@@ -159,6 +166,8 @@ describe('preview/use/rollback integration', () => {
 
     const result = await new PreviewService().preview('claude-prod')
     expect(result.ok).toBe(true)
+    expect(result.data?.risk.reasons).toContain('以下字段写入 Claude 项目级后仍会被更高优先级作用域覆盖：ANTHROPIC_AUTH_TOKEN')
+    expect(result.warnings).toContain('以下字段写入 Claude 项目级后仍会被更高优先级作用域覆盖：ANTHROPIC_AUTH_TOKEN')
     expect(result.data?.preview.effectiveConfig?.effective).toEqual(expect.arrayContaining([
       expect.objectContaining({
         key: 'ANTHROPIC_AUTH_TOKEN',

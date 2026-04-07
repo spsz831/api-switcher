@@ -16,13 +16,19 @@ export class PreviewService {
       const validation = await adapter.validate(profile)
       const preview = await adapter.preview(profile)
       const decision = evaluateRisk(preview, validation)
+      const risk = {
+        allowed: decision.allowed,
+        riskLevel: decision.riskLevel,
+        reasons: Array.from(new Set(decision.reasons)),
+        limitations: Array.from(new Set(decision.limitations)),
+      }
 
       return {
         ok: validation.ok,
         action: 'preview',
-        data: { profile, validation, preview },
-        warnings: decision.reasons,
-        limitations: decision.limitations,
+        data: { profile, validation, preview, risk },
+        warnings: risk.reasons,
+        limitations: risk.limitations,
       }
     } catch (error) {
       return {

@@ -48,6 +48,12 @@ describe('gemini preview/use/rollback integration', () => {
   it('preview 能返回 Gemini env-first explainable 结果', async () => {
     const result = await new PreviewService().preview('gemini-prod')
     expect(result.ok).toBe(true)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: false,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(result.data?.risk.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(result.data?.preview.targetFiles).toEqual([
       expect.objectContaining({
         path: geminiSettingsPath,
@@ -133,6 +139,7 @@ describe('gemini preview/use/rollback integration', () => {
     expect(result.data?.preview.backupPlanned).toBe(true)
     expect(result.data?.preview.noChanges).toBe(false)
   })
+
 
   it('use 能写入 settings.json 并返回 Gemini explainable 结果', async () => {
     const result = await new SwitchService().use('gemini-prod', { force: true })

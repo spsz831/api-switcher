@@ -321,6 +321,12 @@ const previewPayload: PreviewCommandOutput = {
     backupPlanned: true,
     noChanges: false,
   },
+  risk: {
+    allowed: false,
+    riskLevel: 'medium',
+    reasons: ['高风险操作需要确认'],
+    limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
+  },
 }
 
 const noChangesPreviewPayload: PreviewCommandOutput = {
@@ -854,7 +860,7 @@ const addCommandLimitations = ['新增配置后仍建议执行 preview 校验 ef
 
 const outputCurrent = renderText(createCurrentResult(currentPayload))
 const outputEmptyCurrent = renderText(createCurrentResult(emptyCurrentPayload))
-const outputPreview = renderText(createPreviewResult(previewPayload, ['高风险操作需要确认'], previewCommandLimitations))
+const outputPreview = renderText(createPreviewResult(previewPayload))
 const outputPreviewNoChanges = renderText(createPreviewResult(noChangesPreviewPayload))
 const outputPreviewValidationError = renderText(createPreviewResult(emptyValidationPreviewPayload))
 const outputPreviewValidationLimitations = renderText(createPreviewResult(validationPreviewPayloadWithLimitations))

@@ -54,6 +54,14 @@ describe('codex preview/use/rollback integration', () => {
   it('preview 能返回 Codex 双文件 explainable 结果', async () => {
     const result = await new PreviewService().preview('codex-prod')
     expect(result.ok).toBe(true)
+    expect(result.data?.risk).toEqual(expect.objectContaining({
+      allowed: false,
+      riskLevel: 'medium',
+    }))
+    expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
+    expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
+    expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
+    expect(result.data?.risk.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(result.data?.preview.targetFiles).toHaveLength(2)
     expect(result.data?.preview.targetFiles.map((item) => item.path)).toEqual([codexConfigPath, codexAuthPath])
     expect(result.data?.preview.diffSummary).toHaveLength(2)
@@ -134,6 +142,7 @@ describe('codex preview/use/rollback integration', () => {
     expect(result.data?.preview.backupPlanned).toBe(true)
     expect(result.data?.preview.noChanges).toBe(false)
   })
+
 
   it('use 能同时写入 config.toml 和 auth.json 并返回 explainable 结果', async () => {
     const result = await new SwitchService().use('codex-prod', { force: true })
