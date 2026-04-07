@@ -32,7 +32,17 @@ export class AddService {
     return {
       ok: true,
       action: 'add',
-      data: { profile, validation, preview },
+      data: {
+        profile,
+        validation,
+        preview,
+        risk: {
+          allowed: decision.allowed,
+          riskLevel: decision.riskLevel,
+          reasons: decision.reasons,
+          limitations: decision.limitations,
+        },
+      },
       warnings: decision.reasons,
       limitations: decision.limitations,
     }

@@ -65,6 +65,7 @@ export interface ValidateCommandOutput {
 
 export interface ExportedProfileItem {
   profile: Profile
+  validation?: ValidationResult
   limitations?: string[]
   managedBoundaries?: ManagedBoundary[]
   secretReferences?: SecretReference[]
@@ -74,10 +75,18 @@ export interface ExportCommandOutput {
   profiles: ExportedProfileItem[]
 }
 
+export interface AddRiskSummary {
+  allowed: boolean
+  riskLevel: RiskLevel
+  reasons: string[]
+  limitations: string[]
+}
+
 export interface AddCommandOutput {
   profile: Profile
   validation: ValidationResult
   preview: PreviewResult
+  risk?: AddRiskSummary
 }
 
 export interface ListCommandItem {

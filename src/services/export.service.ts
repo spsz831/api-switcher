@@ -1,4 +1,4 @@
-import { collectSecretReferences } from '../domain/masking'
+import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
 import { AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput } from '../types/command'
 import { ProfileService } from './profile.service'
@@ -16,7 +16,8 @@ export class ExportService {
 
       return {
         profile,
-        limitations: this.profileService.getLimitations(profile.platform),
+        validation,
+        limitations: collectIssueMessages(validation.limitations),
         managedBoundaries: validation.managedBoundaries,
         secretReferences: validation.secretReferences ?? collectSecretReferences(profile.apply),
       }
@@ -28,7 +29,7 @@ export class ExportService {
       data: {
         profiles: exportedProfiles,
       },
-      limitations: Array.from(new Set(profiles.flatMap((profile) => this.profileService.getLimitations(profile.platform)))),
+      limitations: Array.from(new Set(exportedProfiles.flatMap((profile) => profile.limitations ?? []))),
     }
   }
 }
