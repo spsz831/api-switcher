@@ -1,10 +1,18 @@
 import { collectIssueMessages } from '../domain/masking'
 import { evaluateRisk } from '../domain/risk-engine'
+import type { ValidationResult } from '../types/adapter'
 import { AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CommandResult, UseCommandOutput } from '../types/command'
 import { ProfileService } from './profile.service'
 import { SnapshotService } from './snapshot.service'
+
+function collectValidationWarnings(validation: ValidationResult): string[] {
+  return Array.from(new Set([
+    ...collectIssueMessages(validation.warnings),
+    ...(validation.effectiveConfig?.overrides.map((override) => override.message) ?? []),
+  ]))
+}
 
 export class SwitchService {
   constructor(
@@ -24,6 +32,7 @@ export class SwitchService {
         return {
           ok: false,
           action: 'use',
+          warnings: collectValidationWarnings(validation),
           limitations: collectIssueMessages(validation.limitations),
           error: {
             code: 'VALIDATION_FAILED',
@@ -41,12 +50,16 @@ export class SwitchService {
         reasons: Array.from(new Set(decision.reasons)),
         limitations: Array.from(new Set(decision.limitations)),
       }
+      const summary = {
+        warnings: risk.reasons,
+        limitations: risk.limitations,
+      }
       if (!decision.allowed) {
         return {
           ok: false,
           action: 'use',
-          warnings: risk.reasons,
-          limitations: risk.limitations,
+          warnings: summary.warnings,
+          limitations: summary.limitations,
           error: {
             code: 'CONFIRMATION_REQUIRED',
             message: '当前切换需要确认或 --force。',
@@ -64,11 +77,12 @@ export class SwitchService {
             validation,
             preview,
             risk,
+            summary,
             changedFiles: preview.diffSummary.flatMap((item) => (item.hasChanges ? [item.path] : [])),
             noChanges: Boolean(preview.noChanges),
           },
-          warnings: risk.reasons,
-          limitations: risk.limitations,
+          warnings: summary.warnings,
+          limitations: summary.limitations,
         }
       }
 
@@ -81,11 +95,12 @@ export class SwitchService {
             validation,
             preview,
             risk,
+            summary,
             changedFiles: [],
             noChanges: true,
           },
-          warnings: risk.reasons,
-          limitations: risk.limitations,
+          warnings: summary.warnings,
+          limitations: summary.limitations,
         }
       }
 
@@ -132,6 +147,10 @@ export class SwitchService {
           risk: {
             ...risk,
             reasons: warnings,
+            limitations,
+          },
+          summary: {
+            warnings,
             limitations,
           },
           changedFiles: applyResult.changedFiles,

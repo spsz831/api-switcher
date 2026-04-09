@@ -22,13 +22,17 @@ export class PreviewService {
         reasons: Array.from(new Set(decision.reasons)),
         limitations: Array.from(new Set(decision.limitations)),
       }
+      const summary = {
+        warnings: risk.reasons,
+        limitations: risk.limitations,
+      }
 
       return {
         ok: validation.ok,
         action: 'preview',
-        data: { profile, validation, preview, risk },
-        warnings: risk.reasons,
-        limitations: risk.limitations,
+        data: { profile, validation, preview, risk, summary },
+        warnings: summary.warnings,
+        limitations: summary.limitations,
       }
     } catch (error) {
       return {

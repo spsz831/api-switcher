@@ -21,7 +21,7 @@ import type { Profile } from '../../types/profile'
 import { atomicWrite } from '../../utils/atomic-write'
 import { pathExists, readTextFile, removeFile } from '../../utils/file-system'
 import { SnapshotStore } from '../../stores/snapshot.store'
-import { getPlatformLimitationIssues } from '../../services/profile.service'
+import { getPlatformLimitationIssues } from '../../domain/platform-limitations'
 import { BasePlatformAdapter } from '../base/platform-adapter'
 import {
   CODEX_AUTH_MANAGED_KEYS,

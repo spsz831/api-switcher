@@ -11,5 +11,6 @@ export function registerExportCommand(program: Command): void {
       const service = new ExportService()
       const result = await service.export()
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
+      process.exitCode = result.ok ? 0 : 1
     })
 }

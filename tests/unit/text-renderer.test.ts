@@ -22,67 +22,53 @@ function createCurrentResult(data: CurrentCommandOutput): CommandResult<CurrentC
 
 function createPreviewResult(
   data: PreviewCommandOutput,
-  warnings?: string[],
-  limitations?: string[],
 ): CommandResult<PreviewCommandOutput> {
   return {
     ok: true,
     action: 'preview',
     data,
-    warnings,
-    limitations,
   }
 }
 
-function createUseResult(data: UseCommandOutput, warnings?: string[], limitations?: string[]): CommandResult<UseCommandOutput> {
+function createUseResult(data: UseCommandOutput): CommandResult<UseCommandOutput> {
   return {
     ok: true,
     action: 'use',
     data,
-    warnings,
-    limitations,
   }
 }
 
 function createRollbackResult(
   data: RollbackCommandOutput,
-  warnings?: string[],
-  limitations?: string[],
 ): CommandResult<RollbackCommandOutput> {
   return {
     ok: true,
     action: 'rollback',
     data,
-    warnings,
-    limitations,
   }
 }
 
-function createValidateResult(data: ValidateCommandOutput, limitations?: string[]): CommandResult<ValidateCommandOutput> {
+function createValidateResult(data: ValidateCommandOutput): CommandResult<ValidateCommandOutput> {
   return {
     ok: true,
     action: 'validate',
     data,
-    limitations,
   }
 }
 
-function createExportResult(data: ExportCommandOutput, limitations?: string[]): CommandResult<ExportCommandOutput> {
+function createExportResult(data: ExportCommandOutput): CommandResult<ExportCommandOutput> {
   return {
     ok: true,
     action: 'export',
     data,
-    limitations,
   }
 }
 
-function createAddResult(data: AddCommandOutput, warnings?: string[], limitations?: string[]): CommandResult<AddCommandOutput> {
+function createAddResult(data: AddCommandOutput): CommandResult<AddCommandOutput> {
   return {
     ok: true,
     action: 'add',
     data,
-    warnings,
-    limitations,
   }
 }
 
@@ -94,10 +80,12 @@ function createListResult(data: ListCommandOutput): CommandResult<ListCommandOut
   }
 }
 
-function createFailureResult(action: string, message: string): CommandResult {
+function createFailureResult(action: string, message: string, warnings?: string[], limitations?: string[]): CommandResult {
   return {
     ok: false,
     action,
+    warnings,
+    limitations,
     error: {
       code: 'FAILED',
       message,
@@ -335,6 +323,10 @@ const previewPayload: PreviewCommandOutput = {
     reasons: ['高风险操作需要确认'],
     limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
+  summary: {
+    warnings: ['高风险操作需要确认'],
+    limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
+  },
 }
 
 const noChangesPreviewPayload: PreviewCommandOutput = {
@@ -402,6 +394,10 @@ const usePayload: UseCommandOutput = {
     allowed: true,
     riskLevel: 'medium',
     reasons: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
+  summary: {
+    warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
   changedFiles: ['C:/Users/test/.gemini/settings.json'],
@@ -598,6 +594,10 @@ const validatePayload: ValidateCommandOutput = {
       },
     },
   ],
+  summary: {
+    warnings: ['Gemini base URL 当前未确认支持。', 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    limitations: ['Gemini API key 仍需通过环境变量生效。'],
+  },
 }
 
 const validatePayloadWithIssueLimitations: ValidateCommandOutput = {
@@ -619,10 +619,18 @@ const validatePayloadWithIssueLimitations: ValidateCommandOutput = {
       },
     },
   ],
+  summary: {
+    warnings: [],
+    limitations: ['当前按目标作用域写入 Claude 配置文件。'],
+  },
 }
 
 const emptyValidatePayload: ValidateCommandOutput = {
   items: [],
+  summary: {
+    warnings: [],
+    limitations: [],
+  },
 }
 
 const exportPayload: ExportCommandOutput = {
@@ -638,7 +646,13 @@ const exportPayload: ExportCommandOutput = {
       validation: {
         ok: true,
         errors: [],
-        warnings: [],
+        warnings: [
+          {
+            code: 'scope-warning',
+            level: 'warning',
+            message: 'Claude 当前项目级配置会覆盖用户级同名字段。',
+          },
+        ],
         limitations: [
           {
             code: 'scope-aware-limitation',
@@ -690,10 +704,18 @@ const exportPayload: ExportCommandOutput = {
       },
     },
   ],
+  summary: {
+    warnings: ['Claude 当前项目级配置会覆盖用户级同名字段。'],
+    limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
+  },
 }
 
 const emptyExportPayload: ExportCommandOutput = {
   profiles: [],
+  summary: {
+    warnings: [],
+    limitations: [],
+  },
 }
 
 const addPayload: AddCommandOutput = {
@@ -784,6 +806,10 @@ const addPayload: AddCommandOutput = {
     reasons: [],
     limitations: [],
   },
+  summary: {
+    warnings: ['建议先执行 preview 或 validate 再确认'],
+    limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
+  },
 }
 
 const addPayloadWithLimitations: AddCommandOutput = {
@@ -812,6 +838,10 @@ const addPayloadWithLimitations: AddCommandOutput = {
     allowed: false,
     riskLevel: 'medium',
     reasons: ['建议先执行 preview 或 validate 再确认'],
+    limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
+  },
+  summary: {
+    warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
 }
@@ -868,25 +898,27 @@ const genericSuccessWithoutData: CommandResult = {
   action: 'other',
 }
 
-const genericFailureResult = createFailureResult('preview', '配置校验失败')
+const genericFailureResult = createFailureResult('preview', '配置校验失败', ['高风险操作需要确认'], ['Gemini 最终认证结果仍受环境变量影响。'])
+const useValidationFailureResult: CommandResult = {
+  ok: false,
+  action: 'use',
+  warnings: ['Gemini 首版仅稳定支持 enforcedAuthType = gemini-api-key。'],
+  limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  error: {
+    code: 'VALIDATION_FAILED',
+    message: '配置校验失败',
+  },
+}
 const previewFailureWithDataResult: CommandResult<PreviewCommandOutput> = {
   ok: false,
   action: 'preview',
   data: emptyValidationPreviewPayload,
 }
-const validateCommandLimitations = ['validate 只校验当前已实现的平台写入契约。']
 const validateFailureWithDataResult: CommandResult<ValidateCommandOutput> = {
   ok: false,
   action: 'validate',
   data: validatePayload,
-  limitations: validateCommandLimitations,
 }
-
-const previewCommandLimitations = ['Gemini 最终认证结果仍受环境变量影响。']
-const useCommandLimitations = ['切换完成后请确认运行环境中的 GEMINI_API_KEY。']
-const rollbackCommandLimitations = ['回滚仅恢复快照覆盖的托管文件。']
-const exportCommandLimitations = ['export 输出中的敏感值均为脱敏结果。']
-const addCommandLimitations = ['新增配置后仍建议执行 preview 校验 effective config。']
 
 const outputCurrent = renderText(createCurrentResult(currentPayload))
 const outputEmptyCurrent = renderText(createCurrentResult(emptyCurrentPayload))
@@ -894,22 +926,23 @@ const outputPreview = renderText(createPreviewResult(previewPayload))
 const outputPreviewNoChanges = renderText(createPreviewResult(noChangesPreviewPayload))
 const outputPreviewValidationError = renderText(createPreviewResult(emptyValidationPreviewPayload))
 const outputPreviewValidationLimitations = renderText(createPreviewResult(validationPreviewPayloadWithLimitations))
-const outputUse = renderText(createUseResult(usePayload, ['切换后建议核对环境变量'], useCommandLimitations))
+const outputUse = renderText(createUseResult(usePayload))
 const outputUseNoChanges = renderText(createUseResult(noChangesUsePayload))
-const outputRollback = renderText(createRollbackResult(rollbackPayload, ['已恢复快照中的托管文件'], rollbackCommandLimitations))
+const outputRollback = renderText(createRollbackResult(rollbackPayload))
 const outputRollbackEmpty = renderText(createRollbackResult(emptyRollbackPayload))
-const outputValidate = renderText(createValidateResult(validatePayload, validateCommandLimitations))
+const outputValidate = renderText(createValidateResult(validatePayload))
 const outputValidateItemLimitations = renderText(createValidateResult(validatePayloadWithIssueLimitations))
 const outputEmptyValidate = renderText(createValidateResult(emptyValidatePayload))
-const outputExport = renderText(createExportResult(exportPayload, exportCommandLimitations))
+const outputExport = renderText(createExportResult(exportPayload))
 const outputEmptyExport = renderText(createExportResult(emptyExportPayload))
-const outputAdd = renderText(createAddResult(addPayload, ['建议先执行 preview 或 validate 再确认'], addCommandLimitations))
+const outputAdd = renderText(createAddResult(addPayload))
 const outputAddWithLimitations = renderText(createAddResult(addPayloadWithLimitations))
 const outputList = renderText(createListResult(listPayload))
 const outputEmptyList = renderText(createListResult(emptyListPayload))
 const outputGenericSuccess = renderText(genericSuccessResult)
 const outputGenericSuccessWithoutData = renderText(genericSuccessWithoutData)
 const outputGenericFailure = renderText(genericFailureResult)
+const outputUseValidationFailure = renderText(useValidationFailureResult)
 const outputPreviewFailureWithData = renderText(previewFailureWithDataResult)
 const outputValidateFailureWithData = renderText(validateFailureWithDataResult)
 
@@ -1086,8 +1119,11 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('  敏感字段引用:')
     expect(outputValidate).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
     expect(outputValidate).not.toContain('  平台限制:')
+    expect(outputValidate).toContain('附加提示:')
+    expect(outputValidate).toContain('  - Gemini base URL 当前未确认支持。')
+    expect(outputValidate).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputValidate).toContain('限制说明:')
-    expect(outputValidate).toContain('  - validate 只校验当前已实现的平台写入契约。')
+    expect(outputValidate).toContain('  - Gemini API key 仍需通过环境变量生效。')
   })
 
   it('validate 会渲染 validation 自身的 limitations', () => {
@@ -1116,8 +1152,10 @@ describe('text renderer', () => {
     expect(outputExport).toContain('    说明: 当前写入目标为 Claude 项目级配置文件。')
     expect(outputExport).toContain('  敏感字段引用:')
     expect(outputExport).toContain('  - ANTHROPIC_AUTH_TOKEN: sk-a***z9 (source=inline, present=yes)')
+    expect(outputExport).toContain('附加提示:')
+    expect(outputExport).toContain('  - Claude 当前项目级配置会覆盖用户级同名字段。')
     expect(outputExport).toContain('限制说明:')
-    expect(outputExport).toContain('  - export 输出中的敏感值均为脱敏结果。')
+    expect(outputExport).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
   it('空 export 结果返回空正文', () => {
@@ -1195,8 +1233,22 @@ describe('text renderer', () => {
     expect(outputGenericSuccessWithoutData).toBe('[other] 成功\n执行成功')
   })
 
-  it('失败结果输出错误信息', () => {
-    expect(outputGenericFailure).toBe('[preview] 失败\n配置校验失败')
+  it('失败结果输出错误信息与 explainable 摘要', () => {
+    expect(outputGenericFailure).toContain('[preview] 失败')
+    expect(outputGenericFailure).toContain('配置校验失败')
+    expect(outputGenericFailure).toContain('附加提示:')
+    expect(outputGenericFailure).toContain('  - 高风险操作需要确认')
+    expect(outputGenericFailure).toContain('限制说明:')
+    expect(outputGenericFailure).toContain('  - Gemini 最终认证结果仍受环境变量影响。')
+  })
+
+  it('use 校验失败结果输出 explainable 摘要', () => {
+    expect(outputUseValidationFailure).toContain('[use] 失败')
+    expect(outputUseValidationFailure).toContain('配置校验失败')
+    expect(outputUseValidationFailure).toContain('附加提示:')
+    expect(outputUseValidationFailure).toContain('  - Gemini 首版仅稳定支持 enforcedAuthType = gemini-api-key。')
+    expect(outputUseValidationFailure).toContain('限制说明:')
+    expect(outputUseValidationFailure).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('preview 在失败但携带数据时仍渲染摘要', () => {
@@ -1210,7 +1262,9 @@ describe('text renderer', () => {
     expect(outputValidateFailureWithData).toContain('[validate] 失败')
     expect(outputValidateFailureWithData).toContain('  校验结果: 失败')
     expect(outputValidateFailureWithData).toContain('  错误: 缺少 GEMINI_API_KEY')
+    expect(outputValidateFailureWithData).toContain('附加提示:')
+    expect(outputValidateFailureWithData).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputValidateFailureWithData).toContain('限制说明:')
-    expect(outputValidateFailureWithData).toContain('  - validate 只校验当前已实现的平台写入契约。')
+    expect(outputValidateFailureWithData).toContain('  - Gemini API key 仍需通过环境变量生效。')
   })
 })

@@ -44,8 +44,10 @@ export class CurrentStateService {
     }
   }
 
-  async list(options: { platform?: PlatformName } = {}): Promise<CommandResult<ListCommandOutput>> {
+  async list(options: { platform?: string } = {}): Promise<CommandResult<ListCommandOutput>> {
     try {
+      assertListOptions(options)
+
       const context = await this.collectStateContext()
       const data = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
       const summary = this.buildCurrentSummary(context.detections)
@@ -189,5 +191,11 @@ export class CurrentStateService {
     }
 
     return riskLevel === 'high' ? 'invalid' : riskLevel === 'medium' ? 'warning' : 'unknown'
+  }
+}
+
+function assertListOptions(options: { platform?: string }): asserts options is { platform?: PlatformName } {
+  if (options.platform && !PLATFORM_NAMES.includes(options.platform as PlatformName)) {
+    throw new Error(`不支持的平台：${options.platform}`)
   }
 }

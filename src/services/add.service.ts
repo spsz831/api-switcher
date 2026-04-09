@@ -19,33 +19,50 @@ export class AddService {
   ) {}
 
   async add(input: AddServiceInput): Promise<CommandResult<AddCommandOutput>> {
-    assertAddInput(input)
+    try {
+      assertAddInput(input)
 
-    const profile = buildProfile(input)
-    const adapter = this.registry.get(profile.platform)
-    const validation = await adapter.validate(profile)
-    const preview = await adapter.preview(profile)
-    const decision = evaluateRisk(preview, validation)
-    const risk = {
-      allowed: decision.allowed,
-      riskLevel: decision.riskLevel,
-      reasons: Array.from(new Set(decision.reasons)),
-      limitations: Array.from(new Set(decision.limitations)),
-    }
+      const profile = buildProfile(input)
+      const adapter = this.registry.get(profile.platform)
+      const validation = await adapter.validate(profile)
+      const preview = await adapter.preview(profile)
+      const decision = evaluateRisk(preview, validation)
+      const risk = {
+        allowed: decision.allowed,
+        riskLevel: decision.riskLevel,
+        reasons: Array.from(new Set(decision.reasons)),
+        limitations: Array.from(new Set(decision.limitations)),
+      }
 
-    await this.profileService.add(profile)
+      const summary = {
+        warnings: risk.reasons,
+        limitations: risk.limitations,
+      }
 
-    return {
-      ok: true,
-      action: 'add',
-      data: {
-        profile,
-        validation,
-        preview,
-        risk,
-      },
-      warnings: risk.reasons,
-      limitations: risk.limitations,
+      await this.profileService.add(profile)
+
+      return {
+        ok: true,
+        action: 'add',
+        data: {
+          profile,
+          validation,
+          preview,
+          risk,
+          summary,
+        },
+        warnings: summary.warnings,
+        limitations: summary.limitations,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        action: 'add',
+        error: {
+          code: 'ADD_FAILED',
+          message: error instanceof Error ? error.message : 'add 执行失败',
+        },
+      }
     }
   }
 }

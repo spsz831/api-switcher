@@ -66,6 +66,20 @@ describe('gemini adapter', () => {
     expect(result.ok).toBe(true)
     expect(result.errors).toEqual([])
     expect(result.warnings).toEqual([])
+    expect(result.limitations).toEqual([
+      expect.objectContaining({
+        code: 'gemini-limitation-1',
+        message: 'GEMINI_API_KEY 仍需通过环境变量生效。',
+      }),
+      expect.objectContaining({
+        code: 'gemini-limitation-2',
+        message: '当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。',
+      }),
+      expect.objectContaining({
+        code: 'gemini-limitation-3',
+        message: '官方文档当前未确认自定义 base URL 的稳定写入契约。',
+      }),
+    ])
     expect(result.effectiveConfig?.stored).toEqual([
       expect.objectContaining({
         key: 'enforcedAuthType',
@@ -166,6 +180,20 @@ describe('gemini adapter', () => {
       expect.objectContaining({
         code: 'env-auth-required',
         message: 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。',
+      }),
+    ])
+    expect(result?.limitations).toEqual([
+      expect.objectContaining({
+        code: 'gemini-limitation-1',
+        message: 'GEMINI_API_KEY 仍需通过环境变量生效。',
+      }),
+      expect.objectContaining({
+        code: 'gemini-limitation-2',
+        message: '当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。',
+      }),
+      expect.objectContaining({
+        code: 'gemini-limitation-3',
+        message: '官方文档当前未确认自定义 base URL 的稳定写入契约。',
       }),
     ])
   })

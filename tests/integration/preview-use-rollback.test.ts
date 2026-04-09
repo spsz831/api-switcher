@@ -43,6 +43,15 @@ beforeEach(async () => {
           ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
         },
       },
+      {
+        id: 'gemini-invalid',
+        name: 'gemini-invalid',
+        platform: 'gemini',
+        source: { authType: 'oauth-personal' },
+        apply: {
+          enforcedAuthType: 'oauth-personal',
+        },
+      },
     ],
   })
 
@@ -72,6 +81,10 @@ describe('preview/use/rollback integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
+    expect(result.data?.summary).toEqual({
+      warnings: result.data?.risk.reasons ?? [],
+      limitations: result.data?.risk.limitations ?? [],
+    })
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.data?.preview.targetFiles).toEqual([
@@ -207,7 +220,7 @@ describe('preview/use/rollback integration', () => {
   })
 
   it('detectCurrent 能返回 Claude 当前生效 scope 与未匹配 profile 的现状', async () => {
-    const profiles = await new ProfilesStore().list()
+    const profiles = (await new ProfilesStore().list()).filter((profile) => profile.platform === 'claude')
     const result = await new ClaudeAdapter().detectCurrent(profiles)
 
     expect(result).toEqual(expect.objectContaining({
@@ -270,7 +283,7 @@ describe('preview/use/rollback integration', () => {
   it('detectCurrent 会在切换后返回匹配的 Claude profile', async () => {
     await new SwitchService().use('claude-prod', { force: true })
 
-    const profiles = await new ProfilesStore().list()
+    const profiles = (await new ProfilesStore().list()).filter((profile) => profile.platform === 'claude')
     const result = await new ClaudeAdapter().detectCurrent(profiles)
 
     expect(result).toEqual(expect.objectContaining({
@@ -304,7 +317,7 @@ describe('preview/use/rollback integration', () => {
       'utf8',
     )
 
-    const profiles = await new ProfilesStore().list()
+    const profiles = (await new ProfilesStore().list()).filter((profile) => profile.platform === 'claude')
     const result = await new ClaudeAdapter().detectCurrent(profiles)
 
     expect(result).toEqual(expect.objectContaining({
@@ -338,6 +351,23 @@ describe('preview/use/rollback integration', () => {
     ]))
   })
 
+  it('use 校验失败时返回 explainable warnings 与 limitations', async () => {
+    const result = await new SwitchService().use('gemini-invalid')
+
+    expect(result.ok).toBe(false)
+    expect(result.action).toBe('use')
+    expect(result.warnings).toEqual(expect.arrayContaining([
+      'Gemini 首版仅稳定支持 enforcedAuthType = gemini-api-key。',
+    ]))
+    expect(result.limitations).toEqual(expect.arrayContaining([
+      'GEMINI_API_KEY 仍需通过环境变量生效。',
+    ]))
+    expect(result.error).toEqual(expect.objectContaining({
+      code: 'VALIDATION_FAILED',
+      message: '配置校验失败',
+    }))
+  })
+
   it('use 能创建 snapshot、写入文件并更新 state', async () => {
     const result = await new SwitchService().use('claude-prod', { force: true })
     expect(result.ok).toBe(true)
@@ -346,6 +376,10 @@ describe('preview/use/rollback integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
+    expect(result.data?.summary).toEqual({
+      warnings: result.data?.risk.reasons ?? [],
+      limitations: result.data?.risk.limitations ?? [],
+    })
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 

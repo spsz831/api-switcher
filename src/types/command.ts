@@ -30,11 +30,17 @@ export interface PreviewRiskSummary {
   limitations: string[]
 }
 
+export interface PreviewSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface PreviewCommandOutput {
   profile: Profile
   validation: ValidationResult
   preview: PreviewResult
   risk: PreviewRiskSummary
+  summary: PreviewSummary
 }
 
 export interface UseRiskSummary {
@@ -44,12 +50,18 @@ export interface UseRiskSummary {
   limitations: string[]
 }
 
+export interface UseSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface UseCommandOutput {
   profile: Profile
   backupId?: string
   validation?: ValidationResult
   preview: PreviewResult
   risk: UseRiskSummary
+  summary: UseSummary
   changedFiles: string[]
   noChanges: boolean
 }
@@ -69,6 +81,11 @@ export interface ListSummary {
   limitations: string[]
 }
 
+export interface ExportSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface RollbackCommandOutput {
   backupId: string
   restoredFiles: string[]
@@ -83,6 +100,11 @@ export interface CurrentCommandOutput {
   summary: CurrentSummary
 }
 
+export interface ValidateSummary {
+  warnings: string[]
+  limitations: string[]
+}
+
 export interface ValidateCommandItem {
   profileId: string
   platform: PlatformName
@@ -91,6 +113,7 @@ export interface ValidateCommandItem {
 
 export interface ValidateCommandOutput {
   items: ValidateCommandItem[]
+  summary: ValidateSummary
 }
 
 export interface ExportedProfileItem {
@@ -100,6 +123,12 @@ export interface ExportedProfileItem {
 
 export interface ExportCommandOutput {
   profiles: ExportedProfileItem[]
+  summary: ExportSummary
+}
+
+export interface AddSummary {
+  warnings: string[]
+  limitations: string[]
 }
 
 export interface AddRiskSummary {
@@ -114,6 +143,7 @@ export interface AddCommandOutput {
   validation: ValidationResult
   preview: PreviewResult
   risk: AddRiskSummary
+  summary: AddSummary
 }
 
 export interface ListCommandItem {

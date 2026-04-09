@@ -86,9 +86,9 @@ beforeEach(async () => {
         id: 'gemini-invalid',
         name: 'gemini-invalid',
         platform: 'gemini',
-        source: { authType: 'gemini-api-key' },
+        source: { authType: 'oauth-personal' },
         apply: {
-          enforcedAuthType: 'gemini-api-key',
+          enforcedAuthType: 'oauth-personal',
         },
       },
     ],
@@ -313,6 +313,10 @@ describe('cli commands integration', () => {
           secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
         }
       }>
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -321,6 +325,10 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('validate')
     expect(payload.data?.items[0]?.profileId).toBe('gemini-prod')
     expect(payload.data?.items[0]?.platform).toBe('gemini')
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.data?.items[0]?.validation.ok).toBe(true)
     expect(payload.data?.items[0]?.validation.errors).toEqual([])
     expect(payload.data?.items[0]?.validation.warnings).toEqual([])
@@ -369,6 +377,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。')
   })
 
+
   it('list 文本输出配置列表与 explainable 摘要', async () => {
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
     await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
@@ -410,15 +419,75 @@ describe('cli commands integration', () => {
     expect(payload.data?.items).toEqual([])
   })
 
-  it('validate selector 不存在时返回 stderr 并设置 exitCode 2', async () => {
-    const result = await runCli(['validate', 'missing-profile'])
+  it('validate selector 不存在时返回结构化失败对象并设置 exitCode 1', async () => {
+    const result = await runCli(['validate', 'missing-profile', '--json'])
+    const payload = parseJsonResult(result.stdout)
 
-    expect(result.stdout).toBe('')
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('未找到配置档：missing-profile')
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('validate')
+    expect(payload.error?.code).toBe('VALIDATE_FAILED')
+    expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
-  it('export --json 输出结构化 profiles', async () => {
+  it('validate selector 不存在时文本输出 explainable 失败结果', async () => {
+    const result = await runCli(['validate', 'missing-profile'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[validate] 失败')
+    expect(result.stdout).toContain('未找到配置档：missing-profile')
+  })
+
+  it('export 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const result = await runCli(['export', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('export')
+    expect(payload.error?.code).toBe('EXPORT_FAILED')
+    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
+  })
+
+  it('export 未注册平台时文本输出 explainable 失败结果', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const result = await runCli(['export'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[export] 失败')
+    expect(result.stdout).toContain('未注册的平台适配器：openai')
+  })
+
+  it('export --json 输出结构化 profiles 与 explainable 摘要', async () => {
     const result = await runCli(['export', '--json'])
     const payload = parseJsonResult<{
       profiles: Array<{
@@ -426,7 +495,7 @@ describe('cli commands integration', () => {
         validation?: {
           ok: boolean
           errors: Array<{ code: string }>
-          warnings: Array<{ code: string }>
+          warnings: Array<{ code: string; message: string }>
           limitations: Array<{ code: string; message: string }>
           effectiveConfig?: {
             stored: Array<{ key: string; maskedValue: string; source: string; scope?: string; secret?: boolean }>
@@ -436,6 +505,10 @@ describe('cli commands integration', () => {
           secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
         }
       }>
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -443,6 +516,11 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('export')
     expect(payload.data?.profiles).toHaveLength(4)
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(payload.data?.summary.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
@@ -512,6 +590,10 @@ describe('cli commands integration', () => {
         reasons: string[]
         limitations: string[]
       }
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
       preview: {
         riskLevel: string
         requiresConfirmation: boolean
@@ -533,6 +615,10 @@ describe('cli commands integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
+    expect(payload.data?.summary).toEqual({
+      warnings: payload.data?.risk.reasons ?? [],
+      limitations: payload.data?.risk.limitations ?? [],
+    })
     expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -596,6 +682,10 @@ describe('cli commands integration', () => {
         reasons: string[]
         limitations: string[]
       }
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
       changedFiles: string[]
       preview?: {
         managedBoundaries?: Array<{ type: string; target?: string; managedKeys: string[]; preservedKeys?: string[] }>
@@ -615,6 +705,10 @@ describe('cli commands integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
+    expect(payload.data?.summary).toEqual({
+      warnings: payload.data?.risk.reasons ?? [],
+      limitations: payload.data?.risk.limitations ?? [],
+    })
     expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -650,6 +744,21 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
     expect(payload.error?.message).toBe('当前切换需要确认或 --force。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('use 文本失败时输出 explainable 摘要', async () => {
+    const result = await runCli(['use', 'gemini-prod'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[use] 失败')
+    expect(result.stdout).toContain('当前切换需要确认或 --force。')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('rollback --json 输出 Codex 结构化恢复结果并更新 state', async () => {
@@ -747,6 +856,33 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('USE_FAILED')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
+  })
+
+  it('use --json 校验失败时返回 explainable 失败对象并设置 exitCode 1', async () => {
+    const result = await runCli(['use', 'gemini-invalid', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('use')
+    expect(payload.error?.code).toBe('VALIDATION_FAILED')
+    expect(payload.error?.message).toBe('配置校验失败')
+    expect(payload.warnings).toContain('Gemini 首版仅稳定支持 enforcedAuthType = gemini-api-key。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('use 校验失败时文本输出 explainable 失败结果', async () => {
+    const result = await runCli(['use', 'gemini-invalid'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[use] 失败')
+    expect(result.stdout).toContain('配置校验失败')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - Gemini 首版仅稳定支持 enforcedAuthType = gemini-api-key。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('rollback --json 无快照时返回失败对象并设置 exitCode 1', async () => {
@@ -849,6 +985,7 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -862,11 +999,16 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk?.riskLevel).toBe('low')
     expect(payload.data?.risk?.reasons).toEqual([])
     expect(payload.data?.risk?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(payload.data?.summary).toEqual({
+      warnings: [],
+      limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
+    })
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.warnings).toEqual([])
     expect(payload.warnings).toEqual([])
+    expect(payload.limitations).toEqual(['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'])
   })
 
 
@@ -878,6 +1020,7 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -888,9 +1031,12 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk?.riskLevel).toBe('medium')
     expect(payload.data?.risk?.allowed).toBe(false)
     expect(payload.data?.risk?.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(payload.data?.summary?.warnings).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(payload.data?.summary?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.warnings.some((item) => item.code === 'unmanaged-current-file')).toBe(true)
     expect(payload.warnings).toContain('当前 Claude 配置存在非托管字段：theme')
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
 
@@ -901,6 +1047,7 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -914,12 +1061,15 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk.allowed).toBe(false)
     expect(payload.data?.risk.riskLevel).toBe('medium')
     expect(payload.data?.risk.reasons).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.data?.summary.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.diffSummary[0]?.path).toBe(claudeProjectSettingsPath)
     expect(payload.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
 
@@ -931,6 +1081,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -950,12 +1101,17 @@ describe('cli commands integration', () => {
     expect(payload.data?.validation.ok).toBe(true)
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings).toEqual([])
+    expect(payload.data?.summary).toEqual({
+      warnings: [],
+      limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
+    })
     expect(payload.data?.preview.riskLevel).toBe('low')
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.diffSummary[0]?.path).toBe(claudeProjectSettingsPath)
     expect(payload.warnings).toEqual([])
+    expect(payload.limitations).toEqual(['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'])
   })
 
   it('add --json 为 claude 返回 profile 与 validate/preview 摘要', async () => {
@@ -965,6 +1121,7 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -987,12 +1144,15 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk.allowed).toBe(false)
     expect(payload.data?.risk.riskLevel).toBe('medium')
     expect(payload.data?.risk.reasons).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.data?.summary.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.diffSummary[0]?.path).toBe(claudeProjectSettingsPath)
     expect(payload.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
 
@@ -1009,6 +1169,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1018,6 +1179,10 @@ describe('cli commands integration', () => {
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(false)
     expect(payload.data?.preview.noChanges).toBe(true)
+    expect(payload.data?.summary.warnings).toEqual([])
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
+    expect(payload.warnings).toEqual([])
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
   it('add 高风险/需确认摘要不会阻止新增 profile', async () => {
@@ -1039,6 +1204,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string; message: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1046,8 +1212,12 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.validation.ok).toBe(false)
     expect(payload.data?.validation.errors.some((item) => item.code === 'missing-anthropic-auth-token')).toBe(true)
+    expect(payload.data?.summary.warnings).toContain('缺少 ANTHROPIC_AUTH_TOKEN')
+    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.riskLevel).toBe('high')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
+    expect(payload.warnings).toContain('缺少 ANTHROPIC_AUTH_TOKEN')
+    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 
     const profiles = await new ProfilesStore().list()
     expect(profiles.some((item) => item.id === 'claude-invalid-key')).toBe(true)
@@ -1059,9 +1229,10 @@ describe('cli commands integration', () => {
 
     const second = await runCli(['add', '--platform', 'claude', '--name', 'preview-first', '--key', 'sk-preview-first-456', '--url', 'https://second.example.com/api'])
 
-    expect(second.stdout).toBe('')
-    expect(second.exitCode).toBe(2)
-    expect(second.stderr).toContain('配置 ID 已存在：claude-preview-first')
+    expect(second.stderr).toBe('')
+    expect(second.exitCode).toBe(1)
+    expect(second.stdout).toContain('[add] 失败')
+    expect(second.stdout).toContain('配置 ID 已存在：claude-preview-first')
   })
 
   it('add 支持 codex 的 validate/preview 摘要', async () => {
@@ -1091,6 +1262,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1098,6 +1270,7 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.preview.warnings.some((item) => item.code === 'multi-file-overwrite')).toBe(true)
     expect(payload.data?.preview.warnings.some((item) => item.code === 'unmanaged-current-file')).toBe(true)
+    expect(payload.data?.summary.warnings?.length).toBeGreaterThan(0)
     expect(payload.warnings?.length).toBeGreaterThan(0)
   })
 
@@ -1176,6 +1349,7 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1183,6 +1357,10 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(false)
     expect(payload.data?.preview.noChanges).toBe(true)
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
   it('add 的文本摘要会展示 preview 生成的风险状态', async () => {
@@ -1230,6 +1408,7 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
+      summary: { warnings: string[]; limitations: string[] }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1251,41 +1430,84 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk.riskLevel).toBe('medium')
     expect(payload.data?.risk.reasons).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
     expect(payload.data?.risk.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
+    expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
     expect(payload.data?.preview.requiresConfirmation).toBe(true)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
     expect(payload.data?.preview.warnings.some((item) => item.code === 'env-auth-required')).toBe(true)
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
+    expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
 
-  it('add 非法 platform 时返回 stderr 并设置 exitCode 2', async () => {
+  it('add 非法 platform 时返回结构化失败对象并设置 exitCode 1', async () => {
+    const result = await runCli(['add', '--platform', 'openai', '--name', 'bad-platform', '--key', 'sk-bad-123', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('add')
+    expect(payload.error?.code).toBe('ADD_FAILED')
+    expect(payload.error?.message).toBe('不支持的平台：openai')
+  })
+
+  it('add 文本参数失败时输出 explainable 失败结果', async () => {
     const result = await runCli(['add', '--platform', 'openai', '--name', 'bad-platform', '--key', 'sk-bad-123'])
 
-    expect(result.stdout).toBe('')
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('不支持的平台：openai')
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[add] 失败')
+    expect(result.stdout).toContain('不支持的平台：openai')
   })
 
-  it('add 为 gemini 传入 --url 时返回 stderr 并设置 exitCode 2', async () => {
-    const result = await runCli(['add', '--platform', 'gemini', '--name', 'bad-url', '--key', 'gm-bad-123', '--url', 'https://example.com'])
+  it('add 为 gemini 传入 --url 时返回结构化失败对象并设置 exitCode 1', async () => {
+    const result = await runCli(['add', '--platform', 'gemini', '--name', 'bad-url', '--key', 'gm-bad-123', '--url', 'https://example.com', '--json'])
+    const payload = parseJsonResult(result.stdout)
 
-    expect(result.stdout).toBe('')
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('gemini 平台暂不支持 --url，请改用默认官方链路。')
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('add')
+    expect(payload.error?.code).toBe('ADD_FAILED')
+    expect(payload.error?.message).toBe('gemini 平台暂不支持 --url，请改用默认官方链路。')
   })
 
-  it('add 重复 ID 时返回 stderr 并保持已有 profiles 不变', async () => {
+  it('list 非法 platform 时返回结构化失败对象并设置 exitCode 1', async () => {
+    const result = await runCli(['list', '--platform', 'openai', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('list')
+    expect(payload.error?.code).toBe('LIST_FAILED')
+    expect(payload.error?.message).toBe('不支持的平台：openai')
+  })
+
+  it('list 文本参数失败时输出 explainable 失败结果', async () => {
+    const result = await runCli(['list', '--platform', 'openai'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[list] 失败')
+    expect(result.stdout).toContain('不支持的平台：openai')
+  })
+
+
+  it('add 重复 ID 时返回 explainable 失败结果并保持已有 profiles 不变', async () => {
     const first = await runCli(['add', '--platform', 'claude', '--name', 'dup-prod', '--key', 'sk-new-123'])
     expect(first.stderr).toBe('')
     expect(first.exitCode).toBe(0)
 
     const second = await runCli(['add', '--platform', 'claude', '--name', 'dup-prod', '--key', 'sk-new-456'])
 
-    expect(second.stdout).toBe('')
-    expect(second.exitCode).toBe(2)
-    expect(second.stderr).toContain('配置 ID 已存在：claude-dup-prod')
+    expect(second.stdout).toContain('[add] 失败')
+    expect(second.stderr).toBe('')
+    expect(second.exitCode).toBe(1)
+    expect(second.stdout).toContain('配置 ID 已存在：claude-dup-prod')
 
     const profiles = await new ProfilesStore().list()
     expect(profiles.filter((item) => item.id === 'claude-dup-prod')).toHaveLength(1)
@@ -1466,15 +1688,6 @@ describe('cli commands integration', () => {
     expect(result.stdout).not.toContain('- codex-prod (codex)')
   })
 
-  it('list 非法 platform 时返回 stderr 并设置 exitCode 2', async () => {
-    const result = await runCli(['list', '--platform', 'openai'])
-
-    expect(result.stdout).toBe('')
-    expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('不支持的平台：openai')
-  })
-
-
   it('current 输出文本 state 与检测结果', async () => {
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
     await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
@@ -1531,6 +1744,10 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    托管字段: enforcedAuthType')
     expect(result.stdout).toContain('  敏感字段引用:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=env, present=yes)')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(result.stdout).not.toContain('  平台限制:')
   })
 
@@ -1545,9 +1762,9 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  错误: 缺少 GEMINI_API_KEY')
     expect(result.stdout).toContain('  生效配置:')
     expect(result.stdout).toContain('    已写入:')
-    expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
+    expect(result.stdout).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
     expect(result.stdout).toContain('    最终生效:')
-    expect(result.stdout).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
+    expect(result.stdout).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=effective)')
     expect(result.stdout).not.toContain('    - GEMINI_API_KEY:')
     expect(result.stdout).not.toContain('    覆盖说明:')
     expect(result.stdout).toContain('  敏感字段引用:')
@@ -1576,6 +1793,8 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('    说明: 当前写入目标为 Claude 项目级配置文件。')
     expect(result.stdout).toContain('  敏感字段引用:')
     expect(result.stdout).toContain('  - ANTHROPIC_AUTH_TOKEN: sk-l***56 (source=inline, present=yes)')
+    expect(result.stdout).toContain('附加提示:')
+    expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(result.stdout).toContain('限制说明:')
     expect(result.stdout).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.stdout).toContain('  - 当前会同时托管 Codex 的 config.toml 与 auth.json。')
@@ -1860,5 +2079,21 @@ describe('cli commands integration', () => {
     const state = await new StateStore().read()
     expect(state.current.claude).toBeUndefined()
     expect(state.lastSwitch?.status).toBe('rolled-back')
+  })
+
+  it('未知命令保持 Commander 的 stderr 失败出口', async () => {
+    const result = await runCli(['unknown-command'])
+
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain("error: unknown command 'unknown-command'")
+    expect(result.exitCode).toBe(1)
+  })
+
+  it('add 缺少必填参数时保持 Commander 的 stderr 失败出口', async () => {
+    const result = await runCli(['add'])
+
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain("error: required option '--platform <platform>' not specified")
+    expect(result.exitCode).toBe(1)
   })
 })

@@ -15,5 +15,6 @@ export function registerAddCommand(program: Command): void {
       const service = new AddService()
       const result = await service.add(options)
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
+      process.exitCode = result.ok ? 0 : 1
     })
 }

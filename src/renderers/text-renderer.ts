@@ -144,10 +144,7 @@ function renderDetection(item: CurrentProfileResult): string[] {
   ]
 }
 
-function renderCurrent(data: CurrentCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
-  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
-
+function renderCurrent(data: CurrentCommandOutput): string {
   const lines = ['当前 state:']
 
   if (Object.keys(data.current).length === 0) {
@@ -169,17 +166,14 @@ function renderCurrent(data: CurrentCommandOutput, warnings?: string[], limitati
     }
   }
 
-  lines.push(...renderWarnings('附加提示:', summaryWarnings))
-  lines.push(...renderCommandLimitations(summaryLimitations))
+  lines.push(...renderWarnings('附加提示:', data.summary.warnings))
+  lines.push(...renderCommandLimitations(data.summary.limitations))
 
   return lines.join('\n')
 }
 
 
-function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
-  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
-
+function renderPreview(data: PreviewCommandOutput): string {
   const lines = [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,
@@ -197,18 +191,15 @@ function renderPreview(data: PreviewCommandOutput, warnings?: string[], limitati
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('警告', data.preview.warnings),
     ...renderValidationIssues('限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', riskWarnings),
-    ...renderCommandLimitations(riskLimitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ]
 
   return lines.join('\n')
 }
 
 
-function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
-  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
-
+function renderUse(data: UseCommandOutput): string {
   const lines = [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  备份ID: ${data.backupId ?? '未创建'}`,
@@ -222,17 +213,14 @@ function renderUse(data: UseCommandOutput, warnings?: string[], limitations?: st
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('警告', data.preview.warnings),
     ...renderValidationIssues('限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', riskWarnings),
-    ...renderCommandLimitations(riskLimitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ]
 
   return lines.join('\n')
 }
 
-function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const riskWarnings = data.risk.reasons.length > 0 ? data.risk.reasons : warnings
-  const riskLimitations = data.risk.limitations.length > 0 ? data.risk.limitations : limitations
-
+function renderAdd(data: AddCommandOutput): string {
   return [
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  名称: ${data.profile.name}`,
@@ -251,15 +239,12 @@ function renderAdd(data: AddCommandOutput, warnings?: string[], limitations?: st
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('预览警告', data.preview.warnings),
     ...renderValidationIssues('预览限制', data.preview.limitations),
-    ...renderWarnings('附加提示:', riskWarnings),
-    ...renderCommandLimitations(riskLimitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ].join('\n')
 }
 
-function renderRollback(data: RollbackCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
-  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
-
+function renderRollback(data: RollbackCommandOutput): string {
   return [
     `- 备份ID: ${data.backupId}`,
     ...(data.restoredFiles.length > 0 ? ['  已恢复文件:', ...data.restoredFiles.map((item) => `  - ${item}`)] : ['  已恢复文件: 无']),
@@ -267,12 +252,12 @@ function renderRollback(data: RollbackCommandOutput, warnings?: string[], limita
     ...renderManagedBoundaries(data.rollback?.managedBoundaries),
     ...renderValidationIssues('回滚警告', data.rollback?.warnings ?? []),
     ...renderValidationIssues('回滚限制', data.rollback?.limitations ?? []),
-    ...renderWarnings('附加提示:', summaryWarnings),
-    ...renderCommandLimitations(summaryLimitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ].join('\n')
 }
 
-function renderExport(data: ExportCommandOutput, limitations?: string[]): string {
+function renderExport(data: ExportCommandOutput): string {
   return [
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
@@ -287,11 +272,12 @@ function renderExport(data: ExportCommandOutput, limitations?: string[]): string
         ...renderSecretReferences(item.validation.secretReferences),
       ] : []),
     ].join('\n')).join('\n'),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ].filter(Boolean).join('\n')
 }
 
-function renderValidate(data: ValidateCommandOutput, limitations?: string[]): string {
+function renderValidate(data: ValidateCommandOutput): string {
   return [
     data.items.map((item) => [
       `- ${item.profileId} (${item.platform})`,
@@ -303,14 +289,12 @@ function renderValidate(data: ValidateCommandOutput, limitations?: string[]): st
       ...renderManagedBoundaries(item.validation.managedBoundaries),
       ...renderSecretReferences(item.validation.secretReferences),
     ].join('\n')).join('\n'),
-    ...renderCommandLimitations(limitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ].filter(Boolean).join('\n')
 }
 
-function renderList(data: ListCommandOutput, warnings?: string[], limitations?: string[]): string {
-  const summaryWarnings = data.summary.warnings.length > 0 ? data.summary.warnings : warnings
-  const summaryLimitations = data.summary.limitations.length > 0 ? data.summary.limitations : limitations
-
+function renderList(data: ListCommandOutput): string {
   return [
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
@@ -319,9 +303,18 @@ function renderList(data: ListCommandOutput, warnings?: string[], limitations?: 
       `  健康状态: ${item.healthStatus}`,
       `  风险等级: ${item.riskLevel}`,
     ].join('\n')).join('\n'),
-    ...renderWarnings('附加提示:', summaryWarnings),
-    ...renderCommandLimitations(summaryLimitations),
+    ...renderWarnings('附加提示:', data.summary.warnings),
+    ...renderCommandLimitations(data.summary.limitations),
   ].filter(Boolean).join('\n')
+}
+
+
+function renderFailure(result: CommandResult): string {
+  return [
+    result.error?.message ?? '未知错误',
+    ...renderWarnings('附加提示:', result.warnings),
+    ...renderCommandLimitations(result.limitations),
+  ].join('\n')
 }
 
 
@@ -329,39 +322,39 @@ export function renderText(result: CommandResult): string {
   const status = result.ok ? '成功' : '失败'
 
   if (result.action === 'current' && result.data) {
-    return `[${result.action}] ${status}\n${renderCurrent(result.data as CurrentCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderCurrent(result.data as CurrentCommandOutput)}`
   }
 
   if (result.action === 'preview' && result.data) {
-    return `[${result.action}] ${status}\n${renderPreview(result.data as PreviewCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderPreview(result.data as PreviewCommandOutput)}`
   }
 
   if (result.action === 'use' && result.data) {
-    return `[${result.action}] ${status}\n${renderUse(result.data as UseCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderUse(result.data as UseCommandOutput)}`
   }
 
   if (result.action === 'rollback' && result.data) {
-    return `[${result.action}] ${status}\n${renderRollback(result.data as RollbackCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderRollback(result.data as RollbackCommandOutput)}`
   }
 
   if (result.action === 'validate' && result.data) {
-    return `[${result.action}] ${status}\n${renderValidate(result.data as ValidateCommandOutput, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderValidate(result.data as ValidateCommandOutput)}`
   }
 
   if (result.action === 'export' && result.data) {
-    return `[${result.action}] ${status}\n${renderExport(result.data as ExportCommandOutput, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderExport(result.data as ExportCommandOutput)}`
   }
 
   if (result.action === 'add' && result.data) {
-    return `[${result.action}] ${status}\n${renderAdd(result.data as AddCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderAdd(result.data as AddCommandOutput)}`
   }
 
   if (result.action === 'list' && result.data) {
-    return `[${result.action}] ${status}\n${renderList(result.data as ListCommandOutput, result.warnings, result.limitations)}`
+    return `[${result.action}] ${status}\n${renderList(result.data as ListCommandOutput)}`
   }
 
   if (!result.ok) {
-    return `[${result.action}] 失败\n${result.error?.message ?? '未知错误'}`
+    return `[${result.action}] 失败\n${renderFailure(result)}`
   }
 
   const summary = result.data ? JSON.stringify(result.data, null, 2) : '执行成功'
