@@ -846,6 +846,21 @@ describe('cli commands integration', () => {
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
+  it('preview --json 底层 settings 读取异常时返回失败对象并设置 exitCode 1', async () => {
+    await fs.rm(geminiSettingsPath, { force: true, recursive: true })
+    await fs.mkdir(geminiSettingsPath, { recursive: true })
+
+    const result = await runCli(['preview', 'gemini-prod', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('preview')
+    expect(payload.error?.code).toBe('PREVIEW_FAILED')
+    expect(payload.error?.message).toContain('EISDIR')
+  })
+
   it('use --json selector 不存在时返回失败对象并设置 exitCode 1', async () => {
     const result = await runCli(['use', 'missing-profile', '--json'])
     const payload = parseJsonResult(result.stdout)
@@ -856,6 +871,21 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('USE_FAILED')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
+  })
+
+  it('use --json 底层 settings 读取异常时返回失败对象并设置 exitCode 1', async () => {
+    await fs.rm(geminiSettingsPath, { force: true, recursive: true })
+    await fs.mkdir(geminiSettingsPath, { recursive: true })
+
+    const result = await runCli(['use', 'gemini-prod', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('use')
+    expect(payload.error?.code).toBe('USE_FAILED')
+    expect(payload.error?.message).toContain('EISDIR')
   })
 
   it('use --json 校验失败时返回 explainable 失败对象并设置 exitCode 1', async () => {
@@ -908,6 +938,28 @@ describe('cli commands integration', () => {
     expect(payload.error?.code).toBe('ROLLBACK_FAILED')
     expect(payload.error?.message).toBe('无法从 backupId 推断平台：invalid-backup-id')
   })
+
+  it('rollback --json 底层 manifest 读取异常时返回失败对象并设置 exitCode 1', async () => {
+    const useResult = await runCli(['use', 'codex-prod', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    const manifestPath = path.join(runtimeDir, 'backups', 'codex', usePayload.data!.backupId!, 'manifest.json')
+    await fs.rm(manifestPath, { force: true, recursive: true })
+    await fs.mkdir(manifestPath, { recursive: true })
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!, '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('rollback')
+    expect(payload.error?.code).toBe('ROLLBACK_FAILED')
+    expect(payload.error?.message).toContain('EISDIR')
+  })
+
 
   it('add 输出文本结果、validate/preview explainable 摘要并落盘 profile', async () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'new-prod', '--key', 'sk-new-123', '--url', 'https://new.example.com'])
