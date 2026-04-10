@@ -19,6 +19,70 @@ afterEach(async () => {
 })
 
 describe('export service', () => {
+  it('读取配置档失败时返回结构化失败结果', async () => {
+    const result = await new ExportService(
+      {
+        list: async () => {
+          throw new Error('profiles list failed')
+        },
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    ).export()
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'export',
+      error: {
+        code: 'EXPORT_FAILED',
+        message: 'profiles list failed',
+      },
+    })
+  })
+
+  it('适配器校验失败时返回结构化失败结果', async () => {
+    const profile = {
+      id: 'gemini-prod',
+      name: 'gemini-prod',
+      platform: 'gemini',
+      source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+      apply: {
+        GEMINI_API_KEY: 'gm-live-123456',
+        enforcedAuthType: 'gemini-api-key',
+      },
+    }
+
+    const result = await new ExportService(
+      {
+        list: async () => [profile],
+      } as any,
+      {
+        get: () => ({
+          validate: async () => {
+            throw new Error('adapter validate failed')
+          },
+        }),
+      } as any,
+    ).export()
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'export',
+      error: {
+        code: 'EXPORT_FAILED',
+        message: 'adapter validate failed',
+      },
+    })
+  })
+
   it('未注册平台适配器时返回结构化失败结果', async () => {
     await new ProfilesStore().write({
       version: 1,
