@@ -846,6 +846,18 @@ describe('cli commands integration', () => {
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
+  it('preview 文本输出底层 settings 读取异常的失败结果', async () => {
+    await fs.rm(geminiSettingsPath, { force: true, recursive: true })
+    await fs.mkdir(geminiSettingsPath, { recursive: true })
+
+    const result = await runCli(['preview', 'gemini-prod'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[preview] 失败')
+    expect(result.stdout).toContain('EISDIR')
+  })
+
   it('preview --json 底层 settings 读取异常时返回失败对象并设置 exitCode 1', async () => {
     await fs.rm(geminiSettingsPath, { force: true, recursive: true })
     await fs.mkdir(geminiSettingsPath, { recursive: true })
@@ -937,6 +949,24 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('rollback')
     expect(payload.error?.code).toBe('ROLLBACK_FAILED')
     expect(payload.error?.message).toBe('无法从 backupId 推断平台：invalid-backup-id')
+  })
+
+  it('rollback 文本输出底层 manifest 读取异常的失败结果', async () => {
+    const useResult = await runCli(['use', 'codex-prod', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    const manifestPath = path.join(runtimeDir, 'backups', 'codex', usePayload.data!.backupId!, 'manifest.json')
+    await fs.rm(manifestPath, { force: true, recursive: true })
+    await fs.mkdir(manifestPath, { recursive: true })
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[rollback] 失败')
+    expect(result.stdout).toContain('EISDIR')
   })
 
   it('rollback --json 底层 manifest 读取异常时返回失败对象并设置 exitCode 1', async () => {
