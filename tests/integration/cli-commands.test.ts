@@ -253,6 +253,19 @@ describe('cli commands integration', () => {
     expect(geminiDetection?.limitations?.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
+  it('current 文本输出底层 state 读取异常的失败结果', async () => {
+    const statePath = path.join(runtimeDir, 'state.json')
+    await fs.rm(statePath, { force: true, recursive: true })
+    await fs.mkdir(statePath, { recursive: true })
+
+    const result = await runCli(['current'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[current] 失败')
+    expect(result.stdout).toContain('EISDIR')
+  })
+
   it('list --json 输出结构化 profiles 与 explainable 摘要', async () => {
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
     await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
@@ -393,6 +406,15 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(result.stdout).toContain('限制说明:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('list 文本输出非法 platform 的失败结果', async () => {
+    const result = await runCli(['list', '--platform', 'openai'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[list] 失败')
+    expect(result.stdout).toContain('不支持的平台：openai')
   })
 
   it('validate --json 失败时返回错误状态并设置 exitCode 1', async () => {
