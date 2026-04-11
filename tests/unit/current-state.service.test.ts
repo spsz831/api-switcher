@@ -131,6 +131,93 @@ describe('current state service', () => {
     })
   })
 
+  it('list 成功时统一组装 profiles 与 explainable 摘要', async () => {
+    const result = await new CurrentStateService(
+      {
+        list: async () => [
+          {
+            id: 'claude-prod',
+            name: 'Claude Prod',
+            platform: 'claude',
+            source: {},
+            apply: {},
+          },
+          {
+            id: 'codex-dev',
+            name: 'Codex Dev',
+            platform: 'codex',
+            source: {},
+            apply: {},
+          },
+          {
+            id: 'gemini-prod',
+            name: 'Gemini Prod',
+            platform: 'gemini',
+            source: {},
+            apply: {},
+          },
+        ],
+      } as any,
+      {
+        read: async () => ({
+          current: {
+            gemini: 'gemini-prod',
+          },
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: (platform: string) => ({
+          detectCurrent: async () => {
+            if (platform === 'claude') {
+              return {
+                platform: 'claude',
+                managed: true,
+                matchedProfileId: 'claude-prod',
+                targetFiles: [],
+                warnings: [],
+                limitations: [],
+              }
+            }
+
+            if (platform === 'gemini') {
+              return {
+                platform: 'gemini',
+                managed: true,
+                matchedProfileId: 'gemini-prod',
+                targetFiles: [],
+                warnings: [{ code: 'GEMINI_WARN', level: 'warning', message: 'Gemini warning' }],
+                limitations: [{ code: 'GEMINI_LIMIT', level: 'limitation', message: 'Gemini limitation' }],
+              }
+            }
+
+            return null
+          },
+        }),
+      } as any,
+    ).list()
+
+    expect(result.ok).toBe(true)
+    expect(result.action).toBe('list')
+    expect(result.data?.profiles.map((item) => item.profile.id)).toEqual(['gemini-prod', 'claude-prod', 'codex-dev'])
+    expect(result.data?.profiles[0]).toMatchObject({
+      current: true,
+      healthStatus: 'valid',
+      riskLevel: 'low',
+    })
+    expect(result.data?.profiles[1]).toMatchObject({
+      current: false,
+      healthStatus: 'warning',
+      riskLevel: 'medium',
+    })
+    expect(result.data?.summary).toEqual({
+      warnings: ['Gemini warning'],
+      limitations: ['Gemini limitation'],
+    })
+    expect(result.warnings).toEqual(result.data?.summary.warnings)
+    expect(result.limitations).toEqual(result.data?.summary.limitations)
+  })
+
   it('list 非法 platform 时返回结构化失败结果', async () => {
     const result = await new CurrentStateService().list({ platform: 'openai' })
 

@@ -49,14 +49,14 @@ export class CurrentStateService {
       assertListOptions(options)
 
       const context = await this.collectStateContext()
-      const data = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
+      const profiles = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
       const summary = this.buildCurrentSummary(context.detections)
 
       return {
         ok: true,
         action: 'list',
         data: {
-          ...data,
+          profiles,
           summary,
         },
         warnings: summary.warnings,
@@ -114,7 +114,7 @@ export class CurrentStateService {
     current: Partial<Record<PlatformName, string>>,
     detectionsByPlatform: DetectionMap,
     options: { platform?: PlatformName },
-  ): ListCommandOutput {
+  ): ListCommandItem[] {
     const matchedManagedProfiles = new Set(
       Object.values(detectionsByPlatform)
         .filter((item): item is CurrentProfileResult => Boolean(item?.managed && item.matchedProfileId))
@@ -133,7 +133,7 @@ export class CurrentStateService {
       return left.profile.id.localeCompare(right.profile.id)
     })
 
-    return { profiles: items, summary: { warnings: [], limitations: [] } }
+    return items
   }
 
   private buildListItem(
