@@ -1,4 +1,5 @@
 import type { Command } from 'commander'
+import { mapResultToExitCode } from '../constants/exit-codes'
 import { renderJson } from '../renderers/json-renderer'
 import { renderText } from '../renderers/text-renderer'
 import { PreviewService } from '../services/preview.service'
@@ -12,6 +13,6 @@ export function registerPreviewCommand(program: Command): void {
       const service = new PreviewService()
       const result = await service.preview(selector)
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = result.ok ? 0 : 1
+      process.exitCode = mapResultToExitCode(result.ok)
     })
 }

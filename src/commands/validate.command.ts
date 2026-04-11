@@ -1,4 +1,5 @@
 import type { Command } from 'commander'
+import { mapResultToExitCode } from '../constants/exit-codes'
 import { renderJson } from '../renderers/json-renderer'
 import { renderText } from '../renderers/text-renderer'
 import { ValidateService } from '../services/validate.service'
@@ -12,6 +13,6 @@ export function registerValidateCommand(program: Command): void {
       const service = new ValidateService()
       const result = await service.validate(selector)
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = result.ok ? 0 : 1
+      process.exitCode = mapResultToExitCode(result.ok)
     })
 }

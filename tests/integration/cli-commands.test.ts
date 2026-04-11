@@ -120,7 +120,7 @@ afterEach(async () => {
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
-async function runCli(argv: string[]): Promise<CliRunResult> {
+async function runCli(argv: string[], envOverrides: NodeJS.ProcessEnv = {}): Promise<CliRunResult> {
   const env = {
     ...process.env,
     API_SWITCHER_RUNTIME_DIR: runtimeDir,
@@ -132,6 +132,7 @@ async function runCli(argv: string[]): Promise<CliRunResult> {
     API_SWITCHER_CODEX_CONFIG_PATH: codexConfigPath,
     API_SWITCHER_CODEX_AUTH_PATH: codexAuthPath,
     API_SWITCHER_GEMINI_SETTINGS_PATH: geminiSettingsPath,
+    ...envOverrides,
   }
 
   try {
@@ -2183,6 +2184,23 @@ describe('cli commands integration', () => {
     const state = await new StateStore().read()
     expect(state.current.claude).toBeUndefined()
     expect(state.lastSwitch?.status).toBe('rolled-back')
+  })
+
+  it('CLI 顶层未捕获异常时返回 stderr 并设置 exitCode 2', async () => {
+    const crashHookPath = path.join(runtimeDir, 'crash-on-stdout.cjs')
+    await fs.writeFile(
+      crashHookPath,
+      "process.stdout.write = () => { throw new Error('stdout crashed for test') }\n",
+      'utf8',
+    )
+
+    const result = await runCli(['current'], {
+      NODE_OPTIONS: `--require ${crashHookPath}`,
+    })
+
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain('stdout crashed for test')
+    expect(result.exitCode).toBe(2)
   })
 
   it('未知命令保持 Commander 的 stderr 失败出口', async () => {

@@ -1,4 +1,5 @@
 import type { Command } from 'commander'
+import { mapResultToExitCode } from '../constants/exit-codes'
 import { renderJson } from '../renderers/json-renderer'
 import { renderText } from '../renderers/text-renderer'
 import { AddService } from '../services/add.service'
@@ -15,6 +16,6 @@ export function registerAddCommand(program: Command): void {
       const service = new AddService()
       const result = await service.add(options)
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = result.ok ? 0 : 1
+      process.exitCode = mapResultToExitCode(result.ok)
     })
 }

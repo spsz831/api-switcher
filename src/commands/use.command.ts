@@ -1,4 +1,5 @@
 import type { Command } from 'commander'
+import { mapResultToExitCode } from '../constants/exit-codes'
 import { renderJson } from '../renderers/json-renderer'
 import { renderText } from '../renderers/text-renderer'
 import { SwitchService } from '../services/switch.service'
@@ -14,6 +15,6 @@ export function registerUseCommand(program: Command): void {
       const service = new SwitchService()
       const result = await service.use(selector, options)
       process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = result.ok ? 0 : 1
+      process.exitCode = mapResultToExitCode(result.ok)
     })
 }
