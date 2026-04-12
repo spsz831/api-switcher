@@ -22,6 +22,21 @@ afterEach(async () => {
 })
 
 describe('switch service', () => {
+  it('selector 不存在时返回结构化失败结果', async () => {
+    await new ProfilesStore().write({ version: 1, profiles: [] })
+
+    const result = await new SwitchService().use('missing-profile')
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'use',
+      error: {
+        code: 'PROFILE_NOT_FOUND',
+        message: '未找到配置档：missing-profile',
+      },
+    })
+  })
+
   it('validation 失败时返回结构化失败结果，并带出 explainable warnings 与 limitations', async () => {
     await new ProfilesStore().write({
       version: 1,
