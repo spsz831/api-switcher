@@ -103,7 +103,7 @@ describe('export service', () => {
       ok: false,
       action: 'export',
       error: {
-        code: 'EXPORT_FAILED',
+        code: 'ADAPTER_NOT_REGISTERED',
         message: '未注册的平台适配器：openai',
       },
     })
