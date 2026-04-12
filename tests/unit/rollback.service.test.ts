@@ -39,7 +39,7 @@ describe('rollback service', () => {
       ok: false,
       action: 'rollback',
       error: {
-        code: 'ROLLBACK_FAILED',
+        code: 'INVALID_BACKUP_ID',
         message: '无法从 backupId 推断平台：invalid-backup-id',
       },
     })
