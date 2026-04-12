@@ -2,7 +2,7 @@ import { collectIssueMessages } from '../domain/masking'
 import { AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput } from '../types/command'
-import { ProfileService } from './profile.service'
+import { ProfileNotFoundError, ProfileService } from './profile.service'
 
 export class ValidateService {
   constructor(
@@ -35,7 +35,7 @@ export class ValidateService {
         ok: false,
         action: 'validate',
         error: {
-          code: 'VALIDATE_FAILED',
+          code: error instanceof ProfileNotFoundError ? 'PROFILE_NOT_FOUND' : 'VALIDATE_FAILED',
           message: error instanceof Error ? error.message : 'validate 执行失败',
         },
       }

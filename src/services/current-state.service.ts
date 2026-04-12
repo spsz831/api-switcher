@@ -67,7 +67,7 @@ export class CurrentStateService {
         ok: false,
         action: 'list',
         error: {
-          code: 'LIST_FAILED',
+          code: error instanceof UnsupportedPlatformError ? 'UNSUPPORTED_PLATFORM' : 'LIST_FAILED',
           message: error instanceof Error ? error.message : 'list 执行失败',
         },
       }
@@ -194,8 +194,15 @@ export class CurrentStateService {
   }
 }
 
+class UnsupportedPlatformError extends Error {
+  constructor(platform: string) {
+    super(`不支持的平台：${platform}`)
+    this.name = 'UnsupportedPlatformError'
+  }
+}
+
 function assertListOptions(options: { platform?: string }): asserts options is { platform?: PlatformName } {
   if (options.platform && !PLATFORM_NAMES.includes(options.platform as PlatformName)) {
-    throw new Error(`不支持的平台：${options.platform}`)
+    throw new UnsupportedPlatformError(options.platform)
   }
 }

@@ -4,6 +4,13 @@ import { ClaudeAdapter } from '../adapters/claude/claude.adapter'
 import { CodexAdapter } from '../adapters/codex/codex.adapter'
 import { GeminiAdapter } from '../adapters/gemini/gemini.adapter'
 
+export class AdapterNotRegisteredError extends Error {
+  constructor(platform: string) {
+    super(`未注册的平台适配器：${platform}`)
+    this.name = 'AdapterNotRegisteredError'
+  }
+}
+
 export class AdapterRegistry {
   private readonly adapters = new Map<PlatformName, PlatformAdapter>()
 
@@ -16,7 +23,7 @@ export class AdapterRegistry {
   get(platform: PlatformName): PlatformAdapter {
     const adapter = this.adapters.get(platform)
     if (!adapter) {
-      throw new Error(`未注册的平台适配器：${platform}`)
+      throw new AdapterNotRegisteredError(platform)
     }
 
     return adapter

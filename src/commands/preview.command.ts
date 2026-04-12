@@ -1,7 +1,5 @@
 import type { Command } from 'commander'
-import { mapCommandResultToExitCode } from '../constants/exit-codes'
-import { renderJson } from '../renderers/json-renderer'
-import { renderText } from '../renderers/text-renderer'
+import { outputCommandResult } from './output-command-result'
 import { PreviewService } from '../services/preview.service'
 
 export function registerPreviewCommand(program: Command): void {
@@ -12,7 +10,6 @@ export function registerPreviewCommand(program: Command): void {
     .action(async (selector: string, options: { json?: boolean }) => {
       const service = new PreviewService()
       const result = await service.preview(selector)
-      process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = mapCommandResultToExitCode(result)
+      outputCommandResult(result, options.json)
     })
 }

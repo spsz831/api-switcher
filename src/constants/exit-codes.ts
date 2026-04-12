@@ -11,21 +11,13 @@ const BUSINESS_FAILURE_CODES = new Set([
   'CONFIRMATION_REQUIRED',
   'BACKUP_NOT_FOUND',
   'APPLY_FAILED',
+  'PROFILE_NOT_FOUND',
+  'UNSUPPORTED_PLATFORM',
+  'DUPLICATE_PROFILE_ID',
+  'GEMINI_URL_UNSUPPORTED',
+  'ADAPTER_NOT_REGISTERED',
+  'INVALID_BACKUP_ID',
 ])
-
-const BUSINESS_FAILURE_MESSAGE_PATTERNS: Partial<Record<string, RegExp[]>> = {
-  ADD_FAILED: [
-    /^不支持的平台：/,
-    /^gemini 平台暂不支持 --url/,
-    /^配置 ID 已存在：/,
-  ],
-  EXPORT_FAILED: [/^未注册的平台适配器：/],
-  LIST_FAILED: [/^不支持的平台：/],
-  PREVIEW_FAILED: [/^未找到配置档：/],
-  ROLLBACK_FAILED: [/^无法从 backupId 推断平台：/],
-  USE_FAILED: [/^未找到配置档：/],
-  VALIDATE_FAILED: [/^未找到配置档：/],
-}
 
 export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES]
 
@@ -43,11 +35,6 @@ export function isRuntimeFailureResult(result: Pick<CommandResult, 'ok' | 'error
   }
 
   if (BUSINESS_FAILURE_CODES.has(result.error.code)) {
-    return false
-  }
-
-  const patterns = BUSINESS_FAILURE_MESSAGE_PATTERNS[result.error.code]
-  if (patterns?.some((pattern) => pattern.test(result.error?.message ?? ''))) {
     return false
   }
 

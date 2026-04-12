@@ -450,7 +450,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('validate')
-    expect(payload.error?.code).toBe('VALIDATE_FAILED')
+    expect(payload.error?.code).toBe('PROFILE_NOT_FOUND')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
@@ -484,7 +484,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('export')
-    expect(payload.error?.code).toBe('EXPORT_FAILED')
+    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
     expect(payload.error?.message).toBe('未注册的平台适配器：openai')
   })
 
@@ -865,7 +865,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('preview')
-    expect(payload.error?.code).toBe('PREVIEW_FAILED')
+    expect(payload.error?.code).toBe('PROFILE_NOT_FOUND')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
@@ -904,7 +904,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('use')
-    expect(payload.error?.code).toBe('USE_FAILED')
+    expect(payload.error?.code).toBe('PROFILE_NOT_FOUND')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
@@ -970,7 +970,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('rollback')
-    expect(payload.error?.code).toBe('ROLLBACK_FAILED')
+    expect(payload.error?.code).toBe('INVALID_BACKUP_ID')
     expect(payload.error?.message).toBe('无法从 backupId 推断平台：invalid-backup-id')
   })
 
@@ -1555,7 +1555,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('add')
-    expect(payload.error?.code).toBe('ADD_FAILED')
+    expect(payload.error?.code).toBe('UNSUPPORTED_PLATFORM')
     expect(payload.error?.message).toBe('不支持的平台：openai')
   })
 
@@ -1576,7 +1576,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('add')
-    expect(payload.error?.code).toBe('ADD_FAILED')
+    expect(payload.error?.code).toBe('GEMINI_URL_UNSUPPORTED')
     expect(payload.error?.message).toBe('gemini 平台暂不支持 --url，请改用默认官方链路。')
   })
 
@@ -1588,7 +1588,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('list')
-    expect(payload.error?.code).toBe('LIST_FAILED')
+    expect(payload.error?.code).toBe('UNSUPPORTED_PLATFORM')
     expect(payload.error?.message).toBe('不支持的平台：openai')
   })
 

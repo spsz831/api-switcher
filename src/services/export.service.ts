@@ -1,5 +1,5 @@
 import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
 import { ProfileService } from './profile.service'
@@ -50,7 +50,7 @@ export class ExportService {
         ok: false,
         action: 'export',
         error: {
-          code: 'EXPORT_FAILED',
+          code: error instanceof AdapterNotRegisteredError ? 'ADAPTER_NOT_REGISTERED' : 'EXPORT_FAILED',
           message: error instanceof Error ? error.message : 'export 执行失败',
         },
       }

@@ -1,7 +1,5 @@
 import type { Command } from 'commander'
-import { mapCommandResultToExitCode } from '../constants/exit-codes'
-import { renderJson } from '../renderers/json-renderer'
-import { renderText } from '../renderers/text-renderer'
+import { outputCommandResult } from './output-command-result'
 import { AddService } from '../services/add.service'
 
 export function registerAddCommand(program: Command): void {
@@ -15,7 +13,6 @@ export function registerAddCommand(program: Command): void {
     .action(async (options: { platform: string; name: string; key: string; url?: string; json?: boolean }) => {
       const service = new AddService()
       const result = await service.add(options)
-      process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = mapCommandResultToExitCode(result)
+      outputCommandResult(result, options.json)
     })
 }

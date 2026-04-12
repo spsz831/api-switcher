@@ -3,13 +3,27 @@ import { AdapterRegistry } from '../registry/adapter-registry'
 import type { AddProfileInput, AddCommandOutput, CommandResult } from '../types/command'
 import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
 import type { Profile } from '../types/profile'
-import { ProfileService } from './profile.service'
+import { DuplicateProfileIdError, ProfileService } from './profile.service'
 
 type AddServiceInput = {
   platform: string
   name: string
   key: string
   url?: string
+}
+
+class UnsupportedPlatformError extends Error {
+  constructor(platform: string) {
+    super(`不支持的平台：${platform}`)
+    this.name = 'UnsupportedPlatformError'
+  }
+}
+
+class GeminiUrlUnsupportedError extends Error {
+  constructor() {
+    super('gemini 平台暂不支持 --url，请改用默认官方链路。')
+    this.name = 'GeminiUrlUnsupportedError'
+  }
 }
 
 export class AddService {
@@ -59,7 +73,7 @@ export class AddService {
         ok: false,
         action: 'add',
         error: {
-          code: 'ADD_FAILED',
+          code: mapAddErrorCode(error),
           message: error instanceof Error ? error.message : 'add 执行失败',
         },
       }
@@ -69,12 +83,28 @@ export class AddService {
 
 function assertAddInput(input: AddServiceInput): asserts input is AddProfileInput {
   if (!PLATFORM_NAMES.includes(input.platform as PlatformName)) {
-    throw new Error(`不支持的平台：${input.platform}`)
+    throw new UnsupportedPlatformError(input.platform)
   }
 
   if (input.platform === 'gemini' && input.url) {
-    throw new Error('gemini 平台暂不支持 --url，请改用默认官方链路。')
+    throw new GeminiUrlUnsupportedError()
   }
+}
+
+function mapAddErrorCode(error: unknown): string {
+  if (error instanceof UnsupportedPlatformError) {
+    return 'UNSUPPORTED_PLATFORM'
+  }
+
+  if (error instanceof GeminiUrlUnsupportedError) {
+    return 'GEMINI_URL_UNSUPPORTED'
+  }
+
+  if (error instanceof DuplicateProfileIdError) {
+    return 'DUPLICATE_PROFILE_ID'
+  }
+
+  return 'ADD_FAILED'
 }
 
 function buildProfile(input: AddProfileInput): Profile {

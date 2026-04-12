@@ -5,10 +5,17 @@ import { StateStore } from '../stores/state.store'
 import type { CommandResult, RollbackCommandOutput } from '../types/command'
 import type { PlatformName } from '../types/platform'
 
+class InvalidBackupIdError extends Error {
+  constructor(backupId: string) {
+    super(`无法从 backupId 推断平台：${backupId}`)
+    this.name = 'InvalidBackupIdError'
+  }
+}
+
 function parsePlatformFromBackupId(backupId: string): PlatformName {
   const matched = backupId.match(/^snapshot-(claude|codex|gemini)-/)
   if (!matched) {
-    throw new Error(`无法从 backupId 推断平台：${backupId}`)
+    throw new InvalidBackupIdError(backupId)
   }
 
   return matched[1] as PlatformName
@@ -96,7 +103,7 @@ export class RollbackService {
         ok: false,
         action: 'rollback',
         error: {
-          code: 'ROLLBACK_FAILED',
+          code: error instanceof InvalidBackupIdError ? 'INVALID_BACKUP_ID' : 'ROLLBACK_FAILED',
           message: error instanceof Error ? error.message : 'rollback 执行失败',
         },
       }

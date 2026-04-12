@@ -4,7 +4,7 @@ import type { ValidationResult } from '../types/adapter'
 import { AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CommandResult, UseCommandOutput } from '../types/command'
-import { ProfileService } from './profile.service'
+import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { SnapshotService } from './snapshot.service'
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
@@ -164,7 +164,7 @@ export class SwitchService {
         ok: false,
         action: 'use',
         error: {
-          code: 'USE_FAILED',
+          code: error instanceof ProfileNotFoundError ? 'PROFILE_NOT_FOUND' : 'USE_FAILED',
           message: error instanceof Error ? error.message : 'use 执行失败',
         },
       }

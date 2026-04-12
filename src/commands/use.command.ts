@@ -1,7 +1,5 @@
 import type { Command } from 'commander'
-import { mapCommandResultToExitCode } from '../constants/exit-codes'
-import { renderJson } from '../renderers/json-renderer'
-import { renderText } from '../renderers/text-renderer'
+import { outputCommandResult } from './output-command-result'
 import { SwitchService } from '../services/switch.service'
 
 export function registerUseCommand(program: Command): void {
@@ -14,7 +12,6 @@ export function registerUseCommand(program: Command): void {
     .action(async (selector: string, options: { json?: boolean; force?: boolean; dryRun?: boolean }) => {
       const service = new SwitchService()
       const result = await service.use(selector, options)
-      process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = mapCommandResultToExitCode(result)
+      outputCommandResult(result, options.json)
     })
 }

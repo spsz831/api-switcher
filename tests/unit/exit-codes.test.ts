@@ -29,7 +29,7 @@ describe('exit codes', () => {
       ok: false,
       action: 'validate',
       error: {
-        code: 'VALIDATE_FAILED',
+        code: 'PROFILE_NOT_FOUND',
         message: '未找到配置档：missing-profile',
       },
     } satisfies CommandResult

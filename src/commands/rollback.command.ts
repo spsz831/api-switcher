@@ -1,7 +1,5 @@
 import type { Command } from 'commander'
-import { mapCommandResultToExitCode } from '../constants/exit-codes'
-import { renderJson } from '../renderers/json-renderer'
-import { renderText } from '../renderers/text-renderer'
+import { outputCommandResult } from './output-command-result'
 import { RollbackService } from '../services/rollback.service'
 
 export function registerRollbackCommand(program: Command): void {
@@ -12,7 +10,6 @@ export function registerRollbackCommand(program: Command): void {
     .action(async (backupId: string | undefined, options: { json?: boolean }) => {
       const service = new RollbackService()
       const result = await service.rollback(backupId)
-      process.stdout.write(`${options.json ? renderJson(result) : renderText(result)}\n`)
-      process.exitCode = mapCommandResultToExitCode(result)
+      outputCommandResult(result, options.json)
     })
 }
