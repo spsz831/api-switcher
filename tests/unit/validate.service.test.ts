@@ -122,7 +122,7 @@ describe('validate service', () => {
       ok: false,
       action: 'validate',
       error: {
-        code: 'VALIDATE_FAILED',
+        code: 'ADAPTER_NOT_REGISTERED',
         message: '未注册的平台适配器：openai',
       },
     })

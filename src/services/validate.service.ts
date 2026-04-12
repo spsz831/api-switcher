@@ -1,5 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput } from '../types/command'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
@@ -35,7 +35,11 @@ export class ValidateService {
         ok: false,
         action: 'validate',
         error: {
-          code: error instanceof ProfileNotFoundError ? 'PROFILE_NOT_FOUND' : 'VALIDATE_FAILED',
+          code: error instanceof ProfileNotFoundError
+            ? 'PROFILE_NOT_FOUND'
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : 'VALIDATE_FAILED',
           message: error instanceof Error ? error.message : 'validate 执行失败',
         },
       }
