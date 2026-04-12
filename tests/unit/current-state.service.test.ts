@@ -225,7 +225,7 @@ describe('current state service', () => {
       ok: false,
       action: 'list',
       error: {
-        code: 'LIST_FAILED',
+        code: 'UNSUPPORTED_PLATFORM',
         message: '不支持的平台：openai',
       },
     })

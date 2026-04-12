@@ -28,7 +28,7 @@ describe('preview service', () => {
       ok: false,
       action: 'preview',
       error: {
-        code: 'PREVIEW_FAILED',
+        code: 'PROFILE_NOT_FOUND',
         message: '未找到配置档：missing-profile',
       },
     })

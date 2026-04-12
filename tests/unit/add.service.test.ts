@@ -30,7 +30,7 @@ describe('add service', () => {
       ok: false,
       action: 'add',
       error: {
-        code: 'ADD_FAILED',
+        code: 'UNSUPPORTED_PLATFORM',
         message: '不支持的平台：openai',
       },
     })
@@ -60,7 +60,7 @@ describe('add service', () => {
       ok: false,
       action: 'add',
       error: {
-        code: 'ADD_FAILED',
+        code: 'DUPLICATE_PROFILE_ID',
         message: '配置 ID 已存在：claude-dup-prod',
       },
     })
