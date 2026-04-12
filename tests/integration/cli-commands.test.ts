@@ -262,7 +262,7 @@ describe('cli commands integration', () => {
     const result = await runCli(['current'])
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(result.stdout).toContain('[current] 失败')
     expect(result.stdout).toContain('EISDIR')
   })
@@ -876,7 +876,7 @@ describe('cli commands integration', () => {
     const result = await runCli(['preview', 'gemini-prod'])
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(result.stdout).toContain('[preview] 失败')
     expect(result.stdout).toContain('EISDIR')
   })
@@ -889,7 +889,7 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult(result.stdout)
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('preview')
     expect(payload.error?.code).toBe('PREVIEW_FAILED')
@@ -916,7 +916,7 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult(result.stdout)
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('USE_FAILED')
@@ -987,7 +987,7 @@ describe('cli commands integration', () => {
     const result = await runCli(['rollback', usePayload.data!.backupId!])
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(result.stdout).toContain('[rollback] 失败')
     expect(result.stdout).toContain('EISDIR')
   })
@@ -1006,7 +1006,7 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult(result.stdout)
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(2)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('rollback')
     expect(payload.error?.code).toBe('ROLLBACK_FAILED')
