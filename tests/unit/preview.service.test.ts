@@ -54,7 +54,7 @@ describe('preview service', () => {
       ok: false,
       action: 'preview',
       error: {
-        code: 'PREVIEW_FAILED',
+        code: 'ADAPTER_NOT_REGISTERED',
         message: '未注册的平台适配器：openai',
       },
     })

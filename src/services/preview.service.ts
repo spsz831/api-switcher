@@ -1,5 +1,5 @@
 import { evaluateRisk } from '../domain/risk-engine'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import type { CommandResult, PreviewCommandOutput } from '../types/command'
 
@@ -39,7 +39,11 @@ export class PreviewService {
         ok: false,
         action: 'preview',
         error: {
-          code: error instanceof ProfileNotFoundError ? 'PROFILE_NOT_FOUND' : 'PREVIEW_FAILED',
+          code: error instanceof ProfileNotFoundError
+            ? 'PROFILE_NOT_FOUND'
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : 'PREVIEW_FAILED',
           message: error instanceof Error ? error.message : 'preview 执行失败',
         },
       }
