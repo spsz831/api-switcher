@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest'
 import type { CommandResult } from '../../src/types/command'
 import { EXIT_CODES, isRuntimeFailureResult, mapCommandResultToExitCode, mapResultToExitCode } from '../../src/constants/exit-codes'
 
+const businessFailureCodes = [
+  'VALIDATION_FAILED',
+  'CONFIRMATION_REQUIRED',
+  'BACKUP_NOT_FOUND',
+  'APPLY_FAILED',
+  'PROFILE_NOT_FOUND',
+  'UNSUPPORTED_PLATFORM',
+  'DUPLICATE_PROFILE_ID',
+  'GEMINI_URL_UNSUPPORTED',
+  'ADAPTER_NOT_REGISTERED',
+  'INVALID_BACKUP_ID',
+] as const
+
 describe('exit codes', () => {
   it('成功结果返回 0', () => {
     expect(mapResultToExitCode(true)).toBe(EXIT_CODES.success)
@@ -38,5 +51,21 @@ describe('exit codes', () => {
     expect(mapCommandResultToExitCode(runtimeResult)).toBe(EXIT_CODES.runtimeFailure)
     expect(isRuntimeFailureResult(businessResult)).toBe(false)
     expect(mapCommandResultToExitCode(businessResult)).toBe(EXIT_CODES.businessFailure)
+  })
+
+  it('所有业务错误码都映射为业务失败退出码', () => {
+    for (const code of businessFailureCodes) {
+      const result = {
+        ok: false,
+        action: 'validate',
+        error: {
+          code,
+          message: `业务失败：${code}`,
+        },
+      } satisfies CommandResult
+
+      expect(isRuntimeFailureResult(result)).toBe(false)
+      expect(mapCommandResultToExitCode(result)).toBe(EXIT_CODES.businessFailure)
+    }
   })
 })
