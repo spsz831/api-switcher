@@ -1,7 +1,7 @@
 import { collectIssueMessages } from '../domain/masking'
 import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CommandResult, UseCommandOutput } from '../types/command'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
@@ -164,7 +164,11 @@ export class SwitchService {
         ok: false,
         action: 'use',
         error: {
-          code: error instanceof ProfileNotFoundError ? 'PROFILE_NOT_FOUND' : 'USE_FAILED',
+          code: error instanceof ProfileNotFoundError
+            ? 'PROFILE_NOT_FOUND'
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : 'USE_FAILED',
           message: error instanceof Error ? error.message : 'use 执行失败',
         },
       }

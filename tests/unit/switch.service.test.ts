@@ -37,6 +37,32 @@ describe('switch service', () => {
     })
   })
 
+  it('未注册平台适配器时返回结构化失败结果', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-missing-adapter',
+          name: 'openai-missing-adapter',
+          platform: 'openai' as any,
+          source: {},
+          apply: {},
+        },
+      ],
+    })
+
+    const result = await new SwitchService().use('openai-missing-adapter')
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'use',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：openai',
+      },
+    })
+  })
+
   it('validation 失败时返回结构化失败结果，并带出 explainable warnings 与 limitations', async () => {
     await new ProfilesStore().write({
       version: 1,
