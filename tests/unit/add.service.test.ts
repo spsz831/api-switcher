@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { AdapterNotRegisteredError } from '../../src/registry/adapter-registry'
 import { AddService } from '../../src/services/add.service'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 import type { Profile } from '../../src/types/profile'
@@ -32,6 +33,32 @@ describe('add service', () => {
       error: {
         code: 'UNSUPPORTED_PLATFORM',
         message: '不支持的平台：openai',
+      },
+    })
+  })
+
+  it('未注册平台适配器时返回结构化失败结果', async () => {
+    const result = await new AddService(
+      {
+        add: async () => undefined,
+      } as any,
+      {
+        get: () => {
+          throw new AdapterNotRegisteredError('claude')
+        },
+      } as any,
+    ).add({
+      platform: 'claude',
+      name: 'missing-adapter',
+      key: 'sk-test-123456',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'add',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：claude',
       },
     })
   })

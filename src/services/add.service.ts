@@ -1,5 +1,5 @@
 import { evaluateRisk } from '../domain/risk-engine'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { AddProfileInput, AddCommandOutput, CommandResult } from '../types/command'
 import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
 import type { Profile } from '../types/profile'
@@ -102,6 +102,10 @@ function mapAddErrorCode(error: unknown): string {
 
   if (error instanceof DuplicateProfileIdError) {
     return 'DUPLICATE_PROFILE_ID'
+  }
+
+  if (error instanceof AdapterNotRegisteredError) {
+    return 'ADAPTER_NOT_REGISTERED'
   }
 
   return 'ADD_FAILED'
