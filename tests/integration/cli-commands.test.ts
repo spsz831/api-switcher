@@ -418,6 +418,31 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('不支持的平台：openai')
   })
 
+  it('list 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const result = await runCli(['list', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('list')
+    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
+    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
+  })
+
   it('validate --json 失败时返回错误状态并设置 exitCode 1', async () => {
     const result = await runCli(['validate', 'gemini-invalid', '--json'])
     const payload = parseJsonResult<{ items: Array<{ profileId: string }> }>(result.stdout)

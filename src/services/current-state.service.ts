@@ -49,6 +49,12 @@ export class CurrentStateService {
       assertListOptions(options)
 
       const context = await this.collectStateContext()
+      const targetProfiles = options.platform
+        ? context.profiles.filter((profile) => profile.platform === options.platform)
+        : context.profiles
+      for (const profile of targetProfiles) {
+        this.registry.get(profile.platform)
+      }
       const profiles = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
       const summary = this.buildCurrentSummary(context.detections)
 
