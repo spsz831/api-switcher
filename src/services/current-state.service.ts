@@ -67,7 +67,11 @@ export class CurrentStateService {
         ok: false,
         action: 'list',
         error: {
-          code: error instanceof UnsupportedPlatformError ? 'UNSUPPORTED_PLATFORM' : 'LIST_FAILED',
+          code: error instanceof UnsupportedPlatformError
+            ? 'UNSUPPORTED_PLATFORM'
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : 'LIST_FAILED',
           message: error instanceof Error ? error.message : 'list 执行失败',
         },
       }

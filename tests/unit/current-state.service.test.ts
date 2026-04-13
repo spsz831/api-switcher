@@ -160,6 +160,34 @@ describe('current state service', () => {
     })
   })
 
+  it('list 未注册平台适配器时返回结构化失败结果', async () => {
+    const result = await new CurrentStateService(
+      {
+        list: async () => [],
+      } as any,
+      {
+        read: async () => ({
+          current: {},
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: () => {
+          throw new AdapterNotRegisteredError('claude')
+        },
+      } as any,
+    ).list()
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'list',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：claude',
+      },
+    })
+  })
+
   it('list 成功时统一组装 profiles 与 explainable 摘要', async () => {
     const result = await new CurrentStateService(
       {
