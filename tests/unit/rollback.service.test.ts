@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { AdapterNotRegisteredError } from '../../src/registry/adapter-registry'
 import { RollbackService } from '../../src/services/rollback.service'
 import { SnapshotStore } from '../../src/stores/snapshot.store'
 import { StateStore } from '../../src/stores/state.store'
@@ -41,6 +42,46 @@ describe('rollback service', () => {
       error: {
         code: 'INVALID_BACKUP_ID',
         message: '无法从 backupId 推断平台：invalid-backup-id',
+      },
+    })
+  })
+
+  it('未注册平台适配器时返回结构化失败结果', async () => {
+    const backupId = 'snapshot-gemini-20260409121100-abcdef'
+
+    const result = await new RollbackService(
+      {
+        get: () => {
+          throw new AdapterNotRegisteredError('gemini')
+        },
+      } as any,
+      {
+        readManifest: async () => ({
+          manifest: {
+            backupId,
+            platform: 'gemini',
+            profileId: 'gemini-prod',
+            createdAt: '2026-04-09T12:11:00.000Z',
+            reason: 'use',
+            targetFiles: [],
+          },
+          directoryPath: path.join(runtimeDir, 'backups', 'gemini', backupId),
+        }),
+      } as any,
+      {
+        read: async () => ({
+          current: { gemini: 'gemini-prod' },
+          snapshots: [],
+        }),
+      } as any,
+    ).rollback(backupId)
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'rollback',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：gemini',
       },
     })
   })

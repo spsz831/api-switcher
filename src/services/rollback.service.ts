@@ -1,5 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { SnapshotStore } from '../stores/snapshot.store'
 import { StateStore } from '../stores/state.store'
 import type { CommandResult, RollbackCommandOutput } from '../types/command'
@@ -103,7 +103,11 @@ export class RollbackService {
         ok: false,
         action: 'rollback',
         error: {
-          code: error instanceof InvalidBackupIdError ? 'INVALID_BACKUP_ID' : 'ROLLBACK_FAILED',
+          code: error instanceof InvalidBackupIdError
+            ? 'INVALID_BACKUP_ID'
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : 'ROLLBACK_FAILED',
           message: error instanceof Error ? error.message : 'rollback 执行失败',
         },
       }
