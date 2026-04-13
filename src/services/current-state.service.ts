@@ -1,4 +1,4 @@
-import { AdapterRegistry } from '../registry/adapter-registry'
+import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CurrentProfileResult, ValidationIssue } from '../types/adapter'
 import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandOutput } from '../types/command'
@@ -37,7 +37,7 @@ export class CurrentStateService {
         ok: false,
         action: 'current',
         error: {
-          code: 'CURRENT_FAILED',
+          code: error instanceof AdapterNotRegisteredError ? 'ADAPTER_NOT_REGISTERED' : 'CURRENT_FAILED',
           message: error instanceof Error ? error.message : 'current 执行失败',
         },
       }

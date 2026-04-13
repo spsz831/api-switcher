@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { AdapterNotRegisteredError } from '../../src/registry/adapter-registry'
 import { CurrentStateService } from '../../src/services/current-state.service'
 
 let runtimeDir: string
@@ -70,6 +71,34 @@ describe('current state service', () => {
       error: {
         code: 'CURRENT_FAILED',
         message: 'detect current failed',
+      },
+    })
+  })
+
+  it('getCurrent 未注册平台适配器时返回结构化失败结果', async () => {
+    const result = await new CurrentStateService(
+      {
+        list: async () => [],
+      } as any,
+      {
+        read: async () => ({
+          current: {},
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: () => {
+          throw new AdapterNotRegisteredError('claude')
+        },
+      } as any,
+    ).getCurrent()
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'current',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：claude',
       },
     })
   })
