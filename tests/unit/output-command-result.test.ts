@@ -57,6 +57,23 @@ describe('output command result', () => {
     expect(process.exitCode).toBe(EXIT_CODES.businessFailure)
   })
 
+  it('适配器未注册时设置业务失败退出码', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: false,
+      action: 'list',
+      error: {
+        code: 'ADAPTER_NOT_REGISTERED',
+        message: '未注册的平台适配器：claude',
+      },
+    }
+
+    outputCommandResult(result)
+
+    expect(writeSpy).toHaveBeenCalledWith('[list] 失败\n未注册的平台适配器：claude\n')
+    expect(process.exitCode).toBe(EXIT_CODES.businessFailure)
+  })
+
   it('运行失败时设置运行失败退出码', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const result: CommandResult = {
