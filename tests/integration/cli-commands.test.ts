@@ -488,6 +488,31 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('未找到配置档：missing-profile')
   })
 
+  it('validate 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const result = await runCli(['validate', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('validate')
+    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
+    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
+  })
+
   it('export 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
     await new ProfilesStore().write({
       version: 1,
