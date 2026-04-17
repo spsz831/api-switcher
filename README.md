@@ -10,19 +10,132 @@
 - [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)：`import preview` 的 mixed-batch 接入实践、失败处理建议和 explainable 词典。
 - [`docs/README.md`](docs/README.md)：`docs/` 目录文档索引。
 
-## 当前阶段
+## 安装
 
-当前仓库已完成首轮工程骨架与核心主链路：
+要求：
 
-- 统一类型与运行时目录
-- `profiles.json` / `state.json` / `backups/` store
-- adapter registry
-- `preview / use / rollback` 服务编排
-- Claude 真实单文件链路
-- Codex 真实双文件链路
-- Gemini 官方稳定契约链路（`settings.json` + env auth）
-- Gemini 实验性代理扩展语义（显式标注，不默认宣称稳定托管）
-- 基础单元测试与集成测试
+- Node.js `>=20`
+- `pnpm` 或可用的 `corepack`
+
+本地开发：
+
+```bash
+corepack enable
+pnpm install
+pnpm build
+```
+
+直接运行源码 CLI：
+
+```bash
+pnpm dev -- --help
+```
+
+构建后运行：
+
+```bash
+node dist/cli/index.js --help
+```
+
+如果要作为命令行工具全局使用，可以在仓库内执行：
+
+```bash
+pnpm link --global
+api-switcher --help
+```
+
+## 发布状态
+
+当前版本已经具备可试用的核心闭环，适合本地自用、小范围评审和 Beta 级试用：
+
+- `preview / use / rollback / current / list / validate / export / add` 已接通
+- Claude、Codex、Gemini 三个平台都有真实适配链路
+- Gemini `project scope` 已支持显式写入、风险提示、独立备份和严格回滚校验
+- `import preview` 与 `import apply` 已落地，其中 `import apply` 当前只支持 Gemini 单条 profile
+- `--json` 公共 contract、机器可读 schema 和消费者文档已发布
+
+当前不应误读为“所有平台所有导入写入能力都完全开放”。首版产品边界仍然是：
+
+- `import apply` 当前仅支持 Gemini
+- 一次只应用单个 imported profile
+- Gemini `project scope` 属于高风险写入，必须显式 `--scope project --force`
+- project scope 的 apply / rollback 以本地实时解析结果为准，不信任导出时的旧 observation
+
+## 快速开始
+
+下面是一条最小安全路径，先加 profile，再预览，再写入，再确认当前状态，最后掌握回滚：
+
+### 1. 添加一个 profile
+
+```bash
+api-switcher add --platform gemini --name "Gemini 生产" --key "$GEMINI_API_KEY"
+```
+
+也可以先用 `api-switcher list` 看现有 profiles，再决定后续用哪个 selector。
+
+### 2. 先预览，不直接写入
+
+```bash
+api-switcher preview gemini
+```
+
+如果你想看结构化结果而不是文本摘要：
+
+```bash
+api-switcher preview gemini --json
+```
+
+### 3. 确认预览无误后再写入
+
+```bash
+api-switcher use gemini
+```
+
+Gemini 如果显式写到 `project scope`，必须额外确认：
+
+```bash
+api-switcher preview gemini --scope project
+api-switcher use gemini --scope project --force
+```
+
+原因是 `project scope` 会覆盖 `user scope` 中的同名字段，影响当前项目。
+
+### 4. 查看当前生效状态
+
+```bash
+api-switcher current
+api-switcher list
+```
+
+### 5. 需要恢复时执行回滚
+
+```bash
+api-switcher rollback <backupId>
+```
+
+如果你刚刚写入的是 Gemini `project scope`，回滚时也要带同一 scope：
+
+```bash
+api-switcher rollback <backupId> --scope project
+```
+
+Gemini 会校验快照记录的 scope 与请求 scope 是否匹配；不匹配会拒绝恢复，而不是“猜测你真正想恢复哪一层”。
+
+## 首次使用建议
+
+第一次接触这个 CLI 时，建议按下面顺序操作：
+
+1. 用 `list` 看已有 profile，或用 `add` 创建一个最小 profile。
+2. 先跑一次 `preview`，确认目标路径、风险等级和 effective config 解释。
+3. 再执行 `use`，不要跳过预览直接写入。
+4. 写入成功后立即跑 `current`，确认当前状态与预期一致。
+5. 记下 `backupId`，确保自己知道如何执行 `rollback`。
+
+如果你要接入自动化脚本或上层 UI，不要从 README 里的文本摘要反推契约，应该直接看：
+
+- [`docs/public-json-schema.md`](docs/public-json-schema.md)
+- [`docs/public-json-output.schema.json`](docs/public-json-output.schema.json)
+- [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)
 
 ## 运行时目录
 
@@ -1331,7 +1444,7 @@ api-switcher import preview exported.json --json
 
 ## 说明
 
-当前实现重点仍然是把可扩展骨架和 `preview -> use -> rollback` 闭环做扎实，后续会继续补齐：
+当前版本已经把首发所需的核心闭环落地，后续迭代重点主要是增强能力，而不是补回缺失的基础命令：
 
 - Claude 真实契约细化
 - Gemini 多作用域真实契约
