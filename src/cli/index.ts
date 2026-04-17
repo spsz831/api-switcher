@@ -3,11 +3,38 @@ import { Command } from 'commander'
 import { registerAddCommand } from '../commands/add.command'
 import { registerCurrentCommand } from '../commands/current.command'
 import { registerExportCommand } from '../commands/export.command'
+import { registerImportCommand } from '../commands/import.command'
 import { registerListCommand } from '../commands/list.command'
 import { registerPreviewCommand } from '../commands/preview.command'
 import { registerRollbackCommand } from '../commands/rollback.command'
+import { registerSchemaCommand } from '../commands/schema.command'
 import { registerUseCommand } from '../commands/use.command'
 import { registerValidateCommand } from '../commands/validate.command'
+
+function normalizeCliArgv(argv: string[]): string[] {
+  if (argv[2] !== 'import') {
+    return argv
+  }
+
+  const subcommand = argv[3]
+  if (!subcommand || subcommand === 'preview' || subcommand === 'apply' || subcommand === 'help' || subcommand === '--help' || subcommand === '-h') {
+    return argv
+  }
+
+  const looksLikeLegacyFileArg = subcommand.includes('\\')
+    || subcommand.includes('/')
+    || subcommand.includes('.')
+
+  if (!looksLikeLegacyFileArg) {
+    return argv
+  }
+
+  return [
+    ...argv.slice(0, 3),
+    'preview',
+    ...argv.slice(3),
+  ]
+}
 
 async function main(): Promise<void> {
   const program = new Command()
@@ -22,8 +49,10 @@ async function main(): Promise<void> {
   registerValidateCommand(program)
   registerRollbackCommand(program)
   registerExportCommand(program)
+  registerImportCommand(program)
+  registerSchemaCommand(program)
 
-  await program.parseAsync(process.argv)
+  await program.parseAsync(normalizeCliArgv(process.argv))
 }
 
 main().catch((error) => {
