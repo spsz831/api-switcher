@@ -3,6 +3,7 @@ import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput } from '../types/command'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
+import { getScopeCapabilityMatrix } from './scope-options'
 
 export class ValidateService {
   constructor(
@@ -17,6 +18,7 @@ export class ValidateService {
         profileId: profile.id,
         platform: profile.platform,
         validation: await this.registry.get(profile.platform).validate(profile),
+        scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
       })))
       const summary = this.buildValidateSummary(items)
 

@@ -4,6 +4,7 @@ import type { AddProfileInput, AddCommandOutput, CommandResult } from '../types/
 import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
 import type { Profile } from '../types/profile'
 import { DuplicateProfileIdError, ProfileService } from './profile.service'
+import { getScopeCapabilityMatrix } from './scope-options'
 
 type AddServiceInput = {
   platform: string
@@ -64,6 +65,7 @@ export class AddService {
           preview,
           risk,
           summary,
+          scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
         },
         warnings: summary.warnings,
         limitations: summary.limitations,

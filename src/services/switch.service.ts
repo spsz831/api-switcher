@@ -3,8 +3,10 @@ import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
-import type { CommandResult, UseCommandOutput } from '../types/command'
+import type { ScopeAvailability } from '../types/capabilities'
+import type { CommandResult, ConfirmationRequiredDetails, UseCommandOutput } from '../types/command'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
+import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
 import { SnapshotService } from './snapshot.service'
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
@@ -12,6 +14,14 @@ function collectValidationWarnings(validation: ValidationResult): string[] {
     ...collectIssueMessages(validation.warnings),
     ...(validation.effectiveConfig?.overrides.map((override) => override.message) ?? []),
   ]))
+}
+
+function findScopeAvailability(scopeAvailability: ScopeAvailability[] | undefined, scope: string | undefined): ScopeAvailability | undefined {
+  if (!scope) {
+    return undefined
+  }
+
+  return scopeAvailability?.find((item) => item.scope === scope)
 }
 
 export class SwitchService {
@@ -22,10 +32,39 @@ export class SwitchService {
     private readonly stateStore = new StateStore(),
   ) {}
 
-  async use(selector: string, options: { force?: boolean; dryRun?: boolean } = {}): Promise<CommandResult<UseCommandOutput>> {
+  async use(selector: string, options: { force?: boolean; dryRun?: boolean; scope?: string } = {}): Promise<CommandResult<UseCommandOutput>> {
     try {
       const profile = await this.profileService.resolve(selector)
+      assertTargetScope(profile.platform, options.scope)
       const adapter = this.registry.get(profile.platform)
+      const scopeCapabilities = getScopeCapabilityMatrix(profile.platform)
+      const resolvedScope = resolveTargetScope(profile.platform, options.scope)
+      const scopeAvailability = profile.platform === 'gemini' && resolvedScope === 'project'
+        ? (await adapter.detectCurrent([profile]))?.scopeAvailability
+        : undefined
+      const targetScopeAvailability = findScopeAvailability(scopeAvailability, resolvedScope)
+
+      if (profile.platform === 'gemini' && resolvedScope === 'project' && targetScopeAvailability?.status !== 'available') {
+        return {
+          ok: false,
+          action: 'use',
+          error: {
+            code: 'USE_FAILED',
+            message: targetScopeAvailability?.reason ?? '目标作用域不可用。',
+            details: {
+              requestedScope: options.scope,
+              resolvedScope,
+              scopePolicy: buildSnapshotScopePolicy(profile.platform, {
+                requestedScope: options.scope,
+                resolvedScope,
+              }),
+              scopeCapabilities,
+              scopeAvailability,
+            },
+          },
+        }
+      }
+
       const validation = await adapter.validate(profile)
 
       if (!validation.ok) {
@@ -42,7 +81,7 @@ export class SwitchService {
         }
       }
 
-      const preview = await adapter.preview(profile)
+      const preview = await adapter.preview(profile, { targetScope: resolvedScope })
       const decision = evaluateRisk(preview, validation, { force: options.force })
       const risk = {
         allowed: decision.allowed,
@@ -55,6 +94,15 @@ export class SwitchService {
         limitations: risk.limitations,
       }
       if (!decision.allowed) {
+        const details: ConfirmationRequiredDetails = {
+          risk,
+          scopePolicy: buildSnapshotScopePolicy(profile.platform, {
+            requestedScope: options.scope,
+            resolvedScope,
+          }),
+          scopeCapabilities,
+          scopeAvailability,
+        }
         return {
           ok: false,
           action: 'use',
@@ -63,7 +111,7 @@ export class SwitchService {
           error: {
             code: 'CONFIRMATION_REQUIRED',
             message: '当前切换需要确认或 --force。',
-            details: risk,
+            details,
           },
         }
       }
@@ -80,6 +128,8 @@ export class SwitchService {
             summary,
             changedFiles: preview.diffSummary.flatMap((item) => (item.hasChanges ? [item.path] : [])),
             noChanges: Boolean(preview.noChanges),
+            scopeCapabilities,
+            scopeAvailability,
           },
           warnings: summary.warnings,
           limitations: summary.limitations,
@@ -98,14 +148,20 @@ export class SwitchService {
             summary,
             changedFiles: [],
             noChanges: true,
+            scopeCapabilities,
+            scopeAvailability,
           },
           warnings: summary.warnings,
           limitations: summary.limitations,
         }
       }
 
-      const backup = await this.snapshotService.createBeforeApply(adapter, profile, { preview, validation })
-      const applyResult = await adapter.apply(profile, { backupId: backup.backupId })
+      const backup = await this.snapshotService.createBeforeApply(adapter, profile, {
+        preview,
+        validation,
+        requestedScope: options.scope,
+      })
+      const applyResult = await adapter.apply(profile, { backupId: backup.backupId, targetScope: resolvedScope })
       if (!applyResult.ok) {
         return {
           ok: false,
@@ -155,6 +211,8 @@ export class SwitchService {
           },
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
+          scopeCapabilities,
+          scopeAvailability,
         },
         warnings,
         limitations,
@@ -168,6 +226,8 @@ export class SwitchService {
             ? 'PROFILE_NOT_FOUND'
             : error instanceof AdapterNotRegisteredError
               ? 'ADAPTER_NOT_REGISTERED'
+              : error instanceof InvalidScopeError
+                ? 'INVALID_SCOPE'
               : 'USE_FAILED',
           message: error instanceof Error ? error.message : 'use 执行失败',
         },

@@ -2,7 +2,9 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { SnapshotService } from '../../src/services/snapshot.service'
 import { SwitchService } from '../../src/services/switch.service'
+import { SnapshotStore } from '../../src/stores/snapshot.store'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 
 let runtimeDir: string
@@ -18,6 +20,7 @@ beforeEach(async () => {
 afterEach(async () => {
   delete process.env.API_SWITCHER_RUNTIME_DIR
   delete process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
+  delete process.env.API_SWITCHER_GEMINI_PROJECT_ROOT
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
@@ -127,6 +130,35 @@ describe('switch service', () => {
         message: '当前切换需要确认或 --force。',
       }),
     }))
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      risk: expect.objectContaining({
+        allowed: false,
+        riskLevel: 'medium',
+      }),
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          use: true,
+          rollback: true,
+          risk: 'high',
+          confirmationRequired: true,
+        }),
+        expect.objectContaining({
+          scope: 'system-overrides',
+          use: false,
+          rollback: false,
+        }),
+      ]),
+      scopePolicy: expect.objectContaining({
+        requestedScope: undefined,
+        resolvedScope: 'user',
+        defaultScope: 'user',
+        explicitScope: false,
+        highRisk: false,
+        rollbackScopeMatchRequired: true,
+      }),
+      scopeAvailability: undefined,
+    }))
     expect(result.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
     expect(result.warnings).toContain('当前 Gemini settings.json 存在非托管字段：ui')
     expect(result.limitations).toEqual([
@@ -134,6 +166,42 @@ describe('switch service', () => {
       '当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。',
       '官方文档当前未确认自定义 base URL 的稳定写入契约。',
     ])
+  })
+
+  it('project scope 不可用时先返回 availability 结构化失败，不进入 CONFIRMATION_REQUIRED', async () => {
+    process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = path.join(runtimeDir, 'missing-project-root')
+    await fs.writeFile(settingsPath, JSON.stringify({ enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'gemini-project-unresolved',
+          name: 'gemini-project-unresolved',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: {
+            GEMINI_API_KEY: 'gm-live-123456',
+            enforcedAuthType: 'gemini-api-key',
+          },
+        },
+      ],
+    })
+
+    const result = await new SwitchService().use('gemini-project-unresolved', { scope: 'project' })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('USE_FAILED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      requestedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+    expect(result.error?.code).not.toBe('CONFIRMATION_REQUIRED')
   })
 
   it('apply 失败时返回 APPLY_FAILED，并透传 apply explainable 摘要', async () => {
@@ -260,7 +328,80 @@ describe('switch service', () => {
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
     })
+    expect(result.data?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'user',
+        use: true,
+        rollback: true,
+      }),
+      expect.objectContaining({
+        scope: 'system-defaults',
+        use: false,
+        rollback: false,
+      }),
+    ]))
     expect(result.data?.noChanges).toBe(true)
     expect(result.data?.changedFiles).toEqual([])
+  })
+
+  it('createBeforeApply 传入 provenance 时写入 snapshot manifest', async () => {
+    await fs.writeFile(settingsPath, JSON.stringify({ enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+
+    const profile = {
+      id: 'gemini-imported',
+      name: 'gemini-imported',
+      platform: 'gemini' as const,
+      source: { authType: 'gemini-api-key' },
+      apply: { enforcedAuthType: 'gemini-api-key' },
+    }
+    const snapshotService = new SnapshotService()
+
+    const backup = await snapshotService.createBeforeApply({
+      listTargets: async () => [],
+    } as any, profile, {
+      preview: {
+        platform: 'gemini',
+        profileId: profile.id,
+        targetFiles: [
+          {
+            path: settingsPath,
+            format: 'json',
+            exists: true,
+            managedScope: 'partial-fields',
+            scope: 'user',
+            role: 'settings',
+            managedKeys: ['enforcedAuthType'],
+          },
+        ],
+        effectiveFields: [],
+        storedOnlyFields: [],
+        diffSummary: [],
+        warnings: [],
+        limitations: [],
+        riskLevel: 'low',
+        requiresConfirmation: false,
+        backupPlanned: true,
+      },
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        limitations: [],
+      },
+      requestedScope: undefined,
+      provenance: {
+        origin: 'import-apply',
+        sourceFile: 'imports/gemini-prod.json',
+        importedProfileId: 'gemini-prod',
+      },
+    })
+
+    const manifest = await new SnapshotStore().readManifest('gemini', backup.backupId)
+
+    expect(manifest.manifest.provenance).toEqual({
+      origin: 'import-apply',
+      sourceFile: 'imports/gemini-prod.json',
+      importedProfileId: 'gemini-prod',
+    })
   })
 })

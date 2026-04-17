@@ -103,6 +103,81 @@ describe('current state service', () => {
     })
   })
 
+  it('getCurrent 成功时为 detection 注入平台 scope 能力矩阵', async () => {
+    const result = await new CurrentStateService(
+      {
+        list: async () => [
+          {
+            id: 'claude-prod',
+            name: 'Claude Prod',
+            platform: 'claude',
+            source: {},
+            apply: {},
+          },
+          {
+            id: 'gemini-prod',
+            name: 'Gemini Prod',
+            platform: 'gemini',
+            source: {},
+            apply: {},
+          },
+        ],
+      } as any,
+      {
+        read: async () => ({
+          current: {
+            claude: 'claude-prod',
+            gemini: 'gemini-prod',
+          },
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: (platform: string) => ({
+          detectCurrent: async () => {
+            if (platform === 'codex') {
+              return null
+            }
+
+            return {
+              platform,
+              managed: true,
+              matchedProfileId: `${platform}-prod`,
+              targetFiles: [],
+              warnings: platform === 'gemini'
+                ? [{ code: 'GEMINI_WARN', level: 'warning', message: 'Gemini warning' }]
+                : [],
+              limitations: platform === 'gemini'
+                ? [{ code: 'GEMINI_LIMIT', level: 'limitation', message: 'Gemini limitation' }]
+                : [],
+            }
+          },
+        }),
+      } as any,
+    ).getCurrent()
+
+    expect(result.ok).toBe(true)
+    expect(result.action).toBe('current')
+    expect(result.data?.detections.map((item) => item.platform)).toEqual(['claude', 'gemini'])
+    expect(result.data?.detections.find((item) => item.platform === 'claude')?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
+    expect(result.data?.detections.find((item) => item.platform === 'gemini')?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
+    ]))
+    expect(result.data?.summary).toEqual({
+      warnings: ['Gemini warning'],
+      limitations: ['Gemini limitation'],
+    })
+    expect(result.warnings).toEqual(result.data?.summary.warnings)
+    expect(result.limitations).toEqual(result.data?.summary.limitations)
+  })
+
   it('list 读取状态失败时返回结构化失败结果', async () => {
     const result = await new CurrentStateService(
       {
@@ -243,6 +318,24 @@ describe('current state service', () => {
                 managed: true,
                 matchedProfileId: 'gemini-prod',
                 targetFiles: [],
+                scopeAvailability: [
+                  {
+                    scope: 'user',
+                    status: 'available',
+                    detected: true,
+                    writable: true,
+                    path: 'C:/Users/test/.gemini/settings.json',
+                  },
+                  {
+                    scope: 'project',
+                    status: 'unresolved',
+                    detected: false,
+                    writable: false,
+                    reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+                    reason: 'Gemini project root is unavailable.',
+                    remediation: 'Set API_SWITCHER_GEMINI_PROJECT_ROOT.',
+                  },
+                ],
                 warnings: [{ code: 'GEMINI_WARN', level: 'warning', message: 'Gemini warning' }],
                 limitations: [{ code: 'GEMINI_LIMIT', level: 'limitation', message: 'Gemini limitation' }],
               }
@@ -262,11 +355,25 @@ describe('current state service', () => {
       healthStatus: 'valid',
       riskLevel: 'low',
     })
+    expect(result.data?.profiles[0]?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
+    ]))
+    expect(result.data?.profiles[0]?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
+      expect.objectContaining({ scope: 'project', status: 'unresolved', reasonCode: 'PROJECT_ROOT_UNRESOLVED' }),
+    ]))
     expect(result.data?.profiles[1]).toMatchObject({
       current: false,
       healthStatus: 'warning',
       riskLevel: 'medium',
     })
+    expect(result.data?.profiles[1]?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
     expect(result.data?.summary).toEqual({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],

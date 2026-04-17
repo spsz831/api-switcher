@@ -92,4 +92,47 @@ describe('add service', () => {
       },
     })
   })
+
+  it('成功新增时返回平台 scope 能力矩阵', async () => {
+    const result = await new AddService(
+      {
+        add: async () => undefined,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'claude',
+            profileId: 'claude-new-profile',
+            targetFiles: [],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: false,
+            noChanges: true,
+          }),
+        }),
+      } as any,
+    ).add({
+      platform: 'claude',
+      name: 'new-profile',
+      key: 'sk-test-123456',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
+  })
 })

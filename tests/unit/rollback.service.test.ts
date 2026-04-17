@@ -94,6 +94,17 @@ describe('rollback service', () => {
     const result = await new RollbackService(
       {
         get: () => ({
+          detectCurrent: async () => ({
+            scopeAvailability: [
+              {
+                scope: 'project',
+                status: 'available',
+                detected: true,
+                writable: true,
+                path: path.join(runtimeDir, 'workspace', '.gemini', 'settings.json'),
+              },
+            ],
+          }),
           rollback: async () => ({
             ok: false,
             backupId,
@@ -151,6 +162,35 @@ describe('rollback service', () => {
         message: '回滚失败',
       }),
     }))
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      rollback: expect.objectContaining({
+        ok: false,
+        backupId,
+      }),
+      scopePolicy: {
+        requestedScope: undefined,
+        resolvedScope: 'user',
+        defaultScope: 'user',
+        explicitScope: false,
+        highRisk: false,
+        riskWarning: undefined,
+        rollbackScopeMatchRequired: true,
+      },
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          use: true,
+          rollback: true,
+          risk: 'high',
+        }),
+        expect.objectContaining({
+          scope: 'system-overrides',
+          use: false,
+          rollback: false,
+        }),
+      ]),
+      scopeAvailability: undefined,
+    }))
     expect(result.warnings).toEqual(['rollback warning'])
     expect(result.limitations).toEqual(['rollback limitation'])
     expect(markCurrentCalled).toBe(false)
@@ -191,6 +231,7 @@ describe('rollback service', () => {
     expect(result.ok).toBe(true)
     expect(result.action).toBe('rollback')
     expect(result.data?.backupId).toBe(backupId)
+    expect(result.data?.scopePolicy).toBeUndefined()
     expect(result.data?.summary).toEqual({
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
@@ -198,5 +239,130 @@ describe('rollback service', () => {
     expect(nextState.lastSwitch?.status).toBe('rolled-back')
     expect(nextState.lastSwitch?.warnings).toEqual(result.data?.summary.warnings)
     expect(nextState.lastSwitch?.limitations).toEqual(result.data?.summary.limitations)
+  })
+
+  it('manifest 带 provenance 时不改变 rollback 既有判定与返回结构', async () => {
+    const backupId = 'snapshot-gemini-20260409120100-fedcba'
+    const snapshotStore = new SnapshotStore()
+    const stateStore = new StateStore()
+
+    await snapshotStore.writeManifest('gemini', backupId, {
+      backupId,
+      platform: 'gemini',
+      profileId: 'gemini-prod',
+      previousProfileId: 'gemini-prod',
+      createdAt: '2026-04-09T12:01:00.000Z',
+      reason: 'use',
+      provenance: {
+        origin: 'import-apply',
+        sourceFile: 'imports/gemini-prod.json',
+        importedProfileId: 'gemini-imported',
+      },
+      targetFiles: [],
+      warnings: ['manifest warning'],
+      limitations: ['manifest limitation'],
+    })
+    await stateStore.write({
+      current: { gemini: 'gemini-prod' },
+      lastSwitch: {
+        platform: 'gemini',
+        profileId: 'gemini-prod',
+        backupId,
+        time: '2026-04-09T12:01:00.000Z',
+        status: 'success',
+      },
+      snapshots: [],
+    })
+
+    const result = await new RollbackService().rollback(backupId)
+
+    expect(result.ok).toBe(true)
+    expect(result.action).toBe('rollback')
+    expect(result.data?.backupId).toBe(backupId)
+    expect(result.data?.scopePolicy).toBeUndefined()
+    expect(result.data?.summary).toEqual({
+      warnings: result.warnings ?? [],
+      limitations: result.limitations ?? [],
+    })
+  })
+
+  it('Gemini project scope 不可解析时先返回 availability 失败而不是继续回滚', async () => {
+    const backupId = 'snapshot-gemini-20260409120500-abcdef'
+    let rollbackCalled = false
+
+    const result = await new RollbackService(
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            scopeAvailability: [
+              {
+                scope: 'project',
+                status: 'unresolved',
+                detected: false,
+                writable: false,
+                reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+                reason: 'Gemini project scope 不可用：无法解析 project root。',
+                remediation: '设置有效的 Gemini project root 后再重试。',
+              },
+            ],
+          }),
+          rollback: async () => {
+            rollbackCalled = true
+            return {
+              ok: true,
+              backupId,
+              restoredFiles: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        readManifest: async () => ({
+          manifest: {
+            backupId,
+            platform: 'gemini',
+            profileId: 'gemini-prod',
+            createdAt: '2026-04-09T12:05:00.000Z',
+            reason: 'use',
+            targetFiles: [],
+          },
+          directoryPath: path.join(runtimeDir, 'backups', 'gemini', backupId),
+        }),
+      } as any,
+      {
+        read: async () => ({
+          current: { gemini: 'gemini-prod' },
+          snapshots: [],
+        }),
+      } as any,
+    ).rollback(backupId, { scope: 'project' })
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      action: 'rollback',
+      error: expect.objectContaining({
+        code: 'ROLLBACK_FAILED',
+        message: 'Gemini project scope 不可用：无法解析 project root。',
+        details: expect.objectContaining({
+          scopePolicy: {
+            requestedScope: 'project',
+            resolvedScope: 'project',
+            defaultScope: 'user',
+            explicitScope: true,
+            highRisk: true,
+            riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+            rollbackScopeMatchRequired: true,
+          },
+          scopeAvailability: expect.arrayContaining([
+            expect.objectContaining({
+              scope: 'project',
+              status: 'unresolved',
+              reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+            }),
+          ]),
+        }),
+      }),
+    }))
+    expect(rollbackCalled).toBe(false)
   })
 })

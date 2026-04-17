@@ -5,6 +5,7 @@ import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandO
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
 import { ProfileService } from './profile.service'
+import { getScopeCapabilityMatrix } from './scope-options'
 
 type DetectionMap = Partial<Record<PlatformName, CurrentProfileResult>>
 
@@ -94,7 +95,12 @@ export class CurrentStateService {
     const detections = await Promise.all(
       PLATFORM_NAMES.map((platform) => this.registry.get(platform).detectCurrent(profiles.filter((item) => item.platform === platform))),
     )
-    const filteredDetections = detections.filter((item): item is NonNullable<typeof item> => Boolean(item))
+    const filteredDetections = detections
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .map((item) => ({
+        ...item,
+        scopeCapabilities: getScopeCapabilityMatrix(item.platform),
+      }))
     const detectionsByPlatform = filteredDetections.reduce<DetectionMap>((acc, item) => {
       acc[item.platform] = item
       return acc
@@ -132,7 +138,7 @@ export class CurrentStateService {
     )
 
     const items = profiles
-      .map((profile) => this.buildListItem(profile, current, matchedManagedProfiles))
+      .map((profile) => this.buildListItem(profile, current, matchedManagedProfiles, detectionsByPlatform))
       .filter((item) => !options.platform || item.profile.platform === options.platform)
 
     items.sort((left, right) => {
@@ -150,11 +156,13 @@ export class CurrentStateService {
     profile: Profile,
     current: Partial<Record<PlatformName, string>>,
     matchedManagedProfiles: Set<string>,
+    detectionsByPlatform: DetectionMap,
   ): ListCommandItem {
     const isCurrent = current[profile.platform] === profile.id
     const hasManagedDetection = matchedManagedProfiles.has(profile.id)
     const riskLevel = this.inferRiskLevel(profile, isCurrent, hasManagedDetection)
     const healthStatus = this.inferHealthStatus(profile, isCurrent, hasManagedDetection, riskLevel)
+    const detection = detectionsByPlatform[profile.platform]
 
     return {
       profile: {
@@ -168,6 +176,8 @@ export class CurrentStateService {
       current: isCurrent,
       riskLevel,
       healthStatus,
+      scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+      scopeAvailability: detection?.scopeAvailability,
     }
   }
 

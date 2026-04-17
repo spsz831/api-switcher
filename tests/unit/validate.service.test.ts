@@ -127,4 +127,49 @@ describe('validate service', () => {
       },
     })
   })
+
+  it('成功校验时为每个 item 注入平台 scope 能力矩阵', async () => {
+    const profile = {
+      id: 'gemini-prod',
+      name: 'gemini-prod',
+      platform: 'gemini',
+      source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+      apply: {
+        GEMINI_API_KEY: 'gm-live-123456',
+        enforcedAuthType: 'gemini-api-key',
+      },
+    }
+
+    const result = await new ValidateService(
+      {
+        list: async () => [profile],
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    ).validate('gemini-prod')
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.items[0]).toMatchObject({
+      profileId: 'gemini-prod',
+      platform: 'gemini',
+      validation: {
+        ok: true,
+      },
+    })
+    expect(result.data?.items[0]?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
+    ]))
+  })
 })

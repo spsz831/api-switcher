@@ -3,6 +3,7 @@ import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-
 import type { CommandResult, ExportCommandOutput } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
 import { ProfileService } from './profile.service'
+import { getScopeCapabilityMatrix } from './scope-options'
 
 function withFallbackSecretReferences(validation: ValidationResult, profileApply: Record<string, unknown>): ValidationResult {
   return validation.secretReferences
@@ -22,15 +23,24 @@ export class ExportService {
   async export(): Promise<CommandResult<ExportCommandOutput>> {
     try {
       const profiles = await this.profileService.list()
+      const observedAt = new Date().toISOString()
       const exportedProfiles = await Promise.all(profiles.map(async (profile) => {
+        const adapter = this.registry.get(profile.platform)
         const validation = withFallbackSecretReferences(
-          await this.registry.get(profile.platform).validate(profile),
+          await adapter.validate(profile),
           profile.apply,
         )
+        const scopeAvailability = profile.platform === 'gemini'
+          ? (await adapter.detectCurrent([profile]))?.scopeAvailability
+          : undefined
 
         return {
           profile,
           validation,
+          scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+          scopeAvailability,
+          defaultWriteScope: profile.platform === 'gemini' ? 'user' : undefined,
+          observedAt: profile.platform === 'gemini' ? observedAt : undefined,
         }
       }))
       const summary = this.buildExportSummary(exportedProfiles)
