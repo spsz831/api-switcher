@@ -4,7 +4,7 @@
   "description": "多平台 API 配置切换 CLI 工具",
   "license": "MIT",
   "bin": {
-    "api-switcher": "dist/cli/index.js"
+    "api-switcher": "dist/src/cli/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -35,7 +35,7 @@ pnpm dev -- --help
 构建后运行：
 
 ```bash
-node dist/cli/index.js --help
+node dist/src/cli/index.js --help
 ```
 
 如果要作为命令行工具全局使用，可以在仓库内执行：

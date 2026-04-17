@@ -811,7 +811,7 @@ describe('cli commands integration', () => {
     const codexProfile = payload.data?.profiles.find((item) => item.profile.id === 'codex-prod')
     const geminiProfile = payload.data?.profiles.find((item) => item.profile.id === 'gemini-prod')
 
-    expect(claudeProfile?.profile.source).toEqual({ token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' })
+    expect(claudeProfile?.profile.source).toEqual({ token: 'sk-l***56', baseURL: 'https://gateway.example.com/api' })
     expect(claudeProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
@@ -834,11 +834,11 @@ describe('cli commands integration', () => {
       }),
     ]))
 
-    expect(codexProfile?.profile.source).toEqual({ apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' })
+    expect(codexProfile?.profile.source).toEqual({ apiKey: 'sk-c***56', baseURL: 'https://gateway.example.com/openai/v1' })
     expect(codexProfile?.validation?.limitations.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(codexProfile?.validation?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
 
-    expect(geminiProfile?.profile.source).toEqual({ apiKey: 'gm-live-123456', authType: 'gemini-api-key' })
+    expect(geminiProfile?.profile.source).toEqual({ apiKey: 'gm-l***56', authType: 'gemini-api-key' })
     expect(geminiProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
@@ -1578,11 +1578,11 @@ describe('cli commands integration', () => {
     expect(payload.data?.profile.id).toBe('claude-json-claude')
     expect(payload.data?.profile.platform).toBe('claude')
     expect(payload.data?.profile.source).toEqual({
-      token: 'sk-new-123',
+      token: 'sk-n***23',
       baseURL: 'https://new.example.com/api',
     })
     expect(payload.data?.profile.apply).toEqual({
-      ANTHROPIC_AUTH_TOKEN: 'sk-new-123',
+      ANTHROPIC_AUTH_TOKEN: 'sk-n***23',
       ANTHROPIC_BASE_URL: 'https://new.example.com/api',
     })
     expect(payload.data?.validation.ok).toBe(true)
@@ -1618,11 +1618,11 @@ describe('cli commands integration', () => {
     expect(payload.data?.profile.id).toBe('claude-json-claude-legacy')
     expect(payload.data?.profile.platform).toBe('claude')
     expect(payload.data?.profile.source).toEqual({
-      token: 'sk-new-123',
+      token: 'sk-n***23',
       baseURL: 'https://new.example.com',
     })
     expect(payload.data?.profile.apply).toEqual({
-      ANTHROPIC_AUTH_TOKEN: 'sk-new-123',
+      ANTHROPIC_AUTH_TOKEN: 'sk-n***23',
       ANTHROPIC_BASE_URL: 'https://new.example.com',
     })
     expect(payload.data?.validation.ok).toBe(true)
@@ -1879,11 +1879,11 @@ describe('cli commands integration', () => {
     expect(payload.data?.profile.id).toBe('codex-json-codex')
     expect(payload.data?.profile.platform).toBe('codex')
     expect(payload.data?.profile.source).toEqual({
-      apiKey: 'sk-codex-new-123',
+      apiKey: 'sk-c***23',
       baseURL: 'https://gateway.example.com/openai/v1',
     })
     expect(payload.data?.profile.apply).toEqual({
-      OPENAI_API_KEY: 'sk-codex-new-123',
+      OPENAI_API_KEY: 'sk-c***23',
       base_url: 'https://gateway.example.com/openai/v1',
     })
   })
@@ -1905,11 +1905,11 @@ describe('cli commands integration', () => {
     expect(payload.data?.profile.id).toBe('gemini-json-prod')
     expect(payload.data?.profile.platform).toBe('gemini')
     expect(payload.data?.profile.source).toEqual({
-      apiKey: 'gm-new-123',
+      apiKey: 'gm-n***23',
       authType: 'gemini-api-key',
     })
     expect(payload.data?.profile.apply).toEqual({
-      GEMINI_API_KEY: 'gm-new-123',
+      GEMINI_API_KEY: 'gm-n***23',
       enforcedAuthType: 'gemini-api-key',
     })
     expect(payload.data?.validation.ok).toBe(true)

@@ -151,6 +151,107 @@ describe('output command result', () => {
     expect(process.exitCode).toBe(EXIT_CODES.success)
   })
 
+  it('json 模式会把标记为 secret 的字段 value 脱敏成 maskedValue', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'preview',
+      data: {
+        preview: {
+          effectiveFields: [
+            {
+              key: 'OPENAI_API_KEY',
+              value: 'sk-live-123456',
+              maskedValue: 'sk-l***56',
+              source: 'effective',
+              secret: true,
+            },
+          ],
+        },
+      },
+    }
+
+    outputCommandResult(result, true)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.preview.effectiveFields[0]).toEqual({
+      key: 'OPENAI_API_KEY',
+      value: 'sk-l***56',
+      maskedValue: 'sk-l***56',
+      source: 'effective',
+      secret: true,
+    })
+  })
+
+  it('json 模式会把 secret-like key 的字段 value 脱敏成 maskedValue，即使缺少 secret 标记', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'preview',
+      data: {
+        preview: {
+          effectiveFields: [
+            {
+              key: 'OPENAI_API_KEY',
+              value: 'sk-live-123456',
+              maskedValue: 'sk-l***56',
+              source: 'profile',
+            },
+          ],
+        },
+      },
+    }
+
+    outputCommandResult(result, true)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.preview.effectiveFields[0]).toEqual({
+      key: 'OPENAI_API_KEY',
+      value: 'sk-l***56',
+      maskedValue: 'sk-l***56',
+      source: 'profile',
+    })
+  })
+
+  it('json 模式会递归脱敏 details 中的 secret-like keys', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'current',
+      data: {
+        detections: [
+          {
+            platform: 'codex',
+            managed: false,
+            targetFiles: [],
+            details: {
+              auth: {
+                OPENAI_API_KEY: 'sk-live-123456',
+              },
+              config: {
+                CONTEXT7_API_KEY: 'ctx7sk-abcdef123456',
+                base_url: 'https://api.openai.com/v1',
+              },
+            },
+          },
+        ],
+      },
+    }
+
+    outputCommandResult(result, true)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.detections[0].details).toEqual({
+      auth: {
+        OPENAI_API_KEY: 'sk-l***56',
+      },
+      config: {
+        CONTEXT7_API_KEY: 'ctx7***56',
+        base_url: 'https://api.openai.com/v1',
+      },
+    })
+  })
+
   it('业务失败时设置业务失败退出码', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const result: CommandResult = {
