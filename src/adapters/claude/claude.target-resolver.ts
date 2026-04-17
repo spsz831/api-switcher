@@ -1,5 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
+import { resolveTargetScope } from '../../services/scope-options'
 
 export type ClaudeScope = 'user' | 'project' | 'local'
 
@@ -13,9 +14,8 @@ export function resolveClaudeProjectRoot(): string {
   return process.env.API_SWITCHER_CLAUDE_PROJECT_ROOT || process.cwd()
 }
 
-export function resolveClaudeTargetScope(): ClaudeScope {
-  const targetScope = process.env.API_SWITCHER_CLAUDE_TARGET_SCOPE
-  return isClaudeScope(targetScope) ? targetScope : 'user'
+export function resolveClaudeTargetScope(input?: string): ClaudeScope {
+  return resolveTargetScope('claude', input) as ClaudeScope
 }
 
 export function resolveClaudeSettingsPath(scope: ClaudeScope = resolveClaudeTargetScope()): string {

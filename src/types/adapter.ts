@@ -1,4 +1,4 @@
-import type { PlatformCapabilities } from './capabilities'
+import type { PlatformCapabilities, PlatformScopeCapability, ScopeAvailability } from './capabilities'
 import type { PlatformName, RiskLevel } from './platform'
 import type { Profile } from './profile'
 
@@ -136,6 +136,8 @@ export interface CurrentProfileResult {
   targetFiles: TargetFileInfo[]
   details?: Record<string, unknown>
   currentScope?: string
+  scopeCapabilities?: PlatformScopeCapability[]
+  scopeAvailability?: ScopeAvailability[]
   storedConfig?: ConfigFieldView[]
   effectiveConfig?: EffectiveConfigView
   managedBoundaries?: ManagedBoundary[]
@@ -146,6 +148,7 @@ export interface CurrentProfileResult {
 
 export interface BackupContext {
   reason?: string
+  targetScope?: string
 }
 
 export interface BackupResult {
@@ -156,6 +159,7 @@ export interface BackupResult {
 
 export interface ApplyContext {
   backupId: string
+  targetScope?: string
 }
 
 export interface ApplyResult {
@@ -173,6 +177,11 @@ export interface ApplyResult {
 
 export interface RollbackContext {
   backupId?: string
+  targetScope?: string
+}
+
+export interface PreviewContext {
+  targetScope?: string
 }
 
 export interface RollbackResult {
@@ -190,9 +199,9 @@ export interface PlatformAdapter {
   readonly platform: PlatformName
   readonly capabilities: PlatformCapabilities
   validate(profile: Profile): Promise<ValidationResult>
-  preview(profile: Profile): Promise<PreviewResult>
+  preview(profile: Profile, context?: PreviewContext): Promise<PreviewResult>
   detectCurrent(profiles?: Profile[]): Promise<CurrentProfileResult | null>
-  listTargets(): Promise<TargetFileInfo[]>
+  listTargets(context?: PreviewContext): Promise<TargetFileInfo[]>
   backup(context?: BackupContext): Promise<BackupResult>
   apply(profile: Profile, context: ApplyContext): Promise<ApplyResult>
   rollback(snapshotId: string, context?: RollbackContext): Promise<RollbackResult>

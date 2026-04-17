@@ -12,6 +12,7 @@ import type {
   EffectiveConfigView,
   ManagedBoundary,
   OverrideExplanation,
+  PreviewContext,
   PreviewResult,
   RollbackContext,
   RollbackResult,
@@ -94,8 +95,8 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     }
   }
 
-  private buildTargetFiles(scopeStates: ClaudeScopeState[], options: { includeAllScopes?: boolean } = {}): TargetFileInfo[] {
-    const targetScope = resolveClaudeTargetScope()
+  private buildTargetFiles(scopeStates: ClaudeScopeState[], options: { includeAllScopes?: boolean; targetScope?: ClaudeScope } = {}): TargetFileInfo[] {
+    const targetScope = options.targetScope ?? resolveClaudeTargetScope()
     const items = options.includeAllScopes ? scopeStates : [this.getScopeState(scopeStates, targetScope)]
 
     return items.map((item) => ({
@@ -286,9 +287,9 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     }
   }
 
-  async preview(profile: Profile): Promise<PreviewResult> {
+  async preview(profile: Profile, context: PreviewContext = {}): Promise<PreviewResult> {
     const scopeStates = await this.readScopeStates()
-    const targetScope = resolveClaudeTargetScope()
+    const targetScope = resolveClaudeTargetScope(context.targetScope)
     const targetScopeState = this.getScopeState(scopeStates, targetScope)
     const managedFields = pickClaudeManagedFields(profile.apply)
     const mergedSettings = mergeClaudeSettings(targetScopeState.settings, profile.apply)
@@ -304,7 +305,7 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     const warnings = [...validation.warnings]
     const limitations = [...validation.limitations]
     const managedCurrent = targetScopeState.managedFields
-    const targetFiles = this.buildTargetFiles(scopeStates)
+    const targetFiles = this.buildTargetFiles(scopeStates, { targetScope })
     const diff = diffManagedFields(targetScopeState.path, targetScopeState.settings, mergedSettings, {
       managedKeys: [...CLAUDE_MANAGED_KEYS],
       preservedKeys: targetScopeState.unmanagedKeys,
@@ -410,9 +411,9 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     return this.buildTargetFiles(await this.readScopeStates(), { includeAllScopes: true })
   }
 
-  async apply(profile: Profile, _context: ApplyContext): Promise<ApplyResult> {
+  async apply(profile: Profile, context: ApplyContext): Promise<ApplyResult> {
     const scopeStates = await this.readScopeStates()
-    const targetScope = resolveClaudeTargetScope()
+    const targetScope = resolveClaudeTargetScope(context.targetScope)
     const targetScopeState = this.getScopeState(scopeStates, targetScope)
     const mergedSettings = mergeClaudeSettings(targetScopeState.settings, profile.apply)
     const mergedManagedFields = pickClaudeManagedFields(mergedSettings)
@@ -432,7 +433,7 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     const { effective, sourceByKey } = this.computeEffectiveManagedFields(nextScopeStates)
     const overrides = this.buildOverrides(targetScope, mergedManagedFields, sourceByKey)
     const shadowedKeys = overrides.filter((item) => item.shadowed).map((item) => item.key)
-    const targetFiles = this.buildTargetFiles(scopeStates)
+    const targetFiles = this.buildTargetFiles(scopeStates, { targetScope })
 
     if (!diff.hasChanges) {
       const currentEffective = this.computeEffectiveManagedFields(scopeStates)

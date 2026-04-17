@@ -1,4 +1,6 @@
-export const GEMINI_SETTINGS_MANAGED_KEYS = ['enforcedAuthType'] as const
+import { GEMINI_SETTINGS_MANAGED_KEYS } from './gemini.contract'
+
+export { GEMINI_SETTINGS_MANAGED_KEYS } from './gemini.contract'
 
 export function pickGeminiSettingsFields(apply: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(GEMINI_SETTINGS_MANAGED_KEYS.filter((key) => key in apply).map((key) => [key, apply[key]]))

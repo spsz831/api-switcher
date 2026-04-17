@@ -5,6 +5,9 @@ export interface ProfileMeta {
   riskLevel?: RiskLevel
   healthStatus?: HealthStatus
   notes?: string
+  experimental?: {
+    geminiBaseUrl?: string
+  }
   createdAt?: string
   updatedAt?: string
   lastValidatedAt?: string

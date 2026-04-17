@@ -6,6 +6,7 @@ import type {
   BackupResult,
   CurrentProfileResult,
   PlatformAdapter,
+  PreviewContext,
   PreviewResult,
   RollbackContext,
   RollbackResult,
@@ -24,11 +25,11 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
 
   abstract validate(profile: Profile): Promise<ValidationResult>
 
-  abstract preview(profile: Profile): Promise<PreviewResult>
+  abstract preview(profile: Profile, context?: PreviewContext): Promise<PreviewResult>
 
   abstract detectCurrent(profiles?: Profile[]): Promise<CurrentProfileResult | null>
 
-  abstract listTargets(): Promise<TargetFileInfo[]>
+  abstract listTargets(context?: PreviewContext): Promise<TargetFileInfo[]>
 
   async backup(_context?: BackupContext): Promise<BackupResult> {
     return {
