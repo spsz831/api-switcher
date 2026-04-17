@@ -1,0 +1,930 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-switcher.local/schemas/public-json-output.schema.json",
+  "title": "api-switcher public JSON output",
+  "type": "object",
+  "required": ["schemaVersion", "ok", "action"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "2026-04-15.public-json.v1"
+    },
+    "ok": { "type": "boolean" },
+    "action": {
+      "type": "string",
+      "enum": [
+        "add",
+        "current",
+        "export",
+        "import",
+        "import-apply",
+        "list",
+        "preview",
+        "rollback",
+        "schema",
+        "use",
+        "validate"
+      ]
+    },
+    "data": {},
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "error": { "$ref": "#/$defs/CommandError" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": { "const": "import-apply" }
+        },
+        "required": ["action"]
+      },
+      "then": {
+        "oneOf": [
+          { "$ref": "#/$defs/ImportApplySuccessResult" },
+          { "$ref": "#/$defs/ImportApplyFailureResult" }
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "CommandResult": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "action"],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2026-04-15.public-json.v1"
+        },
+        "ok": { "type": "boolean" },
+        "action": {
+          "type": "string",
+          "enum": [
+            "add",
+            "current",
+            "export",
+            "import",
+            "import-apply",
+            "list",
+            "preview",
+            "rollback",
+            "schema",
+            "use",
+            "validate"
+          ]
+        },
+        "data": {},
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "$ref": "#/$defs/CommandError" }
+      },
+      "additionalProperties": false
+    },
+    "CommandError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": {}
+      },
+      "additionalProperties": false
+    },
+    "ScopeCapability": {
+      "type": "object",
+      "required": ["scope", "detect", "preview", "use", "rollback", "writable"],
+      "properties": {
+        "scope": { "type": "string" },
+        "detect": { "type": "boolean" },
+        "preview": { "type": "boolean" },
+        "use": { "type": "boolean" },
+        "rollback": { "type": "boolean" },
+        "writable": { "type": "boolean" },
+        "risk": {
+          "type": "string",
+          "enum": ["normal", "high"]
+        },
+        "confirmationRequired": { "type": "boolean" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ScopeAvailability": {
+      "type": "object",
+      "required": ["scope", "status", "detected", "writable"],
+      "properties": {
+        "scope": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["available", "unresolved", "blocked"]
+        },
+        "detected": { "type": "boolean" },
+        "writable": { "type": "boolean" },
+        "path": { "type": "string" },
+        "reasonCode": { "type": "string" },
+        "reason": { "type": "string" },
+        "remediation": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SnapshotScopePolicy": {
+      "type": "object",
+      "required": ["explicitScope", "highRisk", "rollbackScopeMatchRequired"],
+      "properties": {
+        "requestedScope": { "type": "string" },
+        "resolvedScope": { "type": "string" },
+        "defaultScope": { "type": "string" },
+        "explicitScope": { "type": "boolean" },
+        "highRisk": { "type": "boolean" },
+        "riskWarning": { "type": "string" },
+        "rollbackScopeMatchRequired": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "PreviewRiskSummary": {
+      "type": "object",
+      "required": ["allowed", "riskLevel", "reasons", "limitations"],
+      "properties": {
+        "allowed": { "type": "boolean" },
+        "riskLevel": { "type": "string" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "UseRiskSummary": {
+      "$ref": "#/$defs/PreviewRiskSummary"
+    },
+    "Summary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCommandOutput": {
+      "type": "object",
+      "required": ["schemaVersion"],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2026-04-15.public-json.v1"
+        },
+        "schemaId": {
+          "type": "string",
+          "const": "https://api-switcher.local/schemas/public-json-output.schema.json"
+        },
+        "schema": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaVersionCommandOutput": {
+      "type": "object",
+      "required": ["schemaVersion"],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2026-04-15.public-json.v1"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CurrentCommandOutput": {
+      "type": "object",
+      "required": ["current", "detections", "summary"],
+      "properties": {
+        "current": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "lastSwitch": {},
+        "detections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CurrentProfileResult" }
+        },
+        "summary": { "$ref": "#/$defs/Summary" }
+      },
+      "additionalProperties": true
+    },
+    "CurrentProfileResult": {
+      "type": "object",
+      "required": ["platform", "managed", "targetFiles"],
+      "properties": {
+        "platform": { "type": "string" },
+        "matchedProfileId": { "type": "string" },
+        "managed": { "type": "boolean" },
+        "targetFiles": {
+          "type": "array",
+          "items": {}
+        },
+        "details": {},
+        "currentScope": { "type": "string" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        },
+        "storedConfig": {
+          "type": "array",
+          "items": {}
+        },
+        "effectiveConfig": {},
+        "managedBoundaries": {
+          "type": "array",
+          "items": {}
+        },
+        "secretReferences": {
+          "type": "array",
+          "items": {}
+        },
+        "warnings": {
+          "type": "array",
+          "items": {}
+        },
+        "limitations": {
+          "type": "array",
+          "items": {}
+        }
+      },
+      "additionalProperties": true
+    },
+    "ListCommandOutput": {
+      "type": "object",
+      "required": ["profiles", "summary"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ListCommandItem" }
+        },
+        "summary": { "$ref": "#/$defs/Summary" }
+      },
+      "additionalProperties": true
+    },
+    "ListCommandItem": {
+      "type": "object",
+      "required": ["profile", "current", "healthStatus", "riskLevel"],
+      "properties": {
+        "profile": {},
+        "current": { "type": "boolean" },
+        "healthStatus": { "type": "string" },
+        "riskLevel": { "type": "string" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ValidateCommandOutput": {
+      "type": "object",
+      "required": ["items", "summary"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValidateCommandItem" }
+        },
+        "summary": { "$ref": "#/$defs/Summary" }
+      },
+      "additionalProperties": true
+    },
+    "ValidateCommandItem": {
+      "type": "object",
+      "required": ["profileId", "platform", "validation"],
+      "properties": {
+        "profileId": { "type": "string" },
+        "platform": { "type": "string" },
+        "validation": {},
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ExportCommandOutput": {
+      "type": "object",
+      "required": ["profiles", "summary"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ExportedProfileItem" }
+        },
+        "summary": { "$ref": "#/$defs/Summary" }
+      },
+      "additionalProperties": true
+    },
+    "ExportedProfileItem": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {},
+        "validation": {},
+        "defaultWriteScope": { "type": "string" },
+        "observedAt": { "type": "string" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ImportObservation": {
+      "type": "object",
+      "properties": {
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        },
+        "defaultWriteScope": { "type": "string" },
+        "observedAt": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ImportFidelityMismatch": {
+      "type": "object",
+      "required": ["field", "message"],
+      "properties": {
+        "field": {
+          "type": "string",
+          "enum": ["defaultWriteScope", "scopeAvailability", "scopeCapabilities"]
+        },
+        "driftKind": {
+          "type": "string",
+          "enum": ["default-scope-drift", "availability-drift", "capability-drift"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["blocking", "warning", "info"]
+        },
+        "scope": { "type": "string" },
+        "exportedValue": {},
+        "localValue": {},
+        "message": { "type": "string" },
+        "recommendedAction": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ImportFidelityDriftSummary": {
+      "type": "object",
+      "required": ["blocking", "warning", "info"],
+      "properties": {
+        "blocking": { "type": "integer", "minimum": 0 },
+        "warning": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportFidelityMismatchGroup": {
+      "type": "object",
+      "required": ["driftKind", "totalCount", "blockingCount", "warningCount", "infoCount", "mismatches"],
+      "properties": {
+        "driftKind": {
+          "type": "string",
+          "enum": ["default-scope-drift", "availability-drift", "capability-drift"]
+        },
+        "totalCount": { "type": "integer", "minimum": 0 },
+        "blockingCount": { "type": "integer", "minimum": 0 },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "infoCount": { "type": "integer", "minimum": 0 },
+        "mismatches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportFidelityMismatch" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportFidelityReport": {
+      "type": "object",
+      "required": ["status", "mismatches", "driftSummary", "groupedMismatches", "highlights"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["match", "mismatch", "partial", "insufficient-data"]
+        },
+        "mismatches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportFidelityMismatch" }
+        },
+        "driftSummary": { "$ref": "#/$defs/ImportFidelityDriftSummary" },
+        "groupedMismatches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportFidelityMismatchGroup" }
+        },
+        "highlights": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportSourceCompatibility": {
+      "type": "object",
+      "required": ["mode", "warnings"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["strict", "schema-version-missing"]
+        },
+        "schemaVersion": { "type": "string" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewPlatformStat": {
+      "type": "object",
+      "required": ["platform", "totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount"],
+      "properties": {
+        "platform": { "type": "string" },
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "matchCount": { "type": "integer", "minimum": 0 },
+        "mismatchCount": { "type": "integer", "minimum": 0 },
+        "partialCount": { "type": "integer", "minimum": 0 },
+        "insufficientDataCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewDecisionCodeStat": {
+      "type": "object",
+      "required": ["code", "totalCount", "blockingCount", "nonBlockingCount"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "READY_USING_LOCAL_OBSERVATION",
+            "LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION",
+            "BLOCKED_BY_INSUFFICIENT_OBSERVATION",
+            "BLOCKED_BY_FIDELITY_MISMATCH",
+            "REQUIRES_LOCAL_SCOPE_RESOLUTION"
+          ]
+        },
+        "totalCount": { "type": "integer", "minimum": 0 },
+        "blockingCount": { "type": "integer", "minimum": 0 },
+        "nonBlockingCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewDriftKindStat": {
+      "type": "object",
+      "required": ["driftKind", "totalCount", "blockingCount", "warningCount", "infoCount"],
+      "properties": {
+        "driftKind": {
+          "type": "string",
+          "enum": ["default-scope-drift", "availability-drift", "capability-drift"]
+        },
+        "totalCount": { "type": "integer", "minimum": 0 },
+        "blockingCount": { "type": "integer", "minimum": 0 },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "infoCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewSummary": {
+      "type": "object",
+      "required": ["totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount", "platformStats", "decisionCodeStats", "driftKindStats", "warnings", "limitations"],
+      "properties": {
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "matchCount": { "type": "integer", "minimum": 0 },
+        "mismatchCount": { "type": "integer", "minimum": 0 },
+        "partialCount": { "type": "integer", "minimum": 0 },
+        "insufficientDataCount": { "type": "integer", "minimum": 0 },
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportPreviewPlatformStat" }
+        },
+        "decisionCodeStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportPreviewDecisionCodeStat" }
+        },
+        "driftKindStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportPreviewDriftKindStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewDecision": {
+      "type": "object",
+      "required": ["canProceedToApplyDesign", "requiresLocalResolution", "reasonCodes", "reasons"],
+      "properties": {
+        "canProceedToApplyDesign": { "type": "boolean" },
+        "recommendedScope": { "type": "string" },
+        "requiresLocalResolution": { "type": "boolean" },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "READY_USING_LOCAL_OBSERVATION",
+              "LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION",
+              "BLOCKED_BY_INSUFFICIENT_OBSERVATION",
+              "BLOCKED_BY_FIDELITY_MISMATCH",
+              "REQUIRES_LOCAL_SCOPE_RESOLUTION"
+            ]
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportPreviewDecisionReason" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewDecisionReason": {
+      "type": "object",
+      "required": ["code", "blocking", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "READY_USING_LOCAL_OBSERVATION",
+            "LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION",
+            "BLOCKED_BY_INSUFFICIENT_OBSERVATION",
+            "BLOCKED_BY_FIDELITY_MISMATCH",
+            "REQUIRES_LOCAL_SCOPE_RESOLUTION"
+          ]
+        },
+        "blocking": { "type": "boolean" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ImportPreviewItem": {
+      "type": "object",
+      "required": ["profile", "platform", "previewDecision"],
+      "properties": {
+        "profile": {},
+        "platform": { "type": "string" },
+        "exportedObservation": { "$ref": "#/$defs/ImportObservation" },
+        "localObservation": { "$ref": "#/$defs/ImportObservation" },
+        "fidelity": { "$ref": "#/$defs/ImportFidelityReport" },
+        "previewDecision": { "$ref": "#/$defs/ImportPreviewDecision" }
+      },
+      "additionalProperties": true
+    },
+    "ImportPreviewCommandOutput": {
+      "type": "object",
+      "required": ["sourceFile", "sourceCompatibility", "items", "summary"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "sourceCompatibility": { "$ref": "#/$defs/ImportSourceCompatibility" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportPreviewItem" }
+        },
+        "summary": { "$ref": "#/$defs/ImportPreviewSummary" }
+      },
+      "additionalProperties": true
+    },
+    "ImportApplyRiskSummary": {
+      "type": "object",
+      "required": ["allowed", "riskLevel", "reasons", "limitations"],
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "const": true
+        },
+        "riskLevel": { "type": "string" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplySummary": {
+      "$ref": "#/$defs/Summary"
+    },
+    "ImportApplyCommandOutput": {
+      "type": "object",
+      "required": [
+        "sourceFile",
+        "importedProfile",
+        "appliedScope",
+        "scopePolicy",
+        "scopeCapabilities",
+        "validation",
+        "preview",
+        "risk",
+        "backupId",
+        "changedFiles",
+        "noChanges",
+        "summary"
+      ],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "importedProfile": {},
+        "appliedScope": {
+          "type": "string",
+          "enum": ["user", "project"]
+        },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        },
+        "validation": {},
+        "preview": {},
+        "risk": { "$ref": "#/$defs/ImportApplyRiskSummary" },
+        "backupId": { "type": "string" },
+        "changedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "noChanges": { "type": "boolean" },
+        "summary": { "$ref": "#/$defs/ImportApplySummary" }
+      },
+      "additionalProperties": true
+    },
+    "ImportApplySourceDetails": {
+      "type": "object",
+      "required": ["sourceFile"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "profileId": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "ImportApplyNotReadyDetails": {
+      "type": "object",
+      "required": ["sourceFile", "profileId", "previewDecision"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "profileId": { "type": "string" },
+        "previewDecision": { "$ref": "#/$defs/ImportPreviewDecision" },
+        "fidelity": { "$ref": "#/$defs/ImportFidelityReport" },
+        "localObservation": { "$ref": "#/$defs/ImportObservation" },
+        "exportedObservation": { "$ref": "#/$defs/ImportObservation" }
+      },
+      "additionalProperties": true
+    },
+    "ImportScopeUnavailableDetails": {
+      "type": "object",
+      "required": ["resolvedScope", "scopePolicy", "scopeCapabilities", "scopeAvailability"],
+      "properties": {
+        "requestedScope": { "type": "string" },
+        "resolvedScope": {
+          "type": "string",
+          "enum": ["user", "project"]
+        },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ImportApplyFailureDetails": {
+      "anyOf": [
+        { "$ref": "#/$defs/ImportApplySourceDetails" },
+        { "$ref": "#/$defs/ImportApplyNotReadyDetails" },
+        { "$ref": "#/$defs/ImportScopeUnavailableDetails" },
+        { "$ref": "#/$defs/ConfirmationRequiredDetails" }
+      ]
+    },
+    "ImportApplySuccessResult": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "action", "data"],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2026-04-15.public-json.v1"
+        },
+        "ok": { "const": true },
+        "action": { "const": "import-apply" },
+        "data": { "$ref": "#/$defs/ImportApplyCommandOutput" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "$ref": "#/$defs/CommandError" }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplyFailureResult": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "action", "error"],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2026-04-15.public-json.v1"
+        },
+        "ok": { "const": false },
+        "action": { "const": "import-apply" },
+        "data": {},
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "details": { "$ref": "#/$defs/ImportApplyFailureDetails" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "AddCommandOutput": {
+      "type": "object",
+      "required": ["profile", "validation", "preview", "risk", "summary"],
+      "properties": {
+        "profile": {},
+        "validation": {},
+        "preview": {},
+        "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
+        "summary": { "$ref": "#/$defs/Summary" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "PreviewCommandOutput": {
+      "type": "object",
+      "required": ["profile", "validation", "preview", "risk", "summary"],
+      "properties": {
+        "profile": {},
+        "validation": {},
+        "preview": {},
+        "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
+        "summary": { "$ref": "#/$defs/Summary" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "UseCommandOutput": {
+      "type": "object",
+      "required": ["profile", "preview", "risk", "summary", "changedFiles", "noChanges"],
+      "properties": {
+        "profile": {},
+        "backupId": { "type": "string" },
+        "validation": {},
+        "preview": {},
+        "risk": { "$ref": "#/$defs/UseRiskSummary" },
+        "summary": { "$ref": "#/$defs/Summary" },
+        "changedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "noChanges": { "type": "boolean" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "RollbackCommandOutput": {
+      "type": "object",
+      "required": ["backupId", "restoredFiles", "summary"],
+      "properties": {
+        "backupId": { "type": "string" },
+        "restoredFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rollback": {},
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        },
+        "summary": { "$ref": "#/$defs/Summary" }
+      },
+      "additionalProperties": true
+    },
+    "ConfirmationRequiredDetails": {
+      "type": "object",
+      "required": ["risk"],
+      "properties": {
+        "risk": { "$ref": "#/$defs/UseRiskSummary" },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "RollbackErrorDetails": {
+      "type": "object",
+      "properties": {
+        "rollback": {},
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
+        "scopeCapabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeCapability" }
+        },
+        "scopeAvailability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScopeAvailability" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
