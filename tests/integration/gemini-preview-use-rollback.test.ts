@@ -4,19 +4,25 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { PreviewService } from '../../src/services/preview.service'
 import { RollbackService } from '../../src/services/rollback.service'
+import { SnapshotStore } from '../../src/stores/snapshot.store'
 import { SwitchService } from '../../src/services/switch.service'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 import { StateStore } from '../../src/stores/state.store'
 
 let runtimeDir: string
 let geminiSettingsPath: string
+let geminiProjectRoot: string
+let geminiProjectSettingsPath: string
 
 beforeEach(async () => {
   runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'api-switcher-gemini-it-'))
   geminiSettingsPath = path.join(runtimeDir, 'settings.json')
+  geminiProjectRoot = path.join(runtimeDir, 'workspace')
+  geminiProjectSettingsPath = path.join(geminiProjectRoot, '.gemini', 'settings.json')
 
   process.env.API_SWITCHER_RUNTIME_DIR = runtimeDir
   process.env.API_SWITCHER_GEMINI_SETTINGS_PATH = geminiSettingsPath
+  process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = geminiProjectRoot
 
   const profilesStore = new ProfilesStore()
   await profilesStore.write({
@@ -32,19 +38,304 @@ beforeEach(async () => {
           enforcedAuthType: 'gemini-api-key',
         },
       },
+      {
+        id: 'gemini-proxy',
+        name: 'gemini-proxy',
+        platform: 'gemini',
+        source: {
+          apiKey: 'gm-live-654321',
+          authType: 'gemini-api-key',
+          baseURL: 'https://proxy.example.com',
+          notes: 'Gemini 代理链路',
+        },
+        apply: {
+          GEMINI_API_KEY: 'gm-live-654321',
+          enforcedAuthType: 'gemini-api-key',
+          GEMINI_BASE_URL: 'https://proxy.example.com',
+        },
+      },
     ],
   })
 
   await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+  await fs.mkdir(path.dirname(geminiProjectSettingsPath), { recursive: true })
+  await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true }, null, 2), 'utf8')
 })
 
 afterEach(async () => {
   delete process.env.API_SWITCHER_RUNTIME_DIR
   delete process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
+  delete process.env.API_SWITCHER_GEMINI_PROJECT_ROOT
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
 describe('gemini preview/use/rollback integration', () => {
+  it('preview 支持显式 project scope，并把 user -> project 写入升级为高风险确认', async () => {
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+
+    const result = await new PreviewService().preview('gemini-prod', { scope: 'project' })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+        role: 'settings',
+        managedKeys: ['enforcedAuthType'],
+      }),
+    ])
+    expect(result.data?.preview.diffSummary).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        changedKeys: ['enforcedAuthType'],
+        preservedKeys: ['projectOnly'],
+        hasChanges: true,
+      }),
+    ])
+    expect(result.data?.preview.effectiveFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        source: 'profile',
+        scope: 'project',
+      }),
+    ]))
+    expect(result.data?.preview.effectiveConfig?.stored).toEqual([
+      expect.objectContaining({
+        key: 'enforcedAuthType',
+        maskedValue: 'oauth-personal',
+        source: 'stored',
+        scope: 'project',
+      }),
+    ])
+    expect(result.data?.preview.managedBoundaries).toEqual([
+      expect.objectContaining({
+        target: geminiProjectSettingsPath,
+        type: 'managed-fields',
+        preservedKeys: ['projectOnly'],
+      }),
+    ])
+    expect(result.data?.preview.riskLevel).toBe('high')
+    expect(result.data?.preview.requiresConfirmation).toBe(true)
+    expect(result.data?.risk.allowed).toBe(false)
+    expect(result.data?.risk.riskLevel).toBe('high')
+    expect(result.data?.risk.reasons).toContain('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(result.data?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        writable: true,
+      }),
+    ]))
+  })
+
+  it('use project scope 没有 force 时会被确认门槛阻止', async () => {
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+
+    const result = await new SwitchService().use('gemini-prod', { scope: 'project' })
+    const confirmationDetails = result.error?.details as {
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        riskWarning?: string
+      }
+      scopeAvailability?: Array<{
+        scope?: string
+        status?: string
+        writable?: boolean
+        path?: string
+      }>
+    } | undefined
+    const scopePolicy = confirmationDetails?.scopePolicy as {
+      requestedScope?: string
+      resolvedScope?: string
+      riskWarning?: string
+    } | undefined
+    const scopeAvailability = confirmationDetails?.scopeAvailability as Array<{
+      scope?: string
+      status?: string
+      writable?: boolean
+      path?: string
+    }> | undefined
+    const projectAvailability = scopeAvailability?.find((item) => item.scope === 'project')
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.warnings).toContain('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(scopePolicy?.requestedScope).toBe('project')
+    expect(scopePolicy?.resolvedScope).toBe('project')
+    expect(scopePolicy?.riskWarning).toBe('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(projectAvailability).toEqual(expect.objectContaining({
+      scope: 'project',
+      status: 'available',
+      writable: true,
+      path: geminiProjectSettingsPath,
+    }))
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      risk: expect.objectContaining({
+        allowed: false,
+        riskLevel: 'high',
+        reasons: expect.arrayContaining([
+          'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        ]),
+      }),
+      scopePolicy: expect.objectContaining({
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      }),
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'available',
+          writable: true,
+          path: geminiProjectSettingsPath,
+        }),
+      ]),
+    }))
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect((userSettings.ui as { theme?: string }).theme).toBe('dark')
+    expect(projectSettings.enforcedAuthType).toBe('oauth-personal')
+    expect(projectSettings.projectOnly).toBe(true)
+  })
+
+  it('preview --scope project 在 project scope 无法解析时返回结构化 availability 失败', async () => {
+    process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = path.join(runtimeDir, 'missing-project-root')
+
+    const result = await new PreviewService().preview('gemini-prod', { scope: 'project' })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('PREVIEW_FAILED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      requestedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
+  it('use --scope project 在 availability 不可用时先返回结构化失败而非 CONFIRMATION_REQUIRED', async () => {
+    process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = path.join(runtimeDir, 'missing-project-root')
+
+    const result = await new SwitchService().use('gemini-prod', { scope: 'project' })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('USE_FAILED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      requestedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+    expect(result.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+  })
+
+  it('use project scope 会独立备份并只写入 project settings，rollback 只恢复 project', async () => {
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+
+    const result = await new SwitchService().use('gemini-prod', { scope: 'project', force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.backupId).toMatch(/^snapshot-gemini-/)
+    expect(result.data?.changedFiles).toEqual([geminiProjectSettingsPath])
+    expect(result.data?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        writable: true,
+      }),
+    ]))
+    expect(result.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect(projectSettings.enforcedAuthType).toBe('gemini-api-key')
+    expect(projectSettings.projectOnly).toBe(true)
+
+    const manifest = await new SnapshotStore().readManifest('gemini', result.data!.backupId!)
+    expect(manifest.manifest.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
+
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ enforcedAuthType: 'mutated' }, null, 2), 'utf8')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ enforcedAuthType: 'user-mutated' }, null, 2), 'utf8')
+
+    const rollbackResult = await new RollbackService().rollback(result.data?.backupId, { scope: 'project' })
+
+    expect(rollbackResult.ok).toBe(true)
+    expect(rollbackResult.data?.restoredFiles).toEqual([geminiProjectSettingsPath])
+    expect(rollbackResult.data?.rollback?.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const restoredProject = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    const untouchedUser = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(restoredProject.enforcedAuthType).toBe('oauth-personal')
+    expect(restoredProject.projectOnly).toBe(true)
+    expect(untouchedUser.enforcedAuthType).toBe('user-mutated')
+  })
+
+  it('rollback --scope project 在 availability 不可用时先返回结构化失败而非 scope mismatch', async () => {
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+
+    const useResult = await new SwitchService().use('gemini-prod', { scope: 'project', force: true })
+    expect(useResult.ok).toBe(true)
+
+    process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = path.join(runtimeDir, 'missing-project-root')
+    const rollbackResult = await new RollbackService().rollback(useResult.data?.backupId, { scope: 'project' })
+
+    expect(rollbackResult.ok).toBe(false)
+    expect(rollbackResult.error?.code).toBe('ROLLBACK_FAILED')
+    expect(rollbackResult.error?.code).not.toBe('ROLLBACK_SCOPE_MISMATCH')
+    expect(rollbackResult.error?.details).toEqual(expect.objectContaining({
+      scopePolicy: {
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      },
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
   it('preview 能返回 Gemini env-first explainable 结果', async () => {
     const result = await new PreviewService().preview('gemini-prod')
     expect(result.ok).toBe(true)
@@ -144,6 +435,38 @@ describe('gemini preview/use/rollback integration', () => {
     expect(result.data?.preview.noChanges).toBe(false)
   })
 
+  it('preview 会把 Gemini 自定义 base URL 标记为实验性支持', async () => {
+    const result = await new PreviewService().preview('gemini-proxy')
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.preview.backupPlanned).toBe(true)
+    expect(result.data?.preview.effectiveFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'GEMINI_BASE_URL',
+        maskedValue: 'https://proxy.example.com',
+        source: 'managed-policy',
+        scope: 'runtime',
+      }),
+      expect.objectContaining({
+        key: 'GEMINI_API_KEY',
+        maskedValue: 'gm-l***21',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+      }),
+    ]))
+    expect(result.data?.preview.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'legacy-gemini-base-url',
+        message: '检测到 legacy apply.GEMINI_BASE_URL，已按实验性配置解释。',
+      }),
+      expect.objectContaining({
+        code: 'experimental-gemini-base-url',
+        message: 'Gemini 自定义 base URL 属于实验性支持，默认不按稳定托管字段写入。',
+      }),
+    ]))
+  })
+
 
   it('use 能写入 settings.json 并返回 Gemini explainable 结果', async () => {
     const result = await new SwitchService().use('gemini-prod', { force: true })
@@ -186,6 +509,18 @@ describe('gemini preview/use/rollback integration', () => {
 
     const state = await new StateStore().read()
     expect(state.current.gemini).toBe('gemini-prod')
+  })
+
+  it('use 会写入稳定 Gemini 设置，但把实验性 base URL 明确标记为未落盘', async () => {
+    const result = await new SwitchService().use('gemini-proxy', { force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.changedFiles).toEqual([geminiSettingsPath])
+    expect(result.data?.summary.warnings).toContain('Gemini 实验性 base URL 当前没有可靠写入目标，本次不会落盘。')
+
+    const settings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(settings.enforcedAuthType).toBe('gemini-api-key')
+    expect(settings.GEMINI_BASE_URL).toBeUndefined()
   })
 
   it('rollback 能恢复 settings.json 并返回 Gemini explainable 元数据', async () => {

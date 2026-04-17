@@ -5,6 +5,8 @@ import type {
   CommandResult,
   CurrentCommandOutput,
   ExportCommandOutput,
+  ImportApplyCommandOutput,
+  ImportPreviewCommandOutput,
   ListCommandOutput,
   PreviewCommandOutput,
   RollbackCommandOutput,
@@ -64,6 +66,22 @@ function createExportResult(data: ExportCommandOutput): CommandResult<ExportComm
   }
 }
 
+function createImportPreviewResult(data: ImportPreviewCommandOutput): CommandResult<ImportPreviewCommandOutput> {
+  return {
+    ok: true,
+    action: 'import',
+    data,
+  }
+}
+
+function createImportApplyResult(data: ImportApplyCommandOutput): CommandResult<ImportApplyCommandOutput> {
+  return {
+    ok: true,
+    action: 'import-apply',
+    data,
+  }
+}
+
 function createAddResult(data: AddCommandOutput): CommandResult<AddCommandOutput> {
   return {
     ok: true,
@@ -92,6 +110,101 @@ function createFailureResult(action: string, message: string, warnings?: string[
     },
   }
 }
+
+const geminiScopeCapabilities = [
+  {
+    scope: 'system-defaults',
+    detect: true,
+    preview: true,
+    use: false,
+    rollback: false,
+    writable: false,
+    risk: 'normal' as const,
+    confirmationRequired: false,
+    note: '只参与 Gemini effective config 检测与 precedence 推导，不允许写入或回滚。',
+  },
+  {
+    scope: 'user',
+    detect: true,
+    preview: true,
+    use: true,
+    rollback: true,
+    writable: true,
+    risk: 'normal' as const,
+    confirmationRequired: false,
+  },
+  {
+    scope: 'project',
+    detect: true,
+    preview: true,
+    use: true,
+    rollback: true,
+    writable: true,
+    risk: 'high' as const,
+    confirmationRequired: true,
+    note: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+  },
+  {
+    scope: 'system-overrides',
+    detect: true,
+    preview: true,
+    use: false,
+    rollback: false,
+    writable: false,
+    risk: 'normal' as const,
+    confirmationRequired: false,
+    note: '只参与 Gemini effective config 检测与 precedence 推导，不允许写入或回滚。',
+  },
+]
+
+const geminiScopeAvailability = [
+  {
+    scope: 'user',
+    status: 'available' as const,
+    detected: true,
+    writable: true,
+    path: 'C:/Users/test/.gemini/settings.json',
+  },
+  {
+    scope: 'project',
+    status: 'unresolved' as const,
+    detected: false,
+    writable: false,
+    reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+    reason: 'Gemini project scope 不可用：无法解析 project root。',
+    remediation: '设置有效的 Gemini project root 后再重试。',
+  },
+]
+
+const claudeScopeCapabilities = [
+  {
+    scope: 'user',
+    detect: true,
+    preview: true,
+    use: true,
+    rollback: true,
+    writable: true,
+    risk: 'normal' as const,
+  },
+  {
+    scope: 'project',
+    detect: true,
+    preview: true,
+    use: true,
+    rollback: true,
+    writable: true,
+    risk: 'normal' as const,
+  },
+  {
+    scope: 'local',
+    detect: true,
+    preview: true,
+    use: true,
+    rollback: true,
+    writable: true,
+    risk: 'normal' as const,
+  },
+]
 
 const currentPayload: CurrentCommandOutput = {
   current: {
@@ -123,6 +236,8 @@ const currentPayload: CurrentCommandOutput = {
         },
       ],
       currentScope: 'user',
+      scopeCapabilities: geminiScopeCapabilities,
+      scopeAvailability: geminiScopeAvailability,
       effectiveConfig: {
         stored: [
           {
@@ -327,6 +442,7 @@ const previewPayload: PreviewCommandOutput = {
     warnings: ['高风险操作需要确认'],
     limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
+  scopeCapabilities: geminiScopeCapabilities,
 }
 
 const noChangesPreviewPayload: PreviewCommandOutput = {
@@ -341,6 +457,59 @@ const noChangesPreviewPayload: PreviewCommandOutput = {
       },
     ],
     noChanges: true,
+  },
+}
+
+const experimentalPreviewPayload: PreviewCommandOutput = {
+  ...previewPayload,
+  profile: {
+    ...previewPayload.profile,
+    id: 'gemini-proxy',
+    name: 'Gemini 代理',
+  },
+  preview: {
+    ...previewPayload.preview,
+    profileId: 'gemini-proxy',
+    effectiveFields: [
+      {
+        key: 'enforcedAuthType',
+        value: 'gemini-api-key',
+        maskedValue: 'gemini-api-key',
+        source: 'profile',
+        scope: 'user',
+        secret: false,
+      },
+      {
+        key: 'GEMINI_API_KEY',
+        value: 'gm-live-654321',
+        maskedValue: 'gm-l***21',
+        source: 'env',
+        scope: 'runtime',
+        secret: true,
+      },
+      {
+        key: 'GEMINI_BASE_URL',
+        value: 'https://proxy.example.com',
+        maskedValue: 'https://proxy.example.com',
+        source: 'managed-policy',
+        scope: 'runtime',
+        secret: false,
+      },
+    ],
+    warnings: [
+      ...previewPayload.preview.warnings,
+      {
+        code: 'experimental-gemini-base-url',
+        level: 'warning',
+        message: 'Gemini 自定义 base URL 属于实验性支持，默认不按稳定托管字段写入。',
+        field: 'GEMINI_BASE_URL',
+        source: 'managed-policy',
+      },
+    ],
+  },
+  summary: {
+    warnings: ['高风险操作需要确认', 'Gemini 自定义 base URL 属于实验性支持，默认不按稳定托管字段写入。'],
+    limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
 }
 
@@ -402,6 +571,8 @@ const usePayload: UseCommandOutput = {
   },
   changedFiles: ['C:/Users/test/.gemini/settings.json'],
   noChanges: false,
+  scopeCapabilities: geminiScopeCapabilities,
+  scopeAvailability: geminiScopeAvailability,
 }
 
 const noChangesUsePayload: UseCommandOutput = {
@@ -418,6 +589,15 @@ const noChangesUsePayload: UseCommandOutput = {
 const rollbackPayload: RollbackCommandOutput = {
   backupId: 'snapshot-gemini-001',
   restoredFiles: ['C:/Users/test/.gemini/settings.json'],
+  scopePolicy: {
+    requestedScope: 'project',
+    resolvedScope: 'project',
+    defaultScope: 'user',
+    explicitScope: true,
+    highRisk: true,
+    riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+    rollbackScopeMatchRequired: true,
+  },
   rollback: {
     ok: true,
     backupId: 'snapshot-gemini-001',
@@ -491,6 +671,8 @@ const rollbackPayload: RollbackCommandOutput = {
     warnings: ['已恢复快照中的托管文件'],
     limitations: ['回滚仅恢复快照覆盖的托管文件。'],
   },
+  scopeCapabilities: geminiScopeCapabilities,
+  scopeAvailability: geminiScopeAvailability,
 }
 
 const emptyRollbackPayload: RollbackCommandOutput = {
@@ -592,6 +774,7 @@ const validatePayload: ValidateCommandOutput = {
           },
         ],
       },
+      scopeCapabilities: geminiScopeCapabilities,
     },
   ],
   summary: {
@@ -617,11 +800,158 @@ const validatePayloadWithIssueLimitations: ValidateCommandOutput = {
           },
         ],
       },
+      scopeCapabilities: claudeScopeCapabilities,
     },
   ],
   summary: {
     warnings: [],
     limitations: ['当前按目标作用域写入 Claude 配置文件。'],
+  },
+}
+
+const importPreviewPayload: ImportPreviewCommandOutput = {
+  sourceFile: 'E:/tmp/export.json',
+  sourceCompatibility: {
+    mode: 'schema-version-missing',
+    warnings: ['导入文件未声明 schemaVersion，当前按兼容模式解析。'],
+  },
+  items: [
+    {
+      profile: {
+        id: 'gemini-prod',
+        name: 'Gemini 生产',
+        platform: 'gemini',
+        source: {},
+        apply: {},
+      },
+      platform: 'gemini',
+      exportedObservation: {
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: geminiScopeCapabilities,
+        scopeAvailability: [
+          {
+            scope: 'project',
+            status: 'available',
+            detected: true,
+            writable: true,
+            path: 'E:/exported/.gemini/settings.json',
+          },
+        ],
+      },
+      localObservation: {
+        defaultWriteScope: 'user',
+        scopeCapabilities: geminiScopeCapabilities,
+        scopeAvailability: geminiScopeAvailability,
+      },
+      fidelity: {
+        status: 'mismatch',
+        mismatches: [
+          {
+            field: 'scopeAvailability',
+            driftKind: 'availability-drift',
+            severity: 'blocking',
+            scope: 'project',
+            exportedValue: { status: 'available', detected: true, writable: true },
+            localValue: { status: 'unresolved', detected: false, writable: false },
+            message: 'project 作用域的可用性与当前本地环境不一致。',
+            recommendedAction: '先修复本地 project scope 解析，再重新执行 import preview。',
+          },
+        ],
+        driftSummary: {
+          blocking: 1,
+          warning: 0,
+          info: 0,
+        },
+        groupedMismatches: [
+          {
+            driftKind: 'default-scope-drift',
+            totalCount: 0,
+            blockingCount: 0,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [],
+          },
+          {
+            driftKind: 'availability-drift',
+            totalCount: 1,
+            blockingCount: 1,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [
+              {
+                field: 'scopeAvailability',
+                driftKind: 'availability-drift',
+                severity: 'blocking',
+                scope: 'project',
+                exportedValue: { status: 'available', detected: true, writable: true },
+                localValue: { status: 'unresolved', detected: false, writable: false },
+                message: 'project 作用域的可用性与当前本地环境不一致。',
+                recommendedAction: '先修复本地 project scope 解析，再重新执行 import preview。',
+              },
+            ],
+          },
+          {
+            driftKind: 'capability-drift',
+            totalCount: 0,
+            blockingCount: 0,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [],
+          },
+        ],
+        highlights: ['当前本地 scope availability 与导出观察不一致，应以本地实时环境为准。'],
+      },
+      previewDecision: {
+        canProceedToApplyDesign: false,
+        recommendedScope: 'user',
+        requiresLocalResolution: true,
+        reasonCodes: ['BLOCKED_BY_FIDELITY_MISMATCH', 'REQUIRES_LOCAL_SCOPE_RESOLUTION'],
+        reasons: [
+          {
+            code: 'BLOCKED_BY_FIDELITY_MISMATCH',
+            blocking: true,
+            message: '导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。',
+          },
+          {
+            code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION',
+            blocking: true,
+            message: '当前本地 scope 解析未完成，需先修复本地解析结果。',
+          },
+        ],
+      },
+    },
+  ],
+  summary: {
+    totalItems: 1,
+    matchCount: 0,
+    mismatchCount: 1,
+    partialCount: 0,
+    insufficientDataCount: 0,
+    platformStats: [
+      {
+        platform: 'gemini',
+        totalItems: 1,
+        matchCount: 0,
+        mismatchCount: 1,
+        partialCount: 0,
+        insufficientDataCount: 0,
+      },
+    ],
+    decisionCodeStats: [
+      { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+      { code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+    ],
+    driftKindStats: [
+      { driftKind: 'default-scope-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+      { driftKind: 'availability-drift', totalCount: 1, blockingCount: 1, warningCount: 0, infoCount: 0 },
+      { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+    ],
+    warnings: ['project 作用域的可用性与当前本地环境不一致。'],
+    limitations: ['导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。'],
   },
 }
 
@@ -643,6 +973,7 @@ const exportPayload: ExportCommandOutput = {
         source: {},
         apply: {},
       },
+      defaultWriteScope: 'user',
       validation: {
         ok: true,
         errors: [],
@@ -702,6 +1033,7 @@ const exportPayload: ExportCommandOutput = {
           },
         ],
       },
+      scopeCapabilities: claudeScopeCapabilities,
     },
   ],
   summary: {
@@ -810,6 +1142,7 @@ const addPayload: AddCommandOutput = {
     warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
+  scopeCapabilities: claudeScopeCapabilities,
 }
 
 const addPayloadWithLimitations: AddCommandOutput = {
@@ -859,6 +1192,7 @@ const listPayload: ListCommandOutput = {
       current: true,
       healthStatus: 'valid',
       riskLevel: 'low',
+      scopeCapabilities: claudeScopeCapabilities,
     },
     {
       profile: {
@@ -871,6 +1205,8 @@ const listPayload: ListCommandOutput = {
       current: false,
       healthStatus: 'warning',
       riskLevel: 'medium',
+      scopeCapabilities: geminiScopeCapabilities,
+      scopeAvailability: geminiScopeAvailability,
     },
   ],
   summary: {
@@ -887,6 +1223,41 @@ const emptyListPayload: ListCommandOutput = {
   },
 }
 
+const importApplyPayload: ImportApplyCommandOutput = {
+  sourceFile: 'E:/tmp/export.json',
+  importedProfile: previewPayload.profile,
+  appliedScope: 'project',
+  scopePolicy: {
+    requestedScope: 'project',
+    resolvedScope: 'project',
+    defaultScope: 'user',
+    explicitScope: true,
+    highRisk: true,
+    riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+    rollbackScopeMatchRequired: true,
+  },
+  scopeCapabilities: geminiScopeCapabilities,
+  scopeAvailability: geminiScopeAvailability,
+  validation: previewPayload.validation,
+  preview: {
+    ...previewPayload.preview,
+    requiresConfirmation: true,
+  },
+  risk: {
+    allowed: true,
+    riskLevel: 'medium',
+    reasons: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
+  backupId: 'snapshot-import-001',
+  changedFiles: ['C:/Users/test/.gemini/settings.json'],
+  noChanges: false,
+  summary: {
+    warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+    limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  },
+}
+
 const genericSuccessResult: CommandResult<{ foo: string }> = {
   ok: true,
   action: 'other',
@@ -899,6 +1270,35 @@ const genericSuccessWithoutData: CommandResult = {
 }
 
 const genericFailureResult = createFailureResult('preview', '配置校验失败', ['高风险操作需要确认'], ['Gemini 最终认证结果仍受环境变量影响。'])
+const confirmationFailureResult: CommandResult = {
+  ok: false,
+  action: 'use',
+  warnings: ['Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。'],
+  limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  error: {
+    code: 'CONFIRMATION_REQUIRED',
+    message: '当前切换需要确认或 --force。',
+    details: {
+      risk: {
+        allowed: false,
+        riskLevel: 'high',
+        reasons: ['Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。'],
+        limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+      },
+      scopePolicy: {
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      },
+      scopeCapabilities: geminiScopeCapabilities,
+      scopeAvailability: geminiScopeAvailability,
+    },
+  },
+}
 const useValidationFailureResult: CommandResult = {
   ok: false,
   action: 'use',
@@ -919,11 +1319,224 @@ const validateFailureWithDataResult: CommandResult<ValidateCommandOutput> = {
   action: 'validate',
   data: validatePayload,
 }
+const malformedConfirmationFailureResult: CommandResult = {
+  ok: false,
+  action: 'use',
+  warnings: ['仍保留原始 warning。'],
+  limitations: ['仍保留原始 limitation。'],
+  error: {
+    code: 'CONFIRMATION_REQUIRED',
+    message: '当前切换需要确认或 --force。',
+    details: {
+      risk: {
+        allowed: false,
+        riskLevel: 'high',
+        reasons: 'not-an-array',
+        limitations: null,
+      },
+      scopePolicy: {
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        rollbackScopeMatchRequired: true,
+      },
+      scopeCapabilities: {
+        scope: 'project',
+      },
+      scopeAvailability: {
+        scope: 'project',
+      },
+    },
+  },
+}
+const malformedImportApplyNotReadyFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['仍保留 import apply warning。'],
+  limitations: ['仍保留 import apply limitation。'],
+  error: {
+    code: 'IMPORT_APPLY_NOT_READY',
+    message: '当前 import preview 结果不允许进入 apply。',
+    details: {
+      sourceFile: 'E:/tmp/export.json',
+      profileId: 'gemini-prod',
+      previewDecision: {
+        canProceedToApplyDesign: false,
+        reasons: 'not-an-array',
+      },
+      localObservation: {
+        defaultWriteScope: 'user',
+        scopeAvailability: {
+          scope: 'project',
+        },
+      },
+    },
+  },
+}
+const malformedImportApplyScopeUnavailableFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['仍保留 import scope warning。'],
+  error: {
+    code: 'IMPORT_SCOPE_UNAVAILABLE',
+    message: 'Gemini project scope 不可用：无法解析 project root。',
+    details: {
+      scopePolicy: importApplyPayload.scopePolicy,
+      scopeCapabilities: {
+        scope: 'project',
+      },
+      scopeAvailability: 'not-an-array',
+    },
+  },
+}
+const importApplyNotReadyFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['导入文件按兼容模式解析；apply 设计必须以当前本地 observation 为准。'],
+  error: {
+    code: 'IMPORT_APPLY_NOT_READY',
+    message: '当前 import preview 结果不允许进入 apply。',
+    details: {
+      sourceFile: 'E:/tmp/export.json',
+      profileId: 'gemini-prod',
+      previewDecision: {
+        canProceedToApplyDesign: false,
+        recommendedScope: 'project',
+        requiresLocalResolution: true,
+        reasonCodes: ['BLOCKED_BY_FIDELITY_MISMATCH', 'REQUIRES_LOCAL_SCOPE_RESOLUTION'],
+        reasons: [
+          {
+            code: 'BLOCKED_BY_FIDELITY_MISMATCH',
+            blocking: true,
+            message: '导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。',
+          },
+          {
+            code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION',
+            blocking: true,
+            message: '当前本地 scope 解析未完成，需先修复本地解析结果。',
+          },
+        ],
+      },
+      fidelity: {
+        status: 'mismatch',
+        mismatches: [
+          {
+            field: 'scopeAvailability',
+            driftKind: 'availability-drift',
+            severity: 'blocking',
+            scope: 'project',
+            exportedValue: { status: 'available', detected: true, writable: true },
+            localValue: { status: 'unresolved', detected: false, writable: false },
+            message: 'project 作用域的可用性与当前本地环境不一致。',
+            recommendedAction: '先修复本地 project scope 解析，再重新执行 import preview。',
+          },
+        ],
+        driftSummary: { blocking: 1, warning: 0, info: 0 },
+        groupedMismatches: [
+          {
+            driftKind: 'availability-drift',
+            totalCount: 1,
+            blockingCount: 1,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [
+              {
+                field: 'scopeAvailability',
+                driftKind: 'availability-drift',
+                severity: 'blocking',
+                scope: 'project',
+                exportedValue: { status: 'available', detected: true, writable: true },
+                localValue: { status: 'unresolved', detected: false, writable: false },
+                message: 'project 作用域的可用性与当前本地环境不一致。',
+                recommendedAction: '先修复本地 project scope 解析，再重新执行 import preview。',
+              },
+            ],
+          },
+        ],
+        highlights: ['当前本地 scope availability 与导出观察不一致，应以本地实时环境为准。'],
+      },
+      localObservation: {
+        defaultWriteScope: 'user',
+        scopeCapabilities: geminiScopeCapabilities,
+        scopeAvailability: geminiScopeAvailability,
+      },
+      exportedObservation: {
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: geminiScopeCapabilities,
+        scopeAvailability: [
+          {
+            scope: 'project',
+            status: 'available',
+            detected: true,
+            writable: true,
+            path: 'E:/repo/.gemini/settings.json',
+          },
+        ],
+      },
+    },
+  },
+}
+const importApplyScopeUnavailableFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['导入文件按兼容模式解析；当前以本地实时 environment 为准。'],
+  error: {
+    code: 'IMPORT_SCOPE_UNAVAILABLE',
+    message: 'Gemini project scope 不可用：无法解析 project root。',
+    details: {
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      scopePolicy: importApplyPayload.scopePolicy,
+      scopeCapabilities: geminiScopeCapabilities,
+      scopeAvailability: geminiScopeAvailability,
+    },
+  },
+}
+const importApplyConfirmationFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+  limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+  error: {
+    code: 'CONFIRMATION_REQUIRED',
+    message: '当前导入应用需要确认或 --force。',
+    details: {
+      risk: {
+        allowed: false,
+        riskLevel: 'high',
+        reasons: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+        limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+      },
+      scopePolicy: importApplyPayload.scopePolicy,
+      scopeCapabilities: geminiScopeCapabilities,
+      scopeAvailability: [
+        {
+          scope: 'user',
+          status: 'available',
+          detected: true,
+          writable: true,
+          path: 'C:/Users/test/.gemini/settings.json',
+        },
+        {
+          scope: 'project',
+          status: 'available',
+          detected: true,
+          writable: true,
+          path: 'E:/repo/.gemini/settings.json',
+        },
+      ],
+    },
+  },
+}
 
 const outputCurrent = renderText(createCurrentResult(currentPayload))
 const outputEmptyCurrent = renderText(createCurrentResult(emptyCurrentPayload))
 const outputPreview = renderText(createPreviewResult(previewPayload))
 const outputPreviewNoChanges = renderText(createPreviewResult(noChangesPreviewPayload))
+const outputExperimentalPreview = renderText(createPreviewResult(experimentalPreviewPayload))
 const outputPreviewValidationError = renderText(createPreviewResult(emptyValidationPreviewPayload))
 const outputPreviewValidationLimitations = renderText(createPreviewResult(validationPreviewPayloadWithLimitations))
 const outputUse = renderText(createUseResult(usePayload))
@@ -934,6 +1547,8 @@ const outputValidate = renderText(createValidateResult(validatePayload))
 const outputValidateItemLimitations = renderText(createValidateResult(validatePayloadWithIssueLimitations))
 const outputEmptyValidate = renderText(createValidateResult(emptyValidatePayload))
 const outputExport = renderText(createExportResult(exportPayload))
+const outputImportPreview = renderText(createImportPreviewResult(importPreviewPayload))
+const outputImportApply = renderText(createImportApplyResult(importApplyPayload))
 const outputEmptyExport = renderText(createExportResult(emptyExportPayload))
 const outputAdd = renderText(createAddResult(addPayload))
 const outputAddWithLimitations = renderText(createAddResult(addPayloadWithLimitations))
@@ -942,9 +1557,16 @@ const outputEmptyList = renderText(createListResult(emptyListPayload))
 const outputGenericSuccess = renderText(genericSuccessResult)
 const outputGenericSuccessWithoutData = renderText(genericSuccessWithoutData)
 const outputGenericFailure = renderText(genericFailureResult)
+const outputConfirmationFailure = renderText(confirmationFailureResult)
 const outputUseValidationFailure = renderText(useValidationFailureResult)
 const outputPreviewFailureWithData = renderText(previewFailureWithDataResult)
 const outputValidateFailureWithData = renderText(validateFailureWithDataResult)
+const outputImportApplyNotReadyFailure = renderText(importApplyNotReadyFailureResult)
+const outputImportApplyScopeUnavailableFailure = renderText(importApplyScopeUnavailableFailureResult)
+const outputImportApplyConfirmationFailure = renderText(importApplyConfirmationFailureResult)
+const outputMalformedConfirmationFailure = renderText(malformedConfirmationFailureResult)
+const outputMalformedImportApplyNotReadyFailure = renderText(malformedImportApplyNotReadyFailureResult)
+const outputMalformedImportApplyScopeUnavailableFailure = renderText(malformedImportApplyScopeUnavailableFailureResult)
 
 describe('text renderer', () => {
   it('渲染 current 结果时输出 state、最近切换与检测结果', () => {
@@ -958,6 +1580,21 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('  托管识别: 是')
     expect(outputCurrent).toContain('  匹配配置: gemini-prod')
     expect(outputCurrent).toContain('  当前作用域: user')
+    expect(outputCurrent).toContain('  作用域说明:')
+    expect(outputCurrent).toContain('  - 检测范围: system-defaults, user, project, system-overrides')
+    expect(outputCurrent).toContain('  - 生效优先级: system-defaults < user < project < system-overrides')
+    expect(outputCurrent).toContain('  - 当前生效来源: user')
+    expect(outputCurrent).toContain('  - 当前写入策略: api-switcher 当前仅写入 user scope')
+    expect(outputCurrent).toContain('  作用域能力:')
+    expect(outputCurrent).toContain('  - system-defaults: detect/current=yes, preview/effective=yes, use/write=no, rollback=no, risk=normal')
+    expect(outputCurrent).toContain('  - user: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=normal')
+    expect(outputCurrent).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputCurrent).toContain('  作用域可用性:')
+    expect(outputCurrent).toContain('  - user: status=available, detected=yes, writable=yes')
+    expect(outputCurrent).toContain('    路径: C:/Users/test/.gemini/settings.json')
+    expect(outputCurrent).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(outputCurrent).toContain('    原因代码: PROJECT_ROOT_UNRESOLVED')
+    expect(outputCurrent).toContain('    建议: 设置有效的 Gemini project root 后再重试。')
     expect(outputCurrent).toContain('  目标文件: C:/Users/test/.gemini/settings.json')
     expect(outputCurrent).toContain('  生效配置:')
     expect(outputCurrent).toContain('    已写入:')
@@ -992,6 +1629,15 @@ describe('text renderer', () => {
     expect(outputPreview).toContain('  需要确认: 是')
     expect(outputPreview).toContain('  计划备份: 是')
     expect(outputPreview).toContain('  无变更: 否')
+    expect(outputPreview).toContain('  作用域能力:')
+    expect(outputPreview).toContain('  - system-defaults: detect/current=yes, preview/effective=yes, use/write=no, rollback=no, risk=normal')
+    expect(outputPreview).toContain('    说明: 只参与 Gemini effective config 检测与 precedence 推导，不允许写入或回滚。')
+    expect(outputPreview).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputPreview).toContain('  作用域说明:')
+    expect(outputPreview).toContain('  - 生效优先级: system-defaults < user < project < system-overrides')
+    expect(outputPreview).toContain('  - 预览视角: 先按四层 precedence 推导 current/effective，再评估本次写入')
+    expect(outputPreview).toContain('  - 本次写入目标: user scope')
+    expect(outputPreview).toContain('  - 覆盖提醒: 如果 project 或 system-overrides 存在同名字段，user 写入后仍可能不会成为最终生效值')
     expect(outputPreview).toContain('  目标文件:')
     expect(outputPreview).toContain('  - C:/Users/test/.gemini/settings.json')
     expect(outputPreview).toContain('  生效配置:')
@@ -1023,6 +1669,15 @@ describe('text renderer', () => {
     expect(outputPreviewNoChanges).toContain('  - C:/Users/test/.gemini/settings.json: 无变化')
   })
 
+  it('preview 会单独渲染实验性 Gemini 字段', () => {
+    expect(outputExperimentalPreview).toContain('- 配置: gemini-proxy (gemini)')
+    expect(outputExperimentalPreview).toContain('  生效字段:')
+    expect(outputExperimentalPreview).toContain('  - enforcedAuthType: gemini-api-key (scope=user, source=profile)')
+    expect(outputExperimentalPreview).toContain('  - GEMINI_API_KEY: gm-l***21 (scope=runtime, source=env, secret)')
+    expect(outputExperimentalPreview).toContain('  - GEMINI_BASE_URL: https://proxy.example.com (scope=runtime, source=managed-policy)')
+    expect(outputExperimentalPreview).toContain('  警告: Gemini 自定义 base URL 属于实验性支持，默认不按稳定托管字段写入。')
+  })
+
   it('preview 校验失败时输出错误与限制信息', () => {
     expect(outputPreviewValidationError).toContain('  校验结果: 失败')
     expect(outputPreviewValidationError).toContain('  错误: 缺少关键字段')
@@ -1041,6 +1696,10 @@ describe('text renderer', () => {
     expect(outputUse).toContain('  风险等级: medium')
     expect(outputUse).toContain('  已变更文件:')
     expect(outputUse).toContain('  - C:/Users/test/.gemini/settings.json')
+    expect(outputUse).toContain('  作用域能力:')
+    expect(outputUse).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputUse).toContain('  作用域可用性:')
+    expect(outputUse).toContain('  - project: status=unresolved, detected=no, writable=no')
     expect(outputUse).toContain('  生效配置:')
     expect(outputUse).toContain('    已写入:')
     expect(outputUse).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
@@ -1071,6 +1730,17 @@ describe('text renderer', () => {
     expect(outputRollback).toContain('- 备份ID: snapshot-gemini-001')
     expect(outputRollback).toContain('  已恢复文件:')
     expect(outputRollback).toContain('  - C:/Users/test/.gemini/settings.json')
+    expect(outputRollback).toContain('作用域策略:')
+    expect(outputRollback).toContain('  - 默认目标: user scope')
+    expect(outputRollback).toContain('  - 显式指定: 是')
+    expect(outputRollback).toContain('  - 请求作用域: project scope')
+    expect(outputRollback).toContain('  - 实际目标: project scope')
+    expect(outputRollback).toContain('  - 高风险: 是')
+    expect(outputRollback).toContain('  - 回滚约束: 必须匹配快照 scope')
+    expect(outputRollback).toContain('作用域能力:')
+    expect(outputRollback).toContain('  - system-defaults: detect/current=yes, preview/effective=yes, use/write=no, rollback=no, risk=normal')
+    expect(outputRollback).toContain('  作用域可用性:')
+    expect(outputRollback).toContain('  - project: status=unresolved, detected=no, writable=no')
     expect(outputRollback).toContain('  生效配置:')
     expect(outputRollback).toContain('    已写入:')
     expect(outputRollback).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
@@ -1103,6 +1773,9 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('  错误: 缺少 GEMINI_API_KEY')
     expect(outputValidate).toContain('  警告: Gemini base URL 当前未确认支持。')
     expect(outputValidate).toContain('  限制: Gemini API key 仍需通过环境变量生效。')
+    expect(outputValidate).toContain('  作用域能力:')
+    expect(outputValidate).toContain('  - system-defaults: detect/current=yes, preview/effective=yes, use/write=no, rollback=no, risk=normal')
+    expect(outputValidate).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
     expect(outputValidate).toContain('  生效配置:')
     expect(outputValidate).toContain('    已写入:')
     expect(outputValidate).toContain('    - enforcedAuthType: gemini-api-key (scope=user, source=stored)')
@@ -1138,6 +1811,9 @@ describe('text renderer', () => {
     expect(outputExport).toContain('[export] 成功')
     expect(outputExport).toContain('- claude-prod (claude)')
     expect(outputExport).toContain('  名称: Claude 生产')
+    expect(outputExport).toContain('  默认写入作用域: user scope')
+    expect(outputExport).toContain('  作用域能力:')
+    expect(outputExport).toContain('  - local: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=normal')
     expect(outputExport).toContain('  校验结果: 通过')
     expect(outputExport).toContain('  限制: 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(outputExport).toContain('  生效配置:')
@@ -1158,6 +1834,70 @@ describe('text renderer', () => {
     expect(outputExport).toContain('  - 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
   })
 
+  it('渲染 import preview 结果时明确区分导出观察与当前本地观察', () => {
+    expect(outputImportPreview).toContain('[import] 成功')
+    expect(outputImportPreview).toContain('导入文件: E:/tmp/export.json')
+    expect(outputImportPreview).toContain('源兼容性: schema-version-missing')
+    expect(outputImportPreview).toContain('  - 导入文件未声明 schemaVersion，当前按兼容模式解析。')
+    expect(outputImportPreview).toContain('汇总: total=1, match=0, mismatch=1, partial=0, insufficient-data=0')
+    expect(outputImportPreview).toContain('按平台汇总:')
+    expect(outputImportPreview).toContain('  - gemini: total=1, match=0, mismatch=1, partial=0, insufficient-data=0')
+    expect(outputImportPreview).toContain('决策代码汇总:')
+    expect(outputImportPreview).toContain('  - BLOCKED_BY_FIDELITY_MISMATCH: total=1, blocking=1, non-blocking=0')
+    expect(outputImportPreview).toContain('  - REQUIRES_LOCAL_SCOPE_RESOLUTION: total=1, blocking=1, non-blocking=0')
+    expect(outputImportPreview).toContain('Drift 类型汇总:')
+    expect(outputImportPreview).toContain('  - availability-drift: total=1, blocking=1, warning=0, info=0')
+    expect(outputImportPreview).toContain('- 配置: gemini-prod (gemini)')
+    expect(outputImportPreview).toContain('  导出时观察:')
+    expect(outputImportPreview).toContain('    默认写入作用域: user scope')
+    expect(outputImportPreview).toContain('    导出观测时间: 2026-04-16T00:00:00.000Z')
+    expect(outputImportPreview).toContain('    作用域可用性:')
+    expect(outputImportPreview).toContain('    - project: status=available, detected=yes, writable=yes')
+    expect(outputImportPreview).toContain('  当前本地观察:')
+    expect(outputImportPreview).toContain('    默认写入作用域: user scope')
+    expect(outputImportPreview).toContain('    - project: status=unresolved, detected=no, writable=no')
+    expect(outputImportPreview).toContain('  Fidelity: mismatch')
+    expect(outputImportPreview).toContain('  Drift 汇总: blocking=1, warning=0, info=0')
+    expect(outputImportPreview).toContain('  Drift 分组: availability-drift, total=1, blocking=1, warning=0, info=0')
+    expect(outputImportPreview).toContain('  Highlight: 当前本地 scope availability 与导出观察不一致，应以本地实时环境为准。')
+    expect(outputImportPreview).toContain('  - project 作用域的可用性与当前本地环境不一致。')
+    expect(outputImportPreview).toContain('    drift=availability-drift, severity=blocking')
+    expect(outputImportPreview).toContain('    导出值: {"status":"available","detected":true,"writable":true}')
+    expect(outputImportPreview).toContain('    本地值: {"status":"unresolved","detected":false,"writable":false}')
+    expect(outputImportPreview).toContain('    建议动作: 先修复本地 project scope 解析，再重新执行 import preview。')
+    expect(outputImportPreview).toContain('  决策代码: BLOCKED_BY_FIDELITY_MISMATCH, REQUIRES_LOCAL_SCOPE_RESOLUTION')
+    expect(outputImportPreview).toContain('  决策原因: [BLOCKED_BY_FIDELITY_MISMATCH] blocking / 导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。')
+    expect(outputImportPreview).toContain('  决策原因: [REQUIRES_LOCAL_SCOPE_RESOLUTION] blocking / 当前本地 scope 解析未完成，需先修复本地解析结果。')
+    expect(outputImportPreview).toContain('  建议: 先修复本地作用域解析，再考虑进入 apply 设计。')
+  })
+
+  it('渲染 import apply 结果时输出稳定成功字段与 explainable 摘要', () => {
+    expect(outputImportApply).toContain('[import-apply] 成功')
+    expect(outputImportApply).toContain('导入文件: E:/tmp/export.json')
+    expect(outputImportApply).toContain('导入配置: gemini-prod (gemini)')
+    expect(outputImportApply).toContain('应用作用域: project scope')
+    expect(outputImportApply).toContain('备份ID: snapshot-import-001')
+    expect(outputImportApply).toContain('作用域策略:')
+    expect(outputImportApply).toContain('  - 默认目标: user scope')
+    expect(outputImportApply).toContain('  - 请求作用域: project scope')
+    expect(outputImportApply).toContain('  - 实际目标: project scope')
+    expect(outputImportApply).toContain('  - 风险原因: Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(outputImportApply).toContain('  作用域能力:')
+    expect(outputImportApply).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputImportApply).toContain('  作用域可用性:')
+    expect(outputImportApply).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(outputImportApply).toContain('  校验结果: 通过')
+    expect(outputImportApply).toContain('  风险等级: medium')
+    expect(outputImportApply).toContain('  计划备份: 是')
+    expect(outputImportApply).toContain('  无变更: 否')
+    expect(outputImportApply).toContain('  已变更文件:')
+    expect(outputImportApply).toContain('  - C:/Users/test/.gemini/settings.json')
+    expect(outputImportApply).toContain('附加提示:')
+    expect(outputImportApply).toContain('  - 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
+    expect(outputImportApply).toContain('限制说明:')
+    expect(outputImportApply).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
   it('空 export 结果返回空正文', () => {
     expect(outputEmptyExport).toBe('[export] 成功\n')
   })
@@ -1171,6 +1911,8 @@ describe('text renderer', () => {
     expect(outputAdd).toContain('  需要确认: 否')
     expect(outputAdd).toContain('  计划备份: 是')
     expect(outputAdd).toContain('  无变更: 否')
+    expect(outputAdd).toContain('  作用域能力:')
+    expect(outputAdd).toContain('  - local: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=normal')
     expect(outputAdd).toContain('  目标文件:')
     expect(outputAdd).toContain('  - C:/Users/test/.claude/settings.json')
     expect(outputAdd).toContain('  生效配置:')
@@ -1209,11 +1951,16 @@ describe('text renderer', () => {
     expect(outputList).toContain('  当前生效: 是')
     expect(outputList).toContain('  健康状态: valid')
     expect(outputList).toContain('  风险等级: low')
+    expect(outputList).toContain('  - local: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=normal')
     expect(outputList).toContain('- gemini-prod (gemini)')
     expect(outputList).toContain('  名称: Gemini 生产')
     expect(outputList).toContain('  当前生效: 否')
     expect(outputList).toContain('  健康状态: warning')
     expect(outputList).toContain('  风险等级: medium')
+    expect(outputList).toContain('  - system-overrides: detect/current=yes, preview/effective=yes, use/write=no, rollback=no, risk=normal')
+    expect(outputList).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputList).toContain('  作用域可用性:')
+    expect(outputList).toContain('  - project: status=unresolved, detected=no, writable=no')
     expect(outputList).toContain('附加提示:')
     expect(outputList).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputList).toContain('限制说明:')
@@ -1240,6 +1987,110 @@ describe('text renderer', () => {
     expect(outputGenericFailure).toContain('  - 高风险操作需要确认')
     expect(outputGenericFailure).toContain('限制说明:')
     expect(outputGenericFailure).toContain('  - Gemini 最终认证结果仍受环境变量影响。')
+  })
+
+  it('确认门槛失败会输出结构化作用域策略', () => {
+    expect(outputConfirmationFailure).toContain('[use] 失败')
+    expect(outputConfirmationFailure).toContain('当前切换需要确认或 --force。')
+    expect(outputConfirmationFailure).toContain('作用域策略:')
+    expect(outputConfirmationFailure).toContain('  - 默认目标: user scope')
+    expect(outputConfirmationFailure).toContain('  - 显式指定: 是')
+    expect(outputConfirmationFailure).toContain('  - 请求作用域: project scope')
+    expect(outputConfirmationFailure).toContain('  - 实际目标: project scope')
+    expect(outputConfirmationFailure).toContain('  - 高风险: 是')
+    expect(outputConfirmationFailure).toContain('  - 风险原因: Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(outputConfirmationFailure).toContain('  - 回滚约束: 必须匹配快照 scope')
+    expect(outputConfirmationFailure).toContain('作用域能力:')
+    expect(outputConfirmationFailure).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
+    expect(outputConfirmationFailure).toContain('作用域可用性:')
+    expect(outputConfirmationFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
+  })
+
+  it('import apply not ready 失败会输出 previewDecision 与本地 observation 语境', () => {
+    expect(outputImportApplyNotReadyFailure).toContain('[import-apply] 失败')
+    expect(outputImportApplyNotReadyFailure).toContain('当前 import preview 结果不允许进入 apply。')
+    expect(outputImportApplyNotReadyFailure).toContain('导入文件: E:/tmp/export.json')
+    expect(outputImportApplyNotReadyFailure).toContain('导入配置: gemini-prod')
+    expect(outputImportApplyNotReadyFailure).toContain('当前本地观察:')
+    expect(outputImportApplyNotReadyFailure).toContain('  默认写入作用域: user scope')
+    expect(outputImportApplyNotReadyFailure).toContain('  作用域可用性:')
+    expect(outputImportApplyNotReadyFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(outputImportApplyNotReadyFailure).toContain('导出时观察:')
+    expect(outputImportApplyNotReadyFailure).toContain('  导出观测时间: 2026-04-16T00:00:00.000Z')
+    expect(outputImportApplyNotReadyFailure).toContain('Preview 决策:')
+    expect(outputImportApplyNotReadyFailure).toContain('  推荐作用域: project scope')
+    expect(outputImportApplyNotReadyFailure).toContain('  可进入 apply 设计: 否')
+    expect(outputImportApplyNotReadyFailure).toContain('  需要先修复本地解析: 是')
+    expect(outputImportApplyNotReadyFailure).toContain('  决策代码: BLOCKED_BY_FIDELITY_MISMATCH, REQUIRES_LOCAL_SCOPE_RESOLUTION')
+    expect(outputImportApplyNotReadyFailure).toContain('  决策原因: [BLOCKED_BY_FIDELITY_MISMATCH] blocking / 导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。')
+    expect(outputImportApplyNotReadyFailure).toContain('  决策原因: [REQUIRES_LOCAL_SCOPE_RESOLUTION] blocking / 当前本地 scope 解析未完成，需先修复本地解析结果。')
+    expect(outputImportApplyNotReadyFailure).toContain('Fidelity:')
+    expect(outputImportApplyNotReadyFailure).toContain('  状态: mismatch')
+    expect(outputImportApplyNotReadyFailure).toContain('  Highlight: 当前本地 scope availability 与导出观察不一致，应以本地实时环境为准。')
+    expect(outputImportApplyNotReadyFailure).toContain('  - project 作用域的可用性与当前本地环境不一致。')
+    expect(outputImportApplyNotReadyFailure).toContain('    建议动作: 先修复本地 project scope 解析，再重新执行 import preview。')
+  })
+
+  it('import apply scope unavailable 失败会先输出作用域策略与可用性，不误导提示 --force', () => {
+    expect(outputImportApplyScopeUnavailableFailure).toContain('[import-apply] 失败')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('Gemini project scope 不可用：无法解析 project root。')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('作用域策略:')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('  - 请求作用域: project scope')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('  - 实际目标: project scope')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('作用域可用性:')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(outputImportApplyScopeUnavailableFailure).toContain('    原因代码: PROJECT_ROOT_UNRESOLVED')
+    expect(outputImportApplyScopeUnavailableFailure).not.toContain('--force')
+  })
+
+  it('import apply confirmation required 失败会输出 risk 与作用域细节', () => {
+    expect(outputImportApplyConfirmationFailure).toContain('[import-apply] 失败')
+    expect(outputImportApplyConfirmationFailure).toContain('当前导入应用需要确认或 --force。')
+    expect(outputImportApplyConfirmationFailure).toContain('风险摘要:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 风险等级: high')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 原因: 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
+    expect(outputImportApplyConfirmationFailure).toContain('作用域策略:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 请求作用域: project scope')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 实际目标: project scope')
+    expect(outputImportApplyConfirmationFailure).toContain('作用域可用性:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - project: status=available, detected=yes, writable=yes')
+    expect(outputImportApplyConfirmationFailure).toContain('限制说明:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('malformed confirmation details 不会导致 renderer 二次抛错，并优雅降级', () => {
+    expect(outputMalformedConfirmationFailure).toContain('[use] 失败')
+    expect(outputMalformedConfirmationFailure).toContain('当前切换需要确认或 --force。')
+    expect(outputMalformedConfirmationFailure).toContain('附加提示:')
+    expect(outputMalformedConfirmationFailure).toContain('  - 仍保留原始 warning。')
+    expect(outputMalformedConfirmationFailure).toContain('限制说明:')
+    expect(outputMalformedConfirmationFailure).toContain('  - 仍保留原始 limitation。')
+    expect(outputMalformedConfirmationFailure).not.toContain('风险摘要:')
+    expect(outputMalformedConfirmationFailure).not.toContain('作用域能力:')
+    expect(outputMalformedConfirmationFailure).not.toContain('作用域可用性:')
+  })
+
+  it('malformed import apply not ready details 不会崩溃，并降级为普通错误文本', () => {
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('[import-apply] 失败')
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('当前 import preview 结果不允许进入 apply。')
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('附加提示:')
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('  - 仍保留 import apply warning。')
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('限制说明:')
+    expect(outputMalformedImportApplyNotReadyFailure).toContain('  - 仍保留 import apply limitation。')
+    expect(outputMalformedImportApplyNotReadyFailure).not.toContain('导入文件: E:/tmp/export.json')
+    expect(outputMalformedImportApplyNotReadyFailure).not.toContain('Preview 决策:')
+    expect(outputMalformedImportApplyNotReadyFailure).not.toContain('当前本地观察:')
+  })
+
+  it('malformed import scope unavailable details 会保留可用的 scope policy，并跳过坏数组字段', () => {
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('[import-apply] 失败')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('Gemini project scope 不可用：无法解析 project root。')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('作用域策略:')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('  - 请求作用域: project scope')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('附加提示:')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).toContain('  - 仍保留 import scope warning。')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).not.toContain('作用域能力:')
+    expect(outputMalformedImportApplyScopeUnavailableFailure).not.toContain('作用域可用性:')
   })
 
   it('use 校验失败结果输出 explainable 摘要', () => {

@@ -36,7 +36,118 @@ describe('output command result', () => {
 
     outputCommandResult(result, true)
 
-    expect(writeSpy).toHaveBeenCalledWith(`${JSON.stringify(result, null, 2)}\n`)
+    expect(writeSpy).toHaveBeenCalledWith(`${JSON.stringify({
+      schemaVersion: '2026-04-15.public-json.v1',
+      ...result,
+    }, null, 2)}\n`)
+    expect(process.exitCode).toBe(EXIT_CODES.success)
+  })
+
+  it('json 模式对 import-apply 透传稳定 success fields，不扁平化 explainable', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'import-apply',
+      data: {
+        sourceFile: 'E:/tmp/export.json',
+        importedProfile: {
+          id: 'gemini-prod',
+          name: 'Gemini 生产',
+          platform: 'gemini',
+          source: {},
+          apply: {},
+        },
+        appliedScope: 'project',
+        scopePolicy: {
+          requestedScope: 'project',
+          resolvedScope: 'project',
+          defaultScope: 'user',
+          explicitScope: true,
+          highRisk: true,
+          riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+          rollbackScopeMatchRequired: true,
+        },
+        scopeCapabilities: [
+          {
+            scope: 'project',
+            detect: true,
+            preview: true,
+            use: true,
+            rollback: true,
+            writable: true,
+            risk: 'high',
+            confirmationRequired: true,
+          },
+        ],
+        scopeAvailability: [
+          {
+            scope: 'project',
+            status: 'available',
+            detected: true,
+            writable: true,
+            path: 'E:/repo/.gemini/settings.json',
+          },
+        ],
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          limitations: [],
+        },
+        preview: {
+          platform: 'gemini',
+          profileId: 'gemini-prod',
+          targetFiles: [],
+          effectiveFields: [],
+          storedOnlyFields: [],
+          diffSummary: [],
+          warnings: [],
+          limitations: [],
+          riskLevel: 'medium',
+          requiresConfirmation: true,
+          backupPlanned: true,
+          noChanges: false,
+        },
+        risk: {
+          allowed: true,
+          riskLevel: 'medium',
+          reasons: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+          limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+        },
+        backupId: 'snapshot-import-001',
+        changedFiles: ['C:/Users/test/.gemini/settings.json'],
+        noChanges: false,
+        summary: {
+          warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+          limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+        },
+      },
+      warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
+      limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+    }
+
+    outputCommandResult(result, true)
+
+    expect(writeSpy).toHaveBeenCalledWith(`${JSON.stringify({
+      schemaVersion: '2026-04-15.public-json.v1',
+      ...result,
+    }, null, 2)}\n`)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.sourceFile).toBe('E:/tmp/export.json')
+    expect(rendered.data.importedProfile.id).toBe('gemini-prod')
+    expect(rendered.data.appliedScope).toBe('project')
+    expect(rendered.data.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
+    expect(rendered.data.risk.reasons).toEqual(['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'])
+    expect(rendered.scopePolicy).toBeUndefined()
     expect(process.exitCode).toBe(EXIT_CODES.success)
   })
 

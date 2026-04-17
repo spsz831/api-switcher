@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 import { StateStore } from '../../src/stores/state.store'
+import { PUBLIC_JSON_SCHEMA_VERSION } from '../../src/constants/public-json-schema'
 import type { CommandResult } from '../../src/types/command'
 import type { Profile } from '../../src/types/profile'
 
@@ -19,6 +20,29 @@ type CliRunResult = {
   exitCode: number
 }
 
+type ScopeCapabilityContract = {
+  scope: string
+  detect: boolean
+  preview: boolean
+  use: boolean
+  rollback: boolean
+  writable: boolean
+  risk?: 'normal' | 'high'
+  confirmationRequired?: boolean
+  note?: string
+}
+
+type ScopeAvailabilityContract = {
+  scope: string
+  status: 'available' | 'unresolved' | 'blocked'
+  detected: boolean
+  writable: boolean
+  path?: string
+  reasonCode?: string
+  reason?: string
+  remediation?: string
+}
+
 let runtimeDir: string
 let claudeProjectRoot: string
 let claudeUserSettingsPath: string
@@ -27,6 +51,8 @@ let claudeLocalSettingsPath: string
 let codexConfigPath: string
 let codexAuthPath: string
 let geminiSettingsPath: string
+let geminiProjectRoot: string
+let geminiProjectSettingsPath: string
 
 beforeEach(async () => {
   runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'api-switcher-cli-it-'))
@@ -37,6 +63,8 @@ beforeEach(async () => {
   codexConfigPath = path.join(runtimeDir, 'config.toml')
   codexAuthPath = path.join(runtimeDir, 'auth.json')
   geminiSettingsPath = path.join(runtimeDir, 'gemini-settings.json')
+  geminiProjectRoot = path.join(runtimeDir, 'gemini-workspace')
+  geminiProjectSettingsPath = path.join(geminiProjectRoot, '.gemini', 'settings.json')
 
   process.env.API_SWITCHER_RUNTIME_DIR = runtimeDir
   process.env.API_SWITCHER_CLAUDE_PROJECT_ROOT = claudeProjectRoot
@@ -47,6 +75,7 @@ beforeEach(async () => {
   process.env.API_SWITCHER_CODEX_CONFIG_PATH = codexConfigPath
   process.env.API_SWITCHER_CODEX_AUTH_PATH = codexAuthPath
   process.env.API_SWITCHER_GEMINI_SETTINGS_PATH = geminiSettingsPath
+  process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = geminiProjectRoot
 
   const profilesStore = new ProfilesStore()
   await profilesStore.write({
@@ -103,6 +132,8 @@ beforeEach(async () => {
   await fs.writeFile(codexConfigPath, 'default_provider = "openai"\nbase_url = "https://old.example.com/v1"\n', 'utf8')
   await fs.writeFile(codexAuthPath, JSON.stringify({ OPENAI_API_KEY: 'sk-old-000', user_id: 'u-1' }, null, 2), 'utf8')
   await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'oauth-personal' }, null, 2), 'utf8')
+  await fs.mkdir(path.dirname(geminiProjectSettingsPath), { recursive: true })
+  await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ projectOnly: true }, null, 2), 'utf8')
 })
 
 afterEach(async () => {
@@ -116,6 +147,7 @@ afterEach(async () => {
   delete process.env.API_SWITCHER_CODEX_CONFIG_PATH
   delete process.env.API_SWITCHER_CODEX_AUTH_PATH
   delete process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
+  delete process.env.API_SWITCHER_GEMINI_PROJECT_ROOT
 
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
@@ -132,6 +164,7 @@ async function runCli(argv: string[], envOverrides: NodeJS.ProcessEnv = {}): Pro
     API_SWITCHER_CODEX_CONFIG_PATH: codexConfigPath,
     API_SWITCHER_CODEX_AUTH_PATH: codexAuthPath,
     API_SWITCHER_GEMINI_SETTINGS_PATH: geminiSettingsPath,
+    API_SWITCHER_GEMINI_PROJECT_ROOT: geminiProjectRoot,
     ...envOverrides,
   }
 
@@ -157,10 +190,103 @@ async function runCli(argv: string[], envOverrides: NodeJS.ProcessEnv = {}): Pro
 }
 
 function parseJsonResult<T = unknown>(stdout: string): CommandResult<T> {
-  return JSON.parse(stdout) as CommandResult<T>
+  const payload = JSON.parse(stdout) as CommandResult<T>
+  expect(payload.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
+  return payload
+}
+
+async function writeImportSourceFile(
+  filePath: string,
+  profiles: Array<Record<string, unknown>>,
+): Promise<void> {
+  await fs.writeFile(filePath, JSON.stringify({
+    schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
+    ok: true,
+    action: 'export',
+    data: {
+      profiles,
+      summary: {
+        warnings: [],
+        limitations: [],
+      },
+    },
+  }, null, 2), 'utf8')
 }
 
 describe('cli commands integration', () => {
+  it('schema --json 输出当前 public JSON schema 与版本', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      schemaVersion: string
+      schemaId: string
+      schema: {
+        $schema: string
+        $id: string
+        $defs?: Record<string, unknown>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+    expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
+    expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
+    expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')
+    expect(payload.data?.schema.$id).toBe(payload.data?.schemaId)
+    expect(payload.data?.schema.$defs).toHaveProperty('ScopeCapability')
+    expect(payload.data?.schema.$defs).toHaveProperty('CommandResult')
+  })
+
+  it('schema 文本输出当前 public JSON schema 摘要', async () => {
+    const result = await runCli(['schema'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[schema] 成功')
+    expect(result.stdout).toContain('Schema Version: 2026-04-15.public-json.v1')
+    expect(result.stdout).toContain('Schema ID: https://api-switcher.local/schemas/public-json-output.schema.json')
+  })
+
+  it('schema 命令在顶层 help 和子命令 help 中可发现', async () => {
+    const root = await runCli(['--help'])
+    const schema = await runCli(['schema', '--help'])
+
+    expect(root.stderr).toBe('')
+    expect(root.exitCode).toBe(0)
+    expect(root.stdout).toContain('schema')
+    expect(root.stdout).toContain('输出 public JSON schema')
+
+    expect(schema.stderr).toBe('')
+    expect(schema.exitCode).toBe(0)
+    expect(schema.stdout).toContain('Usage:')
+    expect(schema.stdout).toContain('--json')
+    expect(schema.stdout).toContain('使用 JSON 输出')
+    expect(schema.stdout).toContain('--schema-version')
+  })
+
+  it('schema --schema-version 只输出当前 public JSON schema 版本', async () => {
+    const result = await runCli(['schema', '--schema-version'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[schema] 成功')
+    expect(result.stdout).toContain(`Schema Version: ${PUBLIC_JSON_SCHEMA_VERSION}`)
+    expect(result.stdout).not.toContain('Schema ID:')
+  })
+
+  it('schema --schema-version --json 只返回当前 public JSON schema 版本', async () => {
+    const result = await runCli(['schema', '--schema-version', '--json'])
+    const payload = parseJsonResult<{ schemaVersion: string }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+    expect(payload.data).toEqual({ schemaVersion: PUBLIC_JSON_SCHEMA_VERSION })
+  })
+
   it('current --json 输出结构化 state 与检测结果', async () => {
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
     await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
@@ -176,7 +302,7 @@ describe('cli commands integration', () => {
         platform: string
         managed: boolean
         matchedProfileId?: string
-        targetFiles: Array<{ path: string }>
+        targetFiles: Array<{ path: string; scope?: string }>
         managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
         secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
         effectiveConfig?: {
@@ -185,6 +311,8 @@ describe('cli commands integration', () => {
           overrides: Array<{ key: string; kind: string; source: string; message: string; shadowed?: boolean }>
           shadowedKeys?: string[]
         }
+        scopeCapabilities?: ScopeCapabilityContract[]
+        scopeAvailability?: ScopeAvailabilityContract[]
         warnings?: Array<{ code: string; message: string }>
         limitations?: Array<{ code: string; message: string }>
       }>
@@ -203,10 +331,63 @@ describe('cli commands integration', () => {
     const geminiDetection = payload.data?.detections.find((item) => item.platform === 'gemini')
     expect(geminiDetection?.managed).toBe(true)
     expect(geminiDetection?.matchedProfileId).toBe('gemini-prod')
-    expect(geminiDetection?.targetFiles[0]?.path).toBe(geminiSettingsPath)
-    expect(geminiDetection?.managedBoundaries?.[0]?.type).toBe('managed-fields')
+    expect(geminiDetection?.targetFiles.find((item) => item.scope === 'user')?.path).toBe(geminiSettingsPath)
+    expect(geminiDetection?.scopeCapabilities).toEqual([
+      expect.objectContaining({
+        scope: 'system-defaults',
+        detect: true,
+        preview: true,
+        use: false,
+        rollback: false,
+        writable: false,
+      }),
+      expect.objectContaining({
+        scope: 'user',
+        detect: true,
+        preview: true,
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'normal',
+      }),
+      expect.objectContaining({
+        scope: 'project',
+        detect: true,
+        preview: true,
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'high',
+        confirmationRequired: true,
+      }),
+      expect.objectContaining({
+        scope: 'system-overrides',
+        detect: true,
+        preview: true,
+        use: false,
+        rollback: false,
+        writable: false,
+      }),
+    ])
+    expect(geminiDetection?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'user',
+        status: 'available',
+        detected: true,
+        writable: true,
+      }),
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        detected: true,
+        writable: true,
+        path: geminiProjectSettingsPath,
+      }),
+    ]))
+    expect(geminiDetection?.managedBoundaries?.[0]?.type).toBe('scope-aware')
     expect(geminiDetection?.managedBoundaries?.[0]?.managedKeys).toContain('enforcedAuthType')
-    expect(geminiDetection?.managedBoundaries?.[0]?.preservedKeys).toContain('ui')
+    expect(geminiDetection?.managedBoundaries?.[1]?.type).toBe('managed-fields')
+    expect(geminiDetection?.managedBoundaries?.[1]?.preservedKeys).toContain('ui')
     expect(geminiDetection?.secretReferences).toEqual([
       {
         key: 'GEMINI_API_KEY',
@@ -278,6 +459,8 @@ describe('cli commands integration', () => {
         current: boolean
         healthStatus: string
         riskLevel: string
+        scopeCapabilities?: ScopeCapabilityContract[]
+        scopeAvailability?: ScopeAvailabilityContract[]
       }>
       summary: {
         warnings: string[]
@@ -299,11 +482,26 @@ describe('cli commands integration', () => {
     expect(geminiProfile?.current).toBe(true)
     expect(geminiProfile?.healthStatus).toBe('valid')
     expect(geminiProfile?.riskLevel).toBe('low')
+    expect(geminiProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
+    ]))
+    expect(geminiProfile?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
+      expect.objectContaining({ scope: 'project', status: 'available', writable: true, path: geminiProjectSettingsPath }),
+    ]))
 
     const claudeProfile = payload.data?.profiles.find((item) => item.profile.id === 'claude-prod')
     expect(claudeProfile?.current).toBe(false)
     expect(claudeProfile?.healthStatus).toBe('unknown')
     expect(claudeProfile?.riskLevel).toBe('low')
+    expect(claudeProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
   })
 
   it('validate --json 成功时返回带 explainable 元数据的结构化 items', async () => {
@@ -312,6 +510,7 @@ describe('cli commands integration', () => {
       items: Array<{
         profileId: string
         platform: string
+        scopeCapabilities?: ScopeCapabilityContract[]
         validation: {
           ok: boolean
           warnings: Array<{ code: string }>
@@ -339,6 +538,12 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('validate')
     expect(payload.data?.items[0]?.profileId).toBe('gemini-prod')
     expect(payload.data?.items[0]?.platform).toBe('gemini')
+    expect(payload.data?.items[0]?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'system-defaults', detect: true, preview: true, use: false, rollback: false, writable: false }),
+      expect.objectContaining({ scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', detect: true, preview: true, use: false, rollback: false, writable: false }),
+    ]))
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
@@ -565,6 +770,10 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       profiles: Array<{
         profile: Profile
+        scopeCapabilities?: ScopeCapabilityContract[]
+        scopeAvailability?: ScopeAvailabilityContract[]
+        defaultWriteScope?: string
+        observedAt?: string
         validation?: {
           ok: boolean
           errors: Array<{ code: string }>
@@ -603,6 +812,11 @@ describe('cli commands integration', () => {
     const geminiProfile = payload.data?.profiles.find((item) => item.profile.id === 'gemini-prod')
 
     expect(claudeProfile?.profile.source).toEqual({ token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' })
+    expect(claudeProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
     expect(claudeProfile?.validation?.ok).toBe(true)
     expect(claudeProfile?.validation?.errors).toEqual([])
     expect(claudeProfile?.validation?.warnings).toEqual([])
@@ -625,6 +839,20 @@ describe('cli commands integration', () => {
     expect(codexProfile?.validation?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
 
     expect(geminiProfile?.profile.source).toEqual({ apiKey: 'gm-live-123456', authType: 'gemini-api-key' })
+    expect(geminiProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
+      expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
+    ]))
+    expect(geminiProfile?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
+      expect.objectContaining({ scope: 'project', status: 'available', writable: true, path: geminiProjectSettingsPath }),
+    ]))
+    expect(geminiProfile?.defaultWriteScope).toBe('user')
+    expect(geminiProfile?.observedAt).toEqual(expect.any(String))
+    expect(new Date(geminiProfile?.observedAt ?? '').toString()).not.toBe('Invalid Date')
+    expect(claudeProfile?.observedAt).toBeUndefined()
     expect(geminiProfile?.validation?.limitations.map((item) => item.message)).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(geminiProfile?.validation?.managedBoundaries?.[0]?.managedKeys).toEqual(['enforcedAuthType'])
     expect(claudeProfile?.validation?.secretReferences).toEqual([
@@ -681,6 +909,7 @@ describe('cli commands integration', () => {
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
+    expect(payload.schemaVersion).toBe('2026-04-15.public-json.v1')
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('preview')
     expect(payload.data?.profile.id).toBe('codex-prod')
@@ -742,6 +971,69 @@ describe('cli commands integration', () => {
     expect(payload.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.warnings).toContain('Codex 将修改多个目标文件。')
+  })
+
+  it('preview --json 输出 Gemini scope capability contract', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'project', '--json'])
+    const payload = parseJsonResult<{
+      scopeCapabilities?: ScopeCapabilityContract[]
+      preview: {
+        targetFiles: Array<{ path: string; scope?: string }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('preview')
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+    expect(payload.data?.scopeCapabilities).toEqual([
+      expect.objectContaining({
+        scope: 'system-defaults',
+        detect: true,
+        preview: true,
+        use: false,
+        rollback: false,
+        writable: false,
+        risk: 'normal',
+        confirmationRequired: false,
+      }),
+      expect.objectContaining({
+        scope: 'user',
+        detect: true,
+        preview: true,
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'normal',
+        confirmationRequired: false,
+      }),
+      expect.objectContaining({
+        scope: 'project',
+        detect: true,
+        preview: true,
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'high',
+        confirmationRequired: true,
+      }),
+      expect.objectContaining({
+        scope: 'system-overrides',
+        detect: true,
+        preview: true,
+        use: false,
+        rollback: false,
+        writable: false,
+        risk: 'normal',
+        confirmationRequired: false,
+      }),
+    ])
   })
 
   it('use --json 在 --force 下返回 Codex 结构化执行结果并写入 state', async () => {
@@ -817,6 +1109,34 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
     expect(payload.error?.message).toBe('当前切换需要确认或 --force。')
+    expect(payload.error?.details).toMatchObject({
+      risk: expect.objectContaining({
+        allowed: false,
+      }),
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          use: true,
+          rollback: true,
+          writable: true,
+          risk: 'high',
+          confirmationRequired: true,
+        }),
+        expect.objectContaining({
+          scope: 'system-overrides',
+          use: false,
+          rollback: false,
+          writable: false,
+        }),
+      ]),
+      scopePolicy: expect.objectContaining({
+        resolvedScope: 'user',
+        defaultScope: 'user',
+        explicitScope: false,
+        highRisk: false,
+        rollbackScopeMatchRequired: true,
+      }),
+    })
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
     expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
   })
@@ -828,6 +1148,12 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toContain('[use] 失败')
     expect(result.stdout).toContain('当前切换需要确认或 --force。')
+    expect(result.stdout).toContain('作用域策略:')
+    expect(result.stdout).toContain('  - 默认目标: user scope')
+    expect(result.stdout).toContain('  - 显式指定: 否')
+    expect(result.stdout).toContain('  - 实际目标: user scope')
+    expect(result.stdout).toContain('  - 高风险: 否')
+    expect(result.stdout).toContain('  - 回滚约束: 必须匹配快照 scope')
     expect(result.stdout).toContain('附加提示:')
     expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
     expect(result.stdout).toContain('限制说明:')
@@ -1137,6 +1463,7 @@ describe('cli commands integration', () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'json-low-risk', '--key', 'sk-json-low-123', '--url', 'https://new.example.com/api', '--json'])
     const payload = parseJsonResult<{
       profile: Profile
+      scopeCapabilities?: ScopeCapabilityContract[]
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
@@ -1147,6 +1474,11 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.data?.validation.ok).toBe(true)
+    expect(payload.data?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
+      expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
+    ]))
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings).toEqual([])
     expect(payload.data?.preview.riskLevel).toBe('low')
@@ -1854,10 +2186,22 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('[current] 成功')
     expect(result.stdout).toContain('- gemini: gemini-prod')
     expect(result.stdout).toContain('检测结果:')
+    expect(result.stdout).toContain('- 平台: claude')
+    expect(result.stdout).toContain('  当前作用域: project')
+    expect(result.stdout).toContain('  作用域说明:')
+    expect(result.stdout).toContain('  - 检测范围: user, project, local')
+    expect(result.stdout).toContain('  - 生效优先级: user < project < local')
+    expect(result.stdout).toContain('  - 当前生效来源: project')
+    expect(result.stdout).toContain('  - 默认写入目标: 未显式传入 --scope 时，先读取 API_SWITCHER_CLAUDE_TARGET_SCOPE，再回落到 user')
     expect(result.stdout).toContain('- 平台: gemini')
     expect(result.stdout).toContain('  托管识别: 是')
     expect(result.stdout).toContain('  匹配配置: gemini-prod')
     expect(result.stdout).toContain('  当前作用域: user')
+    expect(result.stdout).toContain('  作用域说明:')
+    expect(result.stdout).toContain('  - 检测范围: system-defaults, user, project, system-overrides')
+    expect(result.stdout).toContain('  - 生效优先级: system-defaults < user < project < system-overrides')
+    expect(result.stdout).toContain('  - 当前生效来源: user')
+    expect(result.stdout).toContain('  - 当前写入策略: api-switcher 当前仅写入 user scope')
     expect(result.stdout).toContain(`  目标文件: ${geminiSettingsPath}`)
     expect(result.stdout).toContain('  生效配置:')
     expect(result.stdout).toContain('    已写入:')
@@ -1956,6 +2300,1015 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
+  it('import --json 输出 exported/local observation、fidelity 与 decision', async () => {
+    const importFile = path.join(runtimeDir, 'import-source.json')
+    await fs.writeFile(importFile, JSON.stringify({
+      schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
+      ok: true,
+      action: 'export',
+      data: {
+        profiles: [
+          {
+            profile: {
+              id: 'gemini-prod',
+              name: 'gemini-prod',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+              { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+            ],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+              { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+            ],
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }, null, 2), 'utf8')
+
+    await fs.rm(geminiProjectRoot, { recursive: true, force: true })
+
+    const result = await runCli(['import', importFile, '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      items: Array<{
+        platform: string
+        exportedObservation?: { defaultWriteScope?: string; observedAt?: string }
+        localObservation?: { defaultWriteScope?: string; scopeAvailability?: ScopeAvailabilityContract[] }
+        fidelity?: {
+          status: string
+          driftSummary: { blocking: number; warning: number; info: number }
+          groupedMismatches: Array<{
+            driftKind: string
+            totalCount: number
+            blockingCount: number
+            warningCount: number
+            infoCount: number
+            mismatches: Array<{ field: string; scope?: string }>
+          }>
+          highlights: string[]
+          mismatches: Array<{
+            field: string
+            scope?: string
+            driftKind?: string
+            severity?: string
+            recommendedAction?: string
+          }>
+        }
+        previewDecision: {
+          canProceedToApplyDesign: boolean
+          recommendedScope?: string
+          requiresLocalResolution: boolean
+          reasonCodes: string[]
+          reasons: Array<{ code: string; blocking: boolean; message: string }>
+        }
+      }>
+      summary: {
+        totalItems: number
+        matchCount: number
+        mismatchCount: number
+        partialCount: number
+        insufficientDataCount: number
+        decisionCodeStats: Array<{
+          code: string
+          totalCount: number
+          blockingCount: number
+          nonBlockingCount: number
+        }>
+        driftKindStats: Array<{
+          driftKind: string
+          totalCount: number
+          blockingCount: number
+          warningCount: number
+          infoCount: number
+        }>
+        platformStats: Array<{
+          platform: string
+          totalItems: number
+          matchCount: number
+          mismatchCount: number
+          partialCount: number
+          insufficientDataCount: number
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import')
+    expect(payload.data?.sourceFile).toBe(importFile)
+    expect(payload.data?.items[0]).toEqual(expect.objectContaining({
+      platform: 'gemini',
+      exportedObservation: expect.objectContaining({
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+      }),
+      localObservation: expect.objectContaining({
+        defaultWriteScope: 'user',
+        scopeAvailability: expect.arrayContaining([
+          expect.objectContaining({ scope: 'project', status: 'unresolved', reasonCode: 'PROJECT_ROOT_UNRESOLVED' }),
+        ]),
+      }),
+      fidelity: expect.objectContaining({
+        status: 'mismatch',
+        driftSummary: {
+          blocking: 1,
+          warning: 0,
+          info: 0,
+        },
+        groupedMismatches: [
+          {
+            driftKind: 'default-scope-drift',
+            totalCount: 0,
+            blockingCount: 0,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [],
+          },
+          {
+            driftKind: 'availability-drift',
+            totalCount: 1,
+            blockingCount: 1,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [
+              expect.objectContaining({
+                field: 'scopeAvailability',
+                scope: 'project',
+              }),
+            ],
+          },
+          {
+            driftKind: 'capability-drift',
+            totalCount: 0,
+            blockingCount: 0,
+            warningCount: 0,
+            infoCount: 0,
+            mismatches: [],
+          },
+        ],
+        highlights: [
+          '当前本地 scope availability 与导出观察不一致，应以本地实时环境为准。',
+        ],
+        mismatches: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'scopeAvailability',
+            scope: 'project',
+            driftKind: 'availability-drift',
+            severity: 'blocking',
+            recommendedAction: '先修复本地 project scope 解析，再重新执行 import preview。',
+          }),
+        ]),
+      }),
+      previewDecision: {
+        canProceedToApplyDesign: false,
+        recommendedScope: 'user',
+        requiresLocalResolution: true,
+        reasonCodes: ['BLOCKED_BY_FIDELITY_MISMATCH', 'REQUIRES_LOCAL_SCOPE_RESOLUTION'],
+        reasons: [
+          {
+            code: 'BLOCKED_BY_FIDELITY_MISMATCH',
+            blocking: true,
+            message: '导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。',
+          },
+          {
+            code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION',
+            blocking: true,
+            message: '当前本地 scope 解析未完成，需先修复本地解析结果。',
+          },
+        ],
+      },
+    }))
+    expect(payload.data?.summary).toEqual(expect.objectContaining({
+      totalItems: 1,
+      mismatchCount: 1,
+      decisionCodeStats: expect.arrayContaining([
+        expect.objectContaining({ code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1 }),
+        expect.objectContaining({ code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1 }),
+      ]),
+      driftKindStats: expect.arrayContaining([
+        expect.objectContaining({ driftKind: 'availability-drift', totalCount: 1, blockingCount: 1 }),
+      ]),
+      matchCount: 0,
+      platformStats: [
+        expect.objectContaining({
+          platform: 'gemini',
+          mismatchCount: 1,
+        }),
+      ],
+    }))
+  })
+
+  it('import --json 在混合批次下准确聚合 match、partial、mismatch 与 insufficient-data', async () => {
+    const importFile = path.join(runtimeDir, 'import-source-mixed.json')
+    await fs.writeFile(importFile, JSON.stringify({
+      schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
+      ok: true,
+      action: 'export',
+      data: {
+        profiles: [
+          {
+            profile: {
+              id: 'gemini-match',
+              name: 'gemini-match',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+            ],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-partial',
+              name: 'gemini-partial',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-mismatch',
+              name: 'gemini-mismatch',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+            ],
+            scopeAvailability: [
+              { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-insufficient',
+              name: 'gemini-insufficient',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }, null, 2), 'utf8')
+
+    await fs.rm(geminiProjectRoot, { recursive: true, force: true })
+
+    const result = await runCli(['import', importFile, '--json'])
+    const payload = parseJsonResult<{
+      items: Array<{
+        profile: { id: string }
+        fidelity?: { status: string }
+        previewDecision: { reasonCodes: string[] }
+      }>
+      summary: {
+        totalItems: number
+        matchCount: number
+        mismatchCount: number
+        partialCount: number
+        insufficientDataCount: number
+        decisionCodeStats: Array<{
+          code: string
+          totalCount: number
+          blockingCount: number
+          nonBlockingCount: number
+        }>
+        driftKindStats: Array<{
+          driftKind: string
+          totalCount: number
+          blockingCount: number
+          warningCount: number
+          infoCount: number
+        }>
+        platformStats: Array<{
+          platform: string
+          totalItems: number
+          matchCount: number
+          mismatchCount: number
+          partialCount: number
+          insufficientDataCount: number
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.items.map((item) => [item.profile.id, item.fidelity?.status, item.previewDecision.reasonCodes])).toEqual([
+      ['gemini-match', 'match', ['READY_USING_LOCAL_OBSERVATION']],
+      ['gemini-partial', 'partial', ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION']],
+      ['gemini-mismatch', 'mismatch', ['BLOCKED_BY_FIDELITY_MISMATCH', 'REQUIRES_LOCAL_SCOPE_RESOLUTION']],
+      ['gemini-insufficient', 'insufficient-data', ['BLOCKED_BY_INSUFFICIENT_OBSERVATION']],
+    ])
+    expect(payload.data?.summary).toEqual({
+      totalItems: 4,
+      matchCount: 1,
+      mismatchCount: 1,
+      partialCount: 1,
+      insufficientDataCount: 1,
+      decisionCodeStats: [
+        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+        { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+        { code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+      ],
+      driftKindStats: [
+        { driftKind: 'default-scope-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+        { driftKind: 'availability-drift', totalCount: 1, blockingCount: 1, warningCount: 0, infoCount: 0 },
+        { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+      ],
+      platformStats: [
+        {
+          platform: 'gemini',
+          totalItems: 4,
+          matchCount: 1,
+          mismatchCount: 1,
+          partialCount: 1,
+          insufficientDataCount: 1,
+        },
+      ],
+      warnings: ['project 作用域的可用性与当前本地环境不一致。'],
+      limitations: [
+        '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',
+        '导出文件缺少足够 observation，当前无法建立完整 fidelity 结论。',
+      ],
+    })
+  })
+
+  it('import 文本输出会展示混合批次的整批 explainable 聚合', async () => {
+    const importFile = path.join(runtimeDir, 'import-source-mixed-text.json')
+    await fs.writeFile(importFile, JSON.stringify({
+      schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
+      ok: true,
+      action: 'export',
+      data: {
+        profiles: [
+          {
+            profile: {
+              id: 'gemini-match',
+              name: 'gemini-match',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+            ],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-partial',
+              name: 'gemini-partial',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-mismatch',
+              name: 'gemini-mismatch',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+            ],
+            scopeAvailability: [
+              { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+            ],
+          },
+          {
+            profile: {
+              id: 'gemini-insufficient',
+              name: 'gemini-insufficient',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }, null, 2), 'utf8')
+
+    await fs.rm(geminiProjectRoot, { recursive: true, force: true })
+
+    const result = await runCli(['import', importFile])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[import] 成功')
+    expect(result.stdout).toContain('汇总: total=4, match=1, mismatch=1, partial=1, insufficient-data=1')
+    expect(result.stdout).toContain('决策代码汇总:')
+    expect(result.stdout).toContain('  - READY_USING_LOCAL_OBSERVATION: total=1, blocking=0, non-blocking=1')
+    expect(result.stdout).toContain('  - LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION: total=1, blocking=0, non-blocking=1')
+    expect(result.stdout).toContain('  - BLOCKED_BY_INSUFFICIENT_OBSERVATION: total=1, blocking=1, non-blocking=0')
+    expect(result.stdout).toContain('  - BLOCKED_BY_FIDELITY_MISMATCH: total=1, blocking=1, non-blocking=0')
+    expect(result.stdout).toContain('  - REQUIRES_LOCAL_SCOPE_RESOLUTION: total=1, blocking=1, non-blocking=0')
+    expect(result.stdout).toContain('Drift 类型汇总:')
+    expect(result.stdout).toContain('  - availability-drift: total=1, blocking=1, warning=0, info=0')
+    expect(result.stdout).toContain('- 配置: gemini-match (gemini)')
+    expect(result.stdout).toContain('- 配置: gemini-partial (gemini)')
+    expect(result.stdout).toContain('- 配置: gemini-mismatch (gemini)')
+    expect(result.stdout).toContain('- 配置: gemini-insufficient (gemini)')
+  })
+
+  it('import 文本输出明确区分导出观察与当前本地观察', async () => {
+    const importFile = path.join(runtimeDir, 'import-source-text.json')
+    await fs.writeFile(importFile, JSON.stringify({
+      schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
+      ok: true,
+      action: 'export',
+      data: {
+        profiles: [
+          {
+            profile: {
+              id: 'gemini-prod',
+              name: 'gemini-prod',
+              platform: 'gemini',
+              source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeAvailability: [
+              { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+            ],
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }, null, 2), 'utf8')
+
+    await fs.rm(geminiProjectRoot, { recursive: true, force: true })
+
+    const result = await runCli(['import', importFile])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[import] 成功')
+    expect(result.stdout).toContain(`导入文件: ${importFile}`)
+    expect(result.stdout).toContain('汇总: total=1, match=0, mismatch=1, partial=0, insufficient-data=0')
+    expect(result.stdout).toContain('决策代码汇总:')
+    expect(result.stdout).toContain('  - BLOCKED_BY_FIDELITY_MISMATCH: total=1, blocking=1, non-blocking=0')
+    expect(result.stdout).toContain('Drift 类型汇总:')
+    expect(result.stdout).toContain('  - availability-drift: total=1, blocking=1, warning=0, info=0')
+    expect(result.stdout).toContain('  导出时观察:')
+    expect(result.stdout).toContain('  当前本地观察:')
+    expect(result.stdout).toContain('  Fidelity: mismatch')
+    expect(result.stdout).toContain('  Drift 分组: availability-drift, total=1, blocking=1, warning=0, info=0')
+    expect(result.stdout).toContain('    导出值: {"status":"available","detected":true,"writable":true}')
+    expect(result.stdout).toContain('    本地值: {"status":"unresolved","detected":false,"writable":false}')
+    expect(result.stdout).toContain('  决策代码: BLOCKED_BY_FIDELITY_MISMATCH, REQUIRES_LOCAL_SCOPE_RESOLUTION')
+    expect(result.stdout).toContain('  建议: 先修复本地作用域解析，再考虑进入 apply 设计。')
+  })
+
+  it('import 源文件不存在时返回结构化失败与 exitCode 1', async () => {
+    const missingImportFile = path.join(runtimeDir, 'missing-import.json')
+    const result = await runCli(['import', missingImportFile, '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import')
+    expect(payload.error).toEqual({
+      code: 'IMPORT_SOURCE_NOT_FOUND',
+      message: `未找到导入文件：${missingImportFile}`,
+    })
+  })
+
+  it('import <file> 旧兼容路径仍会按 import preview 执行', async () => {
+    const importFile = path.join(runtimeDir, 'import-legacy-compatible.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+      },
+    ])
+
+    const result = await runCli(['import', importFile, '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      items: Array<{ profile: { id: string } }>
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import')
+    expect(payload.data?.sourceFile).toBe(importFile)
+    expect(payload.data?.items[0]?.profile.id).toBe('gemini-prod')
+  })
+
+  it('未知 import 子命令不会被改写成 preview', async () => {
+    const result = await runCli(['import', 'foo'])
+
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain("error: unknown command 'foo'")
+    expect(result.exitCode).toBe(1)
+  })
+
+  it('import apply --json 会进入 import-apply 管道并返回结构化结果', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-success.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
+  })
+
+  it('import apply 缺少 --profile 时保持 Commander 用法失败', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-missing-profile.json')
+    await writeImportSourceFile(importFile, [])
+
+    const result = await runCli(['import', 'apply', importFile, '--json'])
+
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain("error: required option '--profile <id>' not specified")
+    expect(result.exitCode).toBe(1)
+  })
+
+  it('import apply 对 non-Gemini profile 返回 IMPORT_PLATFORM_NOT_SUPPORTED 而非 CONFIRMATION_REQUIRED', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-claude.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'claude-prod',
+          name: 'claude-prod',
+          platform: 'claude',
+          source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+        defaultWriteScope: 'project',
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-prod', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('IMPORT_PLATFORM_NOT_SUPPORTED')
+    expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+  })
+
+  it('import apply --scope project 在 availability 不可用时先返回 IMPORT_SCOPE_UNAVAILABLE 而非 CONFIRMATION_REQUIRED', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-project-unavailable.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'project',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+    await fs.rm(geminiProjectRoot, { recursive: true, force: true })
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--scope', 'project', '--json'])
+    const payload = parseJsonResult<{
+      scopeAvailability?: ScopeAvailabilityContract[]
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('IMPORT_SCOPE_UNAVAILABLE')
+    expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+    expect(payload.error?.details).toEqual(expect.objectContaining({
+      resolvedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
+  it('import apply --scope project 在可用但未 --force 时返回 CONFIRMATION_REQUIRED', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-project-confirmation.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'project',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--scope', 'project', '--json'])
+    const payload = parseJsonResult<{
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        riskWarning?: string
+      }
+      scopeAvailability?: ScopeAvailabilityContract[]
+    }>(result.stdout)
+    const confirmationDetails = payload.error?.details as {
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        riskWarning?: string
+      }
+      scopeAvailability?: ScopeAvailabilityContract[]
+    } | undefined
+    const projectAvailability = confirmationDetails?.scopeAvailability?.find((item) => item.scope === 'project')
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(confirmationDetails?.scopePolicy?.requestedScope).toBe('project')
+    expect(confirmationDetails?.scopePolicy?.resolvedScope).toBe('project')
+    expect(confirmationDetails?.scopePolicy?.riskWarning).toBe('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(projectAvailability).toEqual(expect.objectContaining({
+      scope: 'project',
+      status: 'available',
+      writable: true,
+      path: geminiProjectSettingsPath,
+    }))
+    expect(payload.error?.details).toEqual(expect.objectContaining({
+      risk: expect.objectContaining({
+        allowed: false,
+        riskLevel: 'high',
+        reasons: expect.arrayContaining([
+          'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        ]),
+      }),
+      scopePolicy: expect.objectContaining({
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      }),
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'available',
+          writable: true,
+          path: geminiProjectSettingsPath,
+        }),
+      ]),
+    }))
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect((userSettings.ui as { theme?: string }).theme).toBe('dark')
+    expect(projectSettings.enforcedAuthType).toBeUndefined()
+    expect(projectSettings.projectOnly).toBe(true)
+  })
+
+  it('import apply 在默认 user scope 下 --force 成功并写入 Gemini user settings', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-user-success.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--force', '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      importedProfile: { id: string; platform: string }
+      appliedScope: string
+      backupId: string
+      changedFiles: string[]
+      scopePolicy: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        rollbackScopeMatchRequired: boolean
+      }
+      preview: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.sourceFile).toBe(importFile)
+    expect(payload.data?.importedProfile).toEqual(expect.objectContaining({
+      id: 'gemini-prod',
+      platform: 'gemini',
+    }))
+    expect(payload.data?.appliedScope).toBe('user')
+    expect(payload.data?.backupId).toMatch(/^snapshot-gemini-/)
+    expect(payload.data?.changedFiles).toEqual([geminiSettingsPath])
+    expect(payload.data?.scopePolicy).toEqual(expect.objectContaining({
+      resolvedScope: 'user',
+      defaultScope: 'user',
+      explicitScope: false,
+      highRisk: false,
+      rollbackScopeMatchRequired: true,
+    }))
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiSettingsPath,
+        scope: 'user',
+      }),
+    ])
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('gemini-api-key')
+    expect((userSettings.ui as { theme?: string }).theme).toBe('dark')
+    expect(projectSettings.enforcedAuthType).toBeUndefined()
+  })
+
+  it('import apply --scope project 在 --force 下成功并只写入 Gemini project settings', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-project-success.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'project',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const payload = parseJsonResult<{
+      appliedScope: string
+      backupId: string
+      changedFiles: string[]
+      scopePolicy: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        riskWarning?: string
+        rollbackScopeMatchRequired: boolean
+      }
+      scopeAvailability?: ScopeAvailabilityContract[]
+      preview: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.appliedScope).toBe('project')
+    expect(payload.data?.backupId).toMatch(/^snapshot-gemini-/)
+    expect(payload.data?.changedFiles).toEqual([geminiProjectSettingsPath])
+    expect(payload.data?.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
+    expect(payload.data?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        writable: true,
+        path: geminiProjectSettingsPath,
+      }),
+    ]))
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect(projectSettings.enforcedAuthType).toBe('gemini-api-key')
+    expect(projectSettings.projectOnly).toBe(true)
+  })
+
+  it('import apply 产出的 project scope 快照在 rollback 时必须匹配记录的 scope', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-project-rollback-scope.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'project',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const applyResult = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const applyPayload = parseJsonResult<{ backupId?: string }>(applyResult.stdout)
+    expect(applyResult.exitCode).toBe(0)
+    expect(applyPayload.data?.backupId).toBeTruthy()
+
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ enforcedAuthType: 'mutated' }, null, 2), 'utf8')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ enforcedAuthType: 'user-mutated' }, null, 2), 'utf8')
+
+    const mismatchRollback = await runCli(['rollback', applyPayload.data!.backupId!, '--scope', 'user', '--json'])
+    const mismatchPayload = parseJsonResult<{
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        rollbackScopeMatchRequired: boolean
+      }
+      restoredFiles?: string[]
+      rollback?: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(mismatchRollback.stdout)
+
+    expect(mismatchRollback.stderr).toBe('')
+    expect(mismatchRollback.exitCode).toBe(1)
+    expect(mismatchPayload.ok).toBe(false)
+    expect(mismatchPayload.error?.code).toBe('ROLLBACK_SCOPE_MISMATCH')
+    expect(mismatchPayload.error?.details).toEqual(expect.objectContaining({
+      scopePolicy: {
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      },
+    }))
+    expect(mismatchPayload.data).toBeUndefined()
+    expect(mismatchPayload.data?.restoredFiles).toBeUndefined()
+    expect(mismatchPayload.data?.rollback?.targetFiles).toBeUndefined()
+
+    const unchangedProjectAfterMismatch = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    const unchangedUserAfterMismatch = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(unchangedProjectAfterMismatch.enforcedAuthType).toBe('mutated')
+    expect(unchangedUserAfterMismatch.enforcedAuthType).toBe('user-mutated')
+
+    const rollbackResult = await runCli(['rollback', applyPayload.data!.backupId!, '--scope', 'project', '--json'])
+    const rollbackPayload = parseJsonResult<{
+      restoredFiles: string[]
+      rollback?: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(rollbackResult.stdout)
+
+    expect(rollbackResult.stderr).toBe('')
+    expect(rollbackResult.exitCode).toBe(0)
+    expect(rollbackPayload.ok).toBe(true)
+    expect(rollbackPayload.data?.restoredFiles).toEqual([geminiProjectSettingsPath])
+    expect(rollbackPayload.data?.rollback?.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const restoredProject = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    const untouchedUser = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(restoredProject.enforcedAuthType).toBeUndefined()
+    expect(restoredProject.projectOnly).toBe(true)
+    expect(untouchedUser.enforcedAuthType).toBe('user-mutated')
+  })
+
   it('preview 输出风险、explainable 细节与附加提示', async () => {
     const result = await runCli(['preview', 'gemini-prod'])
 
@@ -1964,6 +3317,11 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('[preview] 成功')
     expect(result.stdout).toContain('- 配置: gemini-prod (gemini)')
     expect(result.stdout).toContain('  风险等级: medium')
+    expect(result.stdout).toContain('  作用域说明:')
+    expect(result.stdout).toContain('  - 生效优先级: system-defaults < user < project < system-overrides')
+    expect(result.stdout).toContain('  - 预览视角: 先按四层 precedence 推导 current/effective，再评估本次写入')
+    expect(result.stdout).toContain('  - 本次写入目标: user scope')
+    expect(result.stdout).toContain('  - 覆盖提醒: 如果 project 或 system-overrides 存在同名字段，user 写入后仍可能不会成为最终生效值')
     expect(result.stdout).toContain('  生效配置:')
     expect(result.stdout).toContain('    已写入:')
     expect(result.stdout).toContain('    - enforcedAuthType: oauth-personal (scope=user, source=stored)')
@@ -1981,6 +3339,353 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - GEMINI_API_KEY: gm-l***56 (source=inline, present=yes)')
     expect(result.stdout).toContain('  变更摘要:')
     expect(result.stdout).toContain('附加提示:')
+  })
+
+  it('preview --scope project 输出 Gemini project 写入目标与高风险确认', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'project', '--json'])
+    const payload = parseJsonResult<{
+      preview: {
+        targetFiles: Array<{ path: string; scope?: string }>
+        diffSummary: Array<{ path: string; changedKeys: string[]; preservedKeys?: string[]; hasChanges: boolean }>
+        riskLevel: string
+        requiresConfirmation: boolean
+      }
+      risk: { allowed: boolean; riskLevel: string; reasons: string[] }
+      scopeAvailability?: ScopeAvailabilityContract[]
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+    expect(payload.data?.preview.diffSummary).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        changedKeys: ['enforcedAuthType'],
+        preservedKeys: ['projectOnly'],
+        hasChanges: true,
+      }),
+    ])
+    expect(payload.data?.preview.riskLevel).toBe('high')
+    expect(payload.data?.preview.requiresConfirmation).toBe(true)
+    expect(payload.data?.risk.allowed).toBe(false)
+    expect(payload.data?.risk.reasons).toContain('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+    expect(payload.data?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        writable: true,
+        path: geminiProjectSettingsPath,
+      }),
+    ]))
+  })
+
+  it('preview --scope project 在 project scope 无法解析时返回 availability 结构化失败', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'project', '--json'], {
+      API_SWITCHER_GEMINI_PROJECT_ROOT: path.join(runtimeDir, 'missing-project-root'),
+    })
+    const payload = parseJsonResult<{
+      requestedScope?: string
+      scopeAvailability?: ScopeAvailabilityContract[]
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(2)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('PREVIEW_FAILED')
+    expect(payload.error?.details).toEqual(expect.objectContaining({
+      requestedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
+  it('preview --scope project 文本失败时输出 project root 修复建议，而不是提示 --force', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'project'], {
+      API_SWITCHER_GEMINI_PROJECT_ROOT: path.join(runtimeDir, 'missing-project-root'),
+    })
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(2)
+    expect(result.stdout).toContain('[preview] 失败')
+    expect(result.stdout).toContain('当前无法解析 Gemini project scope 的 project root。')
+    expect(result.stdout).toContain('作用域策略:')
+    expect(result.stdout).toContain('作用域可用性:')
+    expect(result.stdout).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(result.stdout).toContain('    原因代码: PROJECT_ROOT_UNRESOLVED')
+    expect(result.stdout).toContain('    建议: 请在项目目录中运行，或显式提供 API_SWITCHER_GEMINI_PROJECT_ROOT。')
+    expect(result.stdout).not.toContain('当前切换需要确认或 --force。')
+  })
+
+  it('preview --scope project 文本输出明确 project 覆盖 user 且仍可能被 system-overrides 覆盖', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'project'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[preview] 成功')
+    expect(result.stdout).toContain('  风险等级: high')
+    expect(result.stdout).toContain('  - 本次写入目标: project scope')
+    expect(result.stdout).toContain('  - 覆盖关系: project scope 高于 user scope，会覆盖 user 中的同名字段')
+    expect(result.stdout).toContain('  - 覆盖提醒: system-overrides 仍高于 project，存在同名字段时 project 写入后仍可能不会成为最终生效值')
+    expect(result.stdout).toContain(`  - ${geminiProjectSettingsPath}`)
+    expect(result.stdout).toContain('Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。')
+  })
+
+  it('Gemini 非法 --scope 会返回明确 INVALID_SCOPE 失败', async () => {
+    const result = await runCli(['preview', 'gemini-prod', '--scope', 'system-overrides', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('preview')
+    expect(payload.error?.code).toBe('INVALID_SCOPE')
+    expect(payload.error?.message).toBe('Gemini 当前仅支持写入 user/project scope；system-defaults/system-overrides 仅用于检测。收到：system-overrides')
+  })
+
+  it('use --scope project 需要 --force，带 --force 时只写入 Gemini project scope', async () => {
+    const blocked = await runCli(['use', 'gemini-prod', '--scope', 'project', '--json'])
+    const blockedPayload = parseJsonResult(blocked.stdout)
+
+    expect(blocked.stderr).toBe('')
+    expect(blocked.exitCode).toBe(1)
+    expect(blockedPayload.ok).toBe(false)
+    expect(blockedPayload.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(blockedPayload.error?.details).toEqual(expect.objectContaining({
+      risk: expect.objectContaining({
+        allowed: false,
+        riskLevel: 'high',
+        reasons: expect.arrayContaining([
+          'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        ]),
+      }),
+      scopePolicy: expect.objectContaining({
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      }),
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'available',
+          writable: true,
+          path: geminiProjectSettingsPath,
+        }),
+      ]),
+    }))
+
+    const blockedUserSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const blockedProjectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(blockedUserSettings.enforcedAuthType).toBe('oauth-personal')
+    expect((blockedUserSettings.ui as { theme?: string }).theme).toBe('dark')
+    expect(blockedProjectSettings.enforcedAuthType).toBeUndefined()
+    expect(blockedProjectSettings.projectOnly).toBe(true)
+
+    const result = await runCli(['use', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const payload = parseJsonResult<{
+      backupId?: string
+      changedFiles: string[]
+      preview: { targetFiles: Array<{ path: string; scope?: string }> }
+      scopeCapabilities?: ScopeCapabilityContract[]
+      scopeAvailability?: ScopeAvailabilityContract[]
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.backupId).toMatch(/^snapshot-gemini-/)
+    expect(payload.data?.changedFiles).toEqual([geminiProjectSettingsPath])
+    expect(payload.data?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'high',
+        confirmationRequired: true,
+      }),
+      expect.objectContaining({
+        scope: 'system-defaults',
+        use: false,
+        rollback: false,
+        writable: false,
+      }),
+    ]))
+    expect(payload.data?.scopeAvailability).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        status: 'available',
+        writable: true,
+        path: geminiProjectSettingsPath,
+      }),
+    ]))
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect(projectSettings.enforcedAuthType).toBe('gemini-api-key')
+  })
+
+  it('use --scope project 在 availability 不可用时先返回结构化失败而非 CONFIRMATION_REQUIRED', async () => {
+    const result = await runCli(['use', 'gemini-prod', '--scope', 'project', '--json'], {
+      API_SWITCHER_GEMINI_PROJECT_ROOT: path.join(runtimeDir, 'missing-project-root'),
+    })
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(2)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('USE_FAILED')
+    expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+    expect(payload.error?.details).toEqual(expect.objectContaining({
+      requestedScope: 'project',
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
+  it('rollback --scope project 在 availability 不可用时先返回结构化失败而非 scope mismatch', async () => {
+    const useResult = await runCli(['use', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!, '--scope', 'project', '--json'], {
+      API_SWITCHER_GEMINI_PROJECT_ROOT: path.join(runtimeDir, 'missing-project-root'),
+    })
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(2)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('ROLLBACK_FAILED')
+    expect(payload.error?.code).not.toBe('ROLLBACK_SCOPE_MISMATCH')
+    expect(payload.error?.details).toEqual(expect.objectContaining({
+      scopePolicy: {
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+        rollbackScopeMatchRequired: true,
+      },
+      scopeAvailability: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          status: 'unresolved',
+          reasonCode: 'PROJECT_ROOT_UNRESOLVED',
+        }),
+      ]),
+    }))
+  })
+
+  it('rollback --scope project 会按 Gemini project scope 快照恢复', async () => {
+    const useResult = await runCli(['use', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    await fs.writeFile(geminiProjectSettingsPath, JSON.stringify({ enforcedAuthType: 'mutated' }, null, 2), 'utf8')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ enforcedAuthType: 'user-mutated' }, null, 2), 'utf8')
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!, '--scope', 'project', '--json'])
+    const payload = parseJsonResult<{
+      restoredFiles: string[]
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        riskWarning?: string
+        rollbackScopeMatchRequired: boolean
+      }
+      scopeCapabilities?: ScopeCapabilityContract[]
+      rollback?: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.restoredFiles).toEqual([geminiProjectSettingsPath])
+    expect(payload.data?.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
+    expect(payload.data?.scopeCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'project',
+        use: true,
+        rollback: true,
+        writable: true,
+        risk: 'high',
+        confirmationRequired: true,
+      }),
+      expect.objectContaining({
+        scope: 'system-overrides',
+        use: false,
+        rollback: false,
+        writable: false,
+      }),
+    ]))
+    expect(payload.data?.rollback?.targetFiles).toEqual([
+      expect.objectContaining({
+        path: geminiProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+
+    const restoredProject = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    const untouchedUser = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(restoredProject.enforcedAuthType).toBeUndefined()
+    expect(restoredProject.projectOnly).toBe(true)
+    expect(untouchedUser.enforcedAuthType).toBe('user-mutated')
+  })
+
+  it('rollback --scope project 遇到 user scope 快照时输出明确不匹配说明', async () => {
+    const useResult = await runCli(['use', 'gemini-prod', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!, '--scope', 'project'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[rollback] 失败')
+    expect(result.stdout).toContain('快照属于 user scope，不能按 project scope 回滚。')
+    expect(result.stdout).toContain('作用域策略:')
+    expect(result.stdout).toContain('  - 默认目标: user scope')
+    expect(result.stdout).toContain('  - 实际目标: user scope')
+    expect(result.stdout).toContain('  - 回滚约束: 必须匹配快照 scope')
   })
 
   it('preview 输出 Codex 双文件 explainable 摘要', async () => {
@@ -2142,6 +3847,12 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  需要确认: 是')
     expect(result.stdout).toContain('  计划备份: 是')
     expect(result.stdout).toContain('  无变更: 否')
+    expect(result.stdout).toContain('  作用域说明:')
+    expect(result.stdout).toContain('  - 生效优先级: user < project < local')
+    expect(result.stdout).toContain('  - 预览视角: 先按 Claude 多层 scope 合并 current/effective，再评估本次写入')
+    expect(result.stdout).toContain('  - 本次写入目标: project scope')
+    expect(result.stdout).toContain('  - 覆盖关系: project scope 高于 user scope，但仍低于 local scope')
+    expect(result.stdout).toContain('  - 覆盖提醒: 如果 local scope 存在同名字段，project 写入后仍可能不会成为最终生效值')
     expect(result.stdout).toContain('  目标文件:')
     expect(result.stdout).toContain(`  - ${claudeProjectSettingsPath}`)
     expect(result.stdout).toContain('  生效配置:')
@@ -2162,6 +3873,75 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  限制: 当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.stdout).toContain('附加提示:')
     expect(result.stdout).toContain('  - 当前 Claude 配置存在非托管字段：theme')
+  })
+
+  it('preview --scope user 会覆盖 Claude 环境默认 scope', async () => {
+    await fs.writeFile(
+      claudeUserSettingsPath,
+      JSON.stringify({ userTheme: 'light', ANTHROPIC_AUTH_TOKEN: 'sk-user-000', ANTHROPIC_BASE_URL: 'https://user.example.com/api' }, null, 2),
+      'utf8',
+    )
+
+    const result = await runCli(['preview', 'claude-prod', '--scope', 'user'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain(`  - ${claudeUserSettingsPath}`)
+    expect(result.stdout).toContain(`  - 类型: scope-aware / 目标: ${claudeUserSettingsPath}`)
+    expect(result.stdout).toContain('    说明: 当前写入目标为 Claude 用户级配置文件。')
+    expect(result.stdout).not.toContain(`  - 类型: scope-aware / 目标: ${claudeProjectSettingsPath}`)
+  })
+
+  it('use --scope local 会覆盖 Claude 环境默认 scope，并只写入 local 文件', async () => {
+    await fs.writeFile(claudeLocalSettingsPath, JSON.stringify({ localFlag: true }, null, 2), 'utf8')
+
+    const result = await runCli(['use', 'claude-prod', '--scope', 'local', '--force', '--json'])
+    const payload = parseJsonResult<{
+      changedFiles: string[]
+      preview: { targetFiles: Array<{ path: string; scope?: string }> }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.changedFiles).toEqual([claudeLocalSettingsPath])
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: claudeLocalSettingsPath,
+        scope: 'local',
+      }),
+    ])
+
+    const localSettings = JSON.parse(await fs.readFile(claudeLocalSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(localSettings.ANTHROPIC_AUTH_TOKEN).toBe('sk-live-123456')
+    expect(projectSettings.ANTHROPIC_AUTH_TOKEN).toBe('sk-old-000')
+  })
+
+  it('rollback --scope local 会按 Claude local scope 快照恢复', async () => {
+    await fs.writeFile(claudeLocalSettingsPath, JSON.stringify({ localFlag: true }, null, 2), 'utf8')
+    const useResult = await runCli(['use', 'claude-prod', '--scope', 'local', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    await fs.writeFile(claudeLocalSettingsPath, JSON.stringify({ localFlag: false }, null, 2), 'utf8')
+
+    const result = await runCli(['rollback', usePayload.data!.backupId!, '--scope', 'local', '--json'])
+    const payload = parseJsonResult<{
+      restoredFiles: string[]
+      rollback?: { targetFiles?: Array<{ path: string; scope?: string }> }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.restoredFiles).toEqual([claudeLocalSettingsPath])
+    expect(payload.data?.rollback?.targetFiles).toEqual([
+      expect.objectContaining({
+        path: claudeLocalSettingsPath,
+        scope: 'local',
+      }),
+    ])
   })
 
   it('use 在 --force 下输出 explainable 摘要并写入 state', async () => {
@@ -2267,5 +4047,22 @@ describe('cli commands integration', () => {
     expect(result.stdout).toBe('')
     expect(result.stderr).toContain("error: required option '--platform <platform>' not specified")
     expect(result.exitCode).toBe(1)
+  })
+
+  it('命令 help 从平台 policy 输出统一 scope 支持矩阵', async () => {
+    const preview = await runCli(['preview', '--help'])
+    const use = await runCli(['use', '--help'])
+    const rollback = await runCli(['rollback', '--help'])
+
+    expect(preview.exitCode).toBe(0)
+    expect(use.exitCode).toBe(0)
+    expect(rollback.exitCode).toBe(0)
+    expect(preview.stdout).toContain('--scope <scope>')
+    expect(preview.stdout).toContain('目标作用域（Claude: user/project/local; Codex: 不使用 --scope; Gemini:')
+    expect(preview.stdout).toContain('user/project）')
+    expect(use.stdout).toContain('目标作用域（Claude: user/project/local; Codex: 不使用 --scope; Gemini:')
+    expect(use.stdout).toContain('user/project）')
+    expect(rollback.stdout).toContain('期望回滚的目标作用域（Claude: user/project/local; Codex: 不使用 --scope;')
+    expect(rollback.stdout).toContain('Gemini: user/project）')
   })
 })
