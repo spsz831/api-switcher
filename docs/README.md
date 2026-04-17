@@ -16,6 +16,9 @@
 4. [`public-json-output.schema.json`](./public-json-output.schema.json)
    如果你需要机器校验或代码生成，使用这份 schema。
 
+5. [`release-checklist.md`](./release-checklist.md)
+   如果你准备打 tag、发版本或做公开试用，先按这份清单完成真实环境验收与发布前确认。
+
 ## 目录说明
 
 - [`public-json-schema.md`](./public-json-schema.md)
@@ -26,6 +29,9 @@
 
 - [`import-preview-consumer-guide.md`](./import-preview-consumer-guide.md)
   面向上层接入方的 `import preview` 消费指南。
+
+- [`release-checklist.md`](./release-checklist.md)
+  面向发布前收口的真实环境验收与 release checklist。
 
 - [`prd/`](./prd/)
   产品需求相关文档。
@@ -48,4 +54,5 @@
 - 想知道 JSON 字段是什么意思：看 [`public-json-schema.md`](./public-json-schema.md)
 - 想知道 mixed-batch 怎么接：看 [`import-preview-consumer-guide.md`](./import-preview-consumer-guide.md)
 - 想知道 schema 怎么校验：看 [`public-json-output.schema.json`](./public-json-output.schema.json)
+- 想知道发布前还要检查什么：看 [`release-checklist.md`](./release-checklist.md)
 - 想快速回看 `import preview` 当前完成面：看 [`superpowers/specs/2026-04-17-import-preview-phase-summary.md`](./superpowers/specs/2026-04-17-import-preview-phase-summary.md)

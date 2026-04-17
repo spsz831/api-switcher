@@ -8,6 +8,7 @@
 - [`docs/public-json-schema.md`](docs/public-json-schema.md)：稳定公共 JSON 字段、字段语义和命令级契约边界。
 - [`docs/public-json-output.schema.json`](docs/public-json-output.schema.json)：机器可读的公共 JSON schema。
 - [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)：`import preview` 的 mixed-batch 接入实践、失败处理建议和 explainable 词典。
+- [`docs/release-checklist.md`](docs/release-checklist.md)：发布前真实环境验收与 release checklist。
 - [`docs/README.md`](docs/README.md)：`docs/` 目录文档索引。
 
 ## 安装
