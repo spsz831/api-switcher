@@ -183,7 +183,7 @@ export class ImportApplyService {
         }
       }
 
-      const validation = await adapter.validate(importedSource.profile)
+      const validation = await adapter.validate(importedSource.profile, { targetScope: appliedScope })
       if (!validation.ok) {
         return {
           ok: false,
@@ -321,6 +321,14 @@ export class ImportApplyService {
     appliedScope: 'user' | 'project',
     explicitScope: boolean,
   ) {
+    const exportedObservation: ImportObservation | undefined = importedSource.exportedObservation
+      ? {
+          ...importedSource.exportedObservation,
+          defaultWriteScope: explicitScope
+            ? appliedScope
+            : importedSource.exportedObservation.defaultWriteScope,
+        }
+      : undefined
     const localObservation: ImportObservation = {
       defaultWriteScope: explicitScope
         ? appliedScope
@@ -330,14 +338,14 @@ export class ImportApplyService {
     }
     const { fidelity, previewDecision } = this.fidelityService.evaluate({
       platform: importedSource.profile.platform,
-      exportedObservation: importedSource.exportedObservation,
+      exportedObservation,
       localObservation,
     })
 
     return {
       profile: importedSource.profile,
       platform: importedSource.profile.platform,
-      exportedObservation: importedSource.exportedObservation,
+      exportedObservation,
       localObservation,
       fidelity,
       previewDecision,

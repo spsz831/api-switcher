@@ -18,6 +18,7 @@ import type {
   RollbackResult,
   TargetFileInfo,
   ValidationIssue,
+  ValidationContext,
   ValidationResult,
 } from '../../types/adapter'
 import type { Profile } from '../../types/profile'
@@ -227,9 +228,9 @@ export class ClaudeAdapter extends BasePlatformAdapter {
     ]
   }
 
-  async validate(profile: Profile): Promise<ValidationResult> {
+  async validate(profile: Profile, context: ValidationContext = {}): Promise<ValidationResult> {
     const scopeStates = await this.readScopeStates()
-    const targetScope = resolveClaudeTargetScope()
+    const targetScope = resolveClaudeTargetScope(context.targetScope)
     const targetScopeState = this.getScopeState(scopeStates, targetScope)
     const issues: ValidationIssue[] = []
     const limitations = getPlatformLimitationIssues(this.platform)
@@ -301,7 +302,7 @@ export class ClaudeAdapter extends BasePlatformAdapter {
           unmanagedKeys: Object.keys(mergedSettings).filter((key) => !(key in pickClaudeManagedFields(mergedSettings))),
         }
       : item)
-    const validation = await this.validate(profile)
+    const validation = await this.validate(profile, { targetScope })
     const warnings = [...validation.warnings]
     const limitations = [...validation.limitations]
     const managedCurrent = targetScopeState.managedFields

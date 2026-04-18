@@ -184,6 +184,10 @@ export interface PreviewContext {
   targetScope?: string
 }
 
+export interface ValidationContext {
+  targetScope?: string
+}
+
 export interface RollbackResult {
   ok: boolean
   backupId: string
@@ -198,7 +202,7 @@ export interface RollbackResult {
 export interface PlatformAdapter {
   readonly platform: PlatformName
   readonly capabilities: PlatformCapabilities
-  validate(profile: Profile): Promise<ValidationResult>
+  validate(profile: Profile, context?: ValidationContext): Promise<ValidationResult>
   preview(profile: Profile, context?: PreviewContext): Promise<PreviewResult>
   detectCurrent(profiles?: Profile[]): Promise<CurrentProfileResult | null>
   listTargets(context?: PreviewContext): Promise<TargetFileInfo[]>

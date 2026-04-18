@@ -65,7 +65,7 @@ export class SwitchService {
         }
       }
 
-      const validation = await adapter.validate(profile)
+      const validation = await adapter.validate(profile, { targetScope: resolvedScope })
 
       if (!validation.ok) {
         return {

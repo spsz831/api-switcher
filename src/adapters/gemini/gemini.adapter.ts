@@ -17,6 +17,7 @@ import type {
   RollbackResult,
   SecretReference,
   TargetFileInfo,
+  ValidationContext,
   ValidationIssue,
   ValidationResult,
 } from '../../types/adapter'
@@ -246,8 +247,9 @@ export class GeminiAdapter extends BasePlatformAdapter {
     }
   }
 
-  async validate(profile: Profile): Promise<ValidationResult> {
-    const { settingsPath, unmanagedKeys } = await this.readState()
+  async validate(profile: Profile, context: ValidationContext = {}): Promise<ValidationResult> {
+    const targetScope = resolveGeminiWritableScope(context.targetScope)
+    const { settingsPath, unmanagedKeys } = await this.readState(targetScope)
     const issues: ValidationIssue[] = []
     const contract = normalizeGeminiContract(profile)
     const apiKey = contract.runtimeApiKey
@@ -301,7 +303,7 @@ export class GeminiAdapter extends BasePlatformAdapter {
     const nextSettings = mergeGeminiSettings(currentSettings, profile.apply)
     const nextManaged = pickGeminiSettingsFields(nextSettings)
     const nextEffective = await this.mergeManagedWithTarget({ targetScope, nextSettings })
-    const validation = await this.validate(profile)
+    const validation = await this.validate(profile, { targetScope })
     const warnings = [...validation.warnings]
     const limitations = [...validation.limitations]
     const managedFields = contract.stableSettings

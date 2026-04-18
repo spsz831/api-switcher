@@ -3219,6 +3219,67 @@ describe('cli commands integration', () => {
     expect(projectSettings.projectOnly).toBe(true)
   })
 
+  it('import apply --scope project 在导出默认 scope 仍为 user 时，也按显式目标写入 Gemini project settings', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-project-explicit-target-overrides-default.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+        scopeAvailability: [
+          { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+          { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--scope', 'project', '--force', '--json'])
+    const payload = parseJsonResult<{
+      appliedScope: string
+      changedFiles: string[]
+      scopePolicy: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        riskWarning?: string
+        rollbackScopeMatchRequired: boolean
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.appliedScope).toBe('project')
+    expect(payload.data?.changedFiles).toEqual([geminiProjectSettingsPath])
+    expect(payload.data?.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
+
+    const userSettings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(geminiProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(userSettings.enforcedAuthType).toBe('oauth-personal')
+    expect(projectSettings.enforcedAuthType).toBe('gemini-api-key')
+    expect(projectSettings.projectOnly).toBe(true)
+  })
+
   it('import apply 产出的 project scope 快照在 rollback 时必须匹配记录的 scope', async () => {
     const importFile = path.join(runtimeDir, 'import-apply-project-rollback-scope.json')
     await writeImportSourceFile(importFile, [
@@ -3899,6 +3960,12 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       changedFiles: string[]
       preview: { targetFiles: Array<{ path: string; scope?: string }> }
+      validation: {
+        effectiveConfig?: {
+          stored: Array<{ key: string; scope?: string }>
+        }
+        managedBoundaries?: Array<{ target?: string; notes?: string[] }>
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -3911,6 +3978,16 @@ describe('cli commands integration', () => {
         scope: 'local',
       }),
     ])
+    expect(payload.data?.validation.effectiveConfig?.stored?.[0]).toMatchObject({
+      key: 'ANTHROPIC_AUTH_TOKEN',
+      scope: 'local',
+    })
+    expect(payload.data?.validation.managedBoundaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        target: claudeLocalSettingsPath,
+        notes: ['当前写入目标为 Claude 本地级配置文件。'],
+      }),
+    ]))
 
     const localSettings = JSON.parse(await fs.readFile(claudeLocalSettingsPath, 'utf8')) as Record<string, unknown>
     const projectSettings = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>

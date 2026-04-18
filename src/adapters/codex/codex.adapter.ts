@@ -14,6 +14,7 @@ import type {
   RollbackContext,
   RollbackResult,
   TargetFileInfo,
+  ValidationContext,
   ValidationIssue,
   ValidationResult,
 } from '../../types/adapter'
@@ -102,7 +103,7 @@ export class CodexAdapter extends BasePlatformAdapter {
     ]
   }
 
-  async validate(profile: Profile): Promise<ValidationResult> {
+  async validate(profile: Profile, _context: ValidationContext = {}): Promise<ValidationResult> {
     const { configPath, authPath } = resolveCodexTargets()
     const issues: ValidationIssue[] = []
     const limitations = getPlatformLimitationIssues(this.platform)

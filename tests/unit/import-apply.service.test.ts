@@ -643,6 +643,68 @@ describe('import apply service', () => {
     expect(result.error?.code).not.toBe('IMPORT_APPLY_NOT_READY')
   })
 
+  it('真实 fidelity 下，导出默认 scope 为 user 但显式 --scope project 时不会被 IMPORT_APPLY_NOT_READY 提前拦截', async () => {
+    const importedProfile = createProfile()
+    let validationCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [
+            createImportedSource({
+              profile: importedProfile,
+              exportedObservation: {
+                defaultWriteScope: 'user',
+                observedAt: '2026-04-16T00:00:00.000Z',
+                scopeCapabilities: [
+                  { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+                  { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+                ],
+                scopeAvailability: [
+                  { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
+                  { scope: 'project', status: 'available', detected: true, writable: true, path: 'E:/project/.gemini/settings.json' },
+                ],
+              },
+            }),
+          ],
+        }),
+      } as any,
+      undefined,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'gemini',
+            managed: true,
+            targetFiles: [],
+            scopeAvailability: [
+              { scope: 'project', status: 'available', detected: true, writable: true, path: 'E:/project/.gemini/settings.json' },
+            ],
+          }),
+          validate: async () => {
+            validationCalled = true
+            return createValidationResult({
+              ok: false,
+              errors: [
+                {
+                  code: 'validation-error',
+                  level: 'error',
+                  message: 'validation error',
+                },
+              ],
+            })
+          },
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, scope: 'project' })
+
+    expect(validationCalled).toBe(true)
+    expect(result.error?.code).toBe('VALIDATION_FAILED')
+    expect(result.error?.code).not.toBe('IMPORT_APPLY_NOT_READY')
+  })
+
   it('成功执行 user-scope apply，并把 provenance 传给 snapshot service', async () => {
     const importedProfile = createProfile()
     let capturedSnapshotInput: any

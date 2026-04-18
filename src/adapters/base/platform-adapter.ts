@@ -11,6 +11,7 @@ import type {
   RollbackContext,
   RollbackResult,
   TargetFileInfo,
+  ValidationContext,
   ValidationResult,
 } from '../../types/adapter'
 import type { PlatformName } from '../../types/platform'
@@ -23,7 +24,7 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
     return DEFAULT_CAPABILITIES[this.platform]
   }
 
-  abstract validate(profile: Profile): Promise<ValidationResult>
+  abstract validate(profile: Profile, context?: ValidationContext): Promise<ValidationResult>
 
   abstract preview(profile: Profile, context?: PreviewContext): Promise<PreviewResult>
 

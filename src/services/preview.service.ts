@@ -52,7 +52,7 @@ export class PreviewService {
         }
       }
 
-      const validation = await adapter.validate(profile)
+      const validation = await adapter.validate(profile, { targetScope: resolvedScope })
       const preview = await adapter.preview(profile, { targetScope: resolvedScope })
       const decision = evaluateRisk(preview, validation)
       const risk = {

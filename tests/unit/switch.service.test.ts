@@ -66,6 +66,108 @@ describe('switch service', () => {
     })
   })
 
+  it('显式 scope 会传给 validate，而不是只传给 preview/apply', async () => {
+    const profile = {
+      id: 'claude-local-scope',
+      name: 'claude-local-scope',
+      platform: 'claude' as const,
+      source: { token: 'sk-live-123456' },
+      apply: {
+        ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+      },
+    }
+    const captured: { validate?: any; preview?: any; apply?: any } = {}
+
+    const service = new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async (_profile: unknown, context?: unknown) => {
+            captured.validate = context
+            return {
+              ok: true,
+              errors: [],
+              warnings: [],
+              limitations: [],
+            }
+          },
+          preview: async (_profile: unknown, context?: unknown) => {
+            captured.preview = context
+            return {
+              platform: 'claude',
+              profileId: profile.id,
+              targetFiles: [
+                {
+                  path: 'E:\\WorkSpace\\.claude\\settings.local.json',
+                  format: 'json',
+                  exists: true,
+                  managedScope: 'partial-fields',
+                  scope: 'local',
+                  role: 'settings',
+                  managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+                },
+              ],
+              effectiveFields: [],
+              storedOnlyFields: [],
+              diffSummary: [
+                {
+                  path: 'E:\\WorkSpace\\.claude\\settings.local.json',
+                  changedKeys: ['ANTHROPIC_AUTH_TOKEN'],
+                  hasChanges: true,
+                },
+              ],
+              warnings: [],
+              limitations: [],
+              riskLevel: 'low',
+              requiresConfirmation: false,
+              backupPlanned: true,
+              noChanges: false,
+            }
+          },
+          apply: async (_profile: unknown, context?: unknown) => {
+            captured.apply = context
+            return {
+              ok: true,
+              changedFiles: ['E:\\WorkSpace\\.claude\\settings.local.json'],
+              noChanges: false,
+              diffSummary: [
+                {
+                  path: 'E:\\WorkSpace\\.claude\\settings.local.json',
+                  changedKeys: ['ANTHROPIC_AUTH_TOKEN'],
+                  hasChanges: true,
+                },
+              ],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-claude-20260418090000-abcdef',
+          manifestPath: 'backups/claude/manifest.json',
+          targetFiles: ['E:\\WorkSpace\\.claude\\settings.local.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    )
+
+    const result = await service.use('claude-local-scope', { scope: 'local', force: true })
+
+    expect(result.ok).toBe(true)
+    expect(captured.validate).toEqual({ targetScope: 'local' })
+    expect(captured.preview).toEqual({ targetScope: 'local' })
+    expect(captured.apply).toEqual({
+      backupId: 'snapshot-claude-20260418090000-abcdef',
+      targetScope: 'local',
+    })
+  })
+
   it('validation 失败时返回结构化失败结果，并带出 explainable warnings 与 limitations', async () => {
     await new ProfilesStore().write({
       version: 1,
