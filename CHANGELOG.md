@@ -6,7 +6,7 @@
 
 ### Added
 
-- 接通 `add / list / current / validate / preview / use / rollback / export` 主命令。
+- 接通 `add / list / current / validate / preview / use / rollback / export / schema` 主命令。
 - 发布稳定公共 JSON contract，并提供 [`docs/public-json-schema.md`](docs/public-json-schema.md) 与 [`docs/public-json-output.schema.json`](docs/public-json-output.schema.json)。
 - 新增 `import preview` mixed-batch 导入预览，包含 `summary.decisionCodeStats`、`summary.driftKindStats` 和 explainable 聚合字段。
 - 新增 `import apply <file> --profile <id>`，当前支持 Gemini 单条 profile 导入应用。
