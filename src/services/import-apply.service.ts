@@ -83,7 +83,7 @@ function collectValidationWarnings(validation: ValidationResult): string[] {
 }
 
 function supportsImportApply(platform: ImportedProfileSource['profile']['platform']): boolean {
-  return platform === 'gemini' || platform === 'codex'
+  return platform === 'gemini' || platform === 'codex' || platform === 'claude'
 }
 
 function needsScopeAvailabilityGate(
@@ -133,7 +133,7 @@ export class ImportApplyService {
           warnings: sourceWarnings,
           error: {
             code: 'IMPORT_PLATFORM_NOT_SUPPORTED',
-            message: '当前仅支持导入应用 Gemini 或 Codex profile。',
+            message: '当前仅支持导入应用 Gemini、Codex 或 Claude profile。',
           },
         }
       }
@@ -212,14 +212,31 @@ export class ImportApplyService {
 
       const preview = await adapter.preview(importedSource.profile, { targetScope: appliedScope })
       const decision = evaluateRisk(preview, validation, { force: options.force })
+      const localConfirmationReasons = importedSource.profile.platform === 'claude' && appliedScope === 'local' && !options.force
+        ? [
+            'Claude local scope 高于 project 与 user；同名字段写入后会直接成为当前项目的最终生效值。',
+          ]
+        : []
+      const localConfirmationLimitations = importedSource.profile.platform === 'claude' && appliedScope === 'local' && !options.force
+        ? [
+            '如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。',
+          ]
+        : []
+      const confirmationAllowed = decision.allowed && localConfirmationReasons.length === 0
 
-      if (!decision.allowed) {
+      if (!confirmationAllowed) {
         const details: ConfirmationRequiredDetails = {
           risk: {
-            allowed: decision.allowed,
+            allowed: false,
             riskLevel: decision.riskLevel,
-            reasons: Array.from(new Set(decision.reasons)),
-            limitations: Array.from(new Set(decision.limitations)),
+            reasons: Array.from(new Set([
+              ...decision.reasons,
+              ...localConfirmationReasons,
+            ])),
+            limitations: Array.from(new Set([
+              ...decision.limitations,
+              ...localConfirmationLimitations,
+            ])),
           },
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
             requestedScope: options.scope,
@@ -334,7 +351,7 @@ export class ImportApplyService {
     explicitScope: boolean,
   ) {
     const exportedObservationBase = importedSource.exportedObservation
-      ?? (importedSource.profile.platform === 'codex' ? {} : undefined)
+      ?? (importedSource.profile.platform === 'codex' || importedSource.profile.platform === 'claude' ? {} : undefined)
     const exportedObservation: ImportObservation | undefined = exportedObservationBase
       ? {
           ...exportedObservationBase,

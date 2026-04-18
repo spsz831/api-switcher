@@ -444,11 +444,11 @@ api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--j
 
 当前契约边界：
 
-- 当前支持 Gemini / Codex profile；Claude 仍未开放 `import apply`。
+- 当前支持 Gemini / Codex / Claude profile。
 - 一次只应用单个 profile（必须显式传 `--profile`）。
 - apply 相关决策遵循 local-first：真正进入 apply 的判定以后者 `localObservation` 为准，`exportedObservation` 只用于 fidelity 对比与解释。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判定目标 scope 当前是否可用，再评估确认门槛（`CONFIRMATION_REQUIRED`）。
-- Gemini 支持 `--scope user|project`；Codex 不支持 `--scope`，会直接按平台真实双文件目标写入。
+- Gemini 支持 `--scope user|project`；Claude 支持 `--scope user|project|local`，其中 `local` 未 `--force` 时会进入更严格的确认门槛；Codex 不支持 `--scope`，会直接按平台真实双文件目标写入。
 - 对 Gemini 显式 `--scope project` 的失败态，如果当前 project root 无法解析，应该把它视为 availability failure；此时即使顶层 `error.code` 仍是 `USE_FAILED`，也应继续读取 `error.details.scopeAvailability.project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - apply 成功后的 rollback 依赖快照 provenance；当前 provenance 会绑定 `origin=import-apply`、`sourceFile` 与 `importedProfileId`。
 - machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 要求 `data` 匹配 `ImportApplyCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
@@ -489,6 +489,7 @@ type ImportApplyCommandOutput = {
 
 - `appliedScope` 表示本次写入最终解析出的平台 scope。
 - 对 Gemini，它通常是 `user` 或 `project`。
+- 对 Claude，它通常是 `user`、`project` 或 `local`。
 - 对 Codex 这类无 scoped target 平台，它可以缺省；机器消费方不应把缺省误解为失败。
 
 失败态稳定 detail（只冻结稳定字段）：
@@ -522,6 +523,282 @@ type ImportScopeUnavailableDetails = {
 - `CONFIRMATION_REQUIRED` 继续复用通用 `ConfirmationRequiredDetails`。
 - `IMPORT_APPLY_FAILED`、`VALIDATION_FAILED` 等失败的 `error.details` 只保证保留结构化对象，不冻结 adapter 内部字段。
 - machine-readable schema 只冻结失败路径里的稳定字段，不对失败 `code` 与 adapter 私有 detail 做过度枚举。
+
+Claude `import apply --json` 成功样例：
+
+```bash
+api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --scope local --force --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "import-apply",
+  "data": {
+    "sourceFile": "E:/tmp/exported-claude.json",
+    "importedProfile": {
+      "id": "claude-prod",
+      "name": "claude-prod",
+      "platform": "claude",
+      "source": {
+        "token": "sk-l***56",
+        "baseURL": "https://gateway.example.com/api"
+      },
+      "apply": {
+        "ANTHROPIC_AUTH_TOKEN": "sk-l***56",
+        "ANTHROPIC_BASE_URL": "https://gateway.example.com/api"
+      }
+    },
+    "appliedScope": "local",
+    "scopePolicy": {
+      "requestedScope": "local",
+      "resolvedScope": "local",
+      "defaultScope": "project",
+      "explicitScope": true,
+      "highRisk": true,
+      "rollbackScopeMatchRequired": false
+    },
+    "scopeCapabilities": [
+      {
+        "scope": "user",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true
+      },
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true
+      },
+      {
+        "scope": "local",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ],
+    "validation": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "limitations": [
+        {
+          "code": "CLAUDE_MANAGED_FIELDS_ONLY",
+          "message": "当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。"
+        }
+      ],
+      "effectiveConfig": {
+        "stored": [
+          {
+            "key": "ANTHROPIC_AUTH_TOKEN",
+            "maskedValue": "sk-l***56",
+            "source": "stored",
+            "scope": "local",
+            "secret": true
+          },
+          {
+            "key": "ANTHROPIC_BASE_URL",
+            "maskedValue": "https://gateway.example.com/api",
+            "source": "stored",
+            "scope": "local",
+            "secret": false
+          }
+        ],
+        "effective": [
+          {
+            "key": "ANTHROPIC_AUTH_TOKEN",
+            "maskedValue": "sk-l***56",
+            "source": "effective",
+            "scope": "local",
+            "secret": true
+          },
+          {
+            "key": "ANTHROPIC_BASE_URL",
+            "maskedValue": "https://gateway.example.com/api",
+            "source": "effective",
+            "scope": "local",
+            "secret": false
+          }
+        ],
+        "overrides": []
+      },
+      "managedBoundaries": [
+        {
+          "type": "scope-aware",
+          "target": "E:/repo/.claude/settings.local.json",
+          "managedKeys": [
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL"
+          ],
+          "notes": [
+            "当前写入目标为 Claude 本地级配置文件。"
+          ]
+        }
+      ],
+      "secretReferences": [
+        {
+          "key": "ANTHROPIC_AUTH_TOKEN",
+          "source": "config",
+          "present": true,
+          "maskedValue": "sk-l***56"
+        }
+      ]
+    },
+    "preview": {
+      "platform": "claude",
+      "profileId": "claude-prod",
+      "targetFiles": [
+        {
+          "path": "E:/repo/.claude/settings.local.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "partial-fields",
+          "scope": "local",
+          "role": "settings",
+          "managedKeys": [
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL"
+          ]
+        }
+      ],
+      "effectiveFields": [
+        {
+          "key": "ANTHROPIC_AUTH_TOKEN",
+          "maskedValue": "sk-l***56",
+          "source": "effective",
+          "scope": "local",
+          "secret": true
+        },
+        {
+          "key": "ANTHROPIC_BASE_URL",
+          "maskedValue": "https://gateway.example.com/api",
+          "source": "effective",
+          "scope": "local",
+          "secret": false
+        }
+      ],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "E:/repo/.claude/settings.local.json",
+          "changedKeys": [
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL"
+          ],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": [],
+      "riskLevel": "high",
+      "requiresConfirmation": true,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "high",
+      "reasons": [],
+      "limitations": []
+    },
+    "backupId": "snapshot-claude-20260419120000-abcdef",
+    "changedFiles": [
+      "E:/repo/.claude/settings.local.json"
+    ],
+    "noChanges": false,
+    "summary": {
+      "warnings": [],
+      "limitations": [
+        "当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。"
+      ]
+    }
+  },
+  "warnings": [],
+  "limitations": [
+    "当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。"
+  ]
+}
+```
+
+这个样例对应“显式指定 `--scope local` 且带 `--force`”的成功路径。如果去掉 `--force`，Claude 会先返回 `CONFIRMATION_REQUIRED`，并把更高确认门槛的解释放进 `error.details.risk.reasons` 与 `limitations`。
+
+对应的高风险失败样例如下：
+
+```bash
+api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --scope local --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "import-apply",
+  "error": {
+    "code": "CONFIRMATION_REQUIRED",
+    "message": "当前操作风险较高，需要显式确认。请重新执行并附加 --force。",
+    "details": {
+      "risk": {
+        "allowed": false,
+        "riskLevel": "high",
+        "reasons": [
+          "Claude local scope 高于 project 与 user；同名字段写入后会直接成为当前项目的最终生效值。"
+        ],
+        "limitations": [
+          "如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。"
+        ]
+      },
+      "scopePolicy": {
+        "requestedScope": "local",
+        "resolvedScope": "local",
+        "defaultScope": "project",
+        "explicitScope": true,
+        "highRisk": true,
+        "rollbackScopeMatchRequired": false
+      },
+      "scopeCapabilities": [
+        {
+          "scope": "user",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true
+        },
+        {
+          "scope": "project",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true
+        },
+        {
+          "scope": "local",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true,
+          "risk": "high",
+          "confirmationRequired": true
+        }
+      ]
+    }
+  },
+  "warnings": [],
+  "limitations": []
+}
+```
 
 ### add --json
 

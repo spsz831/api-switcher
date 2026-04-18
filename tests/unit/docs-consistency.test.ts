@@ -35,15 +35,15 @@ describe('docs consistency', () => {
   })
 
   it('README / schema / changelog 对 import apply 的平台边界与单 profile 约束保持一致', () => {
-    expect(readme).toContain('`import apply` 当前支持 Gemini / Codex')
+    expect(readme).toContain('`import apply` 当前支持 Gemini / Codex / Claude')
     expect(readme).toContain('一次只应用单个 imported profile')
     expect(readme).toContain('Codex 不使用 `--scope`')
 
-    expect(publicJsonSchemaDoc).toContain('当前支持 Gemini / Codex profile；Claude 仍未开放 `import apply`。')
+    expect(publicJsonSchemaDoc).toContain('当前支持 Gemini / Codex / Claude profile。')
     expect(publicJsonSchemaDoc).toContain('一次只应用单个 profile（必须显式传 `--profile`）。')
     expect(publicJsonSchemaDoc).toContain('Codex 不支持 `--scope`')
 
-    expect(changelog).toContain('`import apply` 当前支持 Gemini / Codex，不支持 Claude。')
+    expect(changelog).toContain('`import apply` 当前支持 Gemini / Codex / Claude。')
     expect(changelog).toContain('一次仅支持应用单个 imported profile')
     expect(changelog).toContain('Codex 不支持 `--scope`')
   })

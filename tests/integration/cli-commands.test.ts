@@ -2967,8 +2967,8 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
   })
 
-  it('import apply 对 Claude profile 仍返回 IMPORT_PLATFORM_NOT_SUPPORTED 而非 CONFIRMATION_REQUIRED', async () => {
-    const importFile = path.join(runtimeDir, 'import-apply-claude.json')
+  it('import apply 在默认 Claude project scope 下可成功应用并写入 project 文件', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-claude-project-success.json')
     await writeImportSourceFile(importFile, [
       {
         profile: {
@@ -2985,15 +2985,176 @@ describe('cli commands integration', () => {
       },
     ])
 
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-prod', '--json'])
-    const payload = parseJsonResult(result.stdout)
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-prod', '--force', '--json'])
+    const payload = parseJsonResult<{
+      importedProfile: { id: string; platform: string }
+      appliedScope?: string
+      changedFiles: string[]
+      noChanges: boolean
+      preview: { targetFiles: Array<{ path: string; scope?: string }> }
+      validation: {
+        managedBoundaries?: Array<{ target?: string; notes?: string[] }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.importedProfile).toEqual(expect.objectContaining({
+      id: 'claude-prod',
+      platform: 'claude',
+    }))
+    expect(payload.data?.appliedScope).toBe('project')
+    expect(payload.data?.changedFiles).toEqual([claudeProjectSettingsPath])
+    expect(payload.data?.noChanges).toBe(false)
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: claudeProjectSettingsPath,
+        scope: 'project',
+      }),
+    ])
+    expect(payload.data?.validation.managedBoundaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        target: claudeProjectSettingsPath,
+        notes: ['当前写入目标为 Claude 项目级配置文件。'],
+      }),
+    ]))
+
+    const projectSettings = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    const localExists = await fs.access(claudeLocalSettingsPath).then(() => true).catch(() => false)
+    expect(projectSettings.ANTHROPIC_AUTH_TOKEN).toBe('sk-live-123456')
+    expect(projectSettings.ANTHROPIC_BASE_URL).toBe('https://gateway.example.com/api')
+    expect(projectSettings.theme).toBe('dark')
+    expect(localExists).toBe(false)
+  })
+
+  it('import apply --scope local 对 Claude 在未 --force 时返回 CONFIRMATION_REQUIRED', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-claude-local-confirmation.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'claude-prod',
+          name: 'claude-prod',
+          platform: 'claude',
+          source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+        defaultWriteScope: 'project',
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-prod', '--scope', 'local', '--json'])
+    const payload = parseJsonResult<{
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        riskWarning?: string
+      }
+      risk?: {
+        reasons?: string[]
+        limitations?: string[]
+      }
+    }>(result.stdout)
+    const confirmationDetails = payload.error?.details as {
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        riskWarning?: string
+      }
+      risk?: {
+        reasons?: string[]
+        limitations?: string[]
+      }
+    } | undefined
 
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(1)
     expect(payload.ok).toBe(false)
     expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_PLATFORM_NOT_SUPPORTED')
-    expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+    expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(confirmationDetails?.scopePolicy?.requestedScope).toBe('local')
+    expect(confirmationDetails?.scopePolicy?.resolvedScope).toBe('local')
+    expect(confirmationDetails?.scopePolicy?.riskWarning).toBeUndefined()
+    expect(confirmationDetails?.risk?.reasons).toEqual([
+      'Claude local scope 高于 project 与 user；同名字段写入后会直接成为当前项目的最终生效值。',
+    ])
+    expect(confirmationDetails?.risk?.limitations).toEqual(expect.arrayContaining([
+      '如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。',
+    ]))
+  })
+
+  it('import apply --scope local --force 对 Claude 可成功应用并只写入 local 文件', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-claude-local-success.json')
+    await fs.writeFile(claudeLocalSettingsPath, JSON.stringify({ localFlag: true }, null, 2), 'utf8')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'claude-prod',
+          name: 'claude-prod',
+          platform: 'claude',
+          source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+        defaultWriteScope: 'project',
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-prod', '--scope', 'local', '--force', '--json'])
+    const payload = parseJsonResult<{
+      importedProfile: { id: string; platform: string }
+      appliedScope?: string
+      changedFiles: string[]
+      noChanges: boolean
+      preview: { targetFiles: Array<{ path: string; scope?: string }> }
+      validation: {
+        effectiveConfig?: {
+          stored: Array<{ key: string; scope?: string }>
+        }
+        managedBoundaries?: Array<{ target?: string; notes?: string[] }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.importedProfile).toEqual(expect.objectContaining({
+      id: 'claude-prod',
+      platform: 'claude',
+    }))
+    expect(payload.data?.appliedScope).toBe('local')
+    expect(payload.data?.changedFiles).toEqual([claudeLocalSettingsPath])
+    expect(payload.data?.noChanges).toBe(false)
+    expect(payload.data?.preview.targetFiles).toEqual([
+      expect.objectContaining({
+        path: claudeLocalSettingsPath,
+        scope: 'local',
+      }),
+    ])
+    expect(payload.data?.validation.effectiveConfig?.stored?.[0]).toMatchObject({
+      key: 'ANTHROPIC_AUTH_TOKEN',
+      scope: 'local',
+    })
+    expect(payload.data?.validation.managedBoundaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        target: claudeLocalSettingsPath,
+        notes: ['当前写入目标为 Claude 本地级配置文件。'],
+      }),
+    ]))
+
+    const localSettings = JSON.parse(await fs.readFile(claudeLocalSettingsPath, 'utf8')) as Record<string, unknown>
+    const projectSettings = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(localSettings.ANTHROPIC_AUTH_TOKEN).toBe('sk-live-123456')
+    expect(localSettings.ANTHROPIC_BASE_URL).toBe('https://gateway.example.com/api')
+    expect(localSettings.localFlag).toBe(true)
+    expect(projectSettings.ANTHROPIC_AUTH_TOKEN).toBe('sk-old-000')
   })
 
   it('import apply 对 Codex 传入非法 --scope 时返回 INVALID_SCOPE', async () => {

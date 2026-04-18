@@ -381,6 +381,104 @@ describe('public JSON contract types', () => {
     expect(validatePublicSchema(codexSuccessResult)).toBe(true)
   })
 
+  it('action=import-apply claude success 样例能通过 machine-readable schema 校验', () => {
+    const claudeSuccessResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: true,
+      action: 'import-apply',
+      data: {
+        sourceFile: 'E:/tmp/export.json',
+        importedProfile: {
+          id: 'claude-prod',
+          name: 'Claude 生产',
+          platform: 'claude',
+          source: {},
+          apply: {},
+        },
+        appliedScope: 'local',
+        scopePolicy: {
+          requestedScope: 'local',
+          resolvedScope: 'local',
+          defaultScope: 'project',
+          explicitScope: true,
+          highRisk: true,
+          rollbackScopeMatchRequired: false,
+        },
+        scopeCapabilities: [
+          {
+            scope: 'user',
+            detect: true,
+            preview: true,
+            use: true,
+            rollback: true,
+            writable: true,
+          },
+          {
+            scope: 'project',
+            detect: true,
+            preview: true,
+            use: true,
+            rollback: true,
+            writable: true,
+          },
+          {
+            scope: 'local',
+            detect: true,
+            preview: true,
+            use: true,
+            rollback: true,
+            writable: true,
+            risk: 'high',
+            confirmationRequired: true,
+          },
+        ],
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          limitations: [],
+        },
+        preview: {
+          requiresConfirmation: true,
+          backupPlanned: true,
+          noChanges: false,
+          targetFiles: [
+            {
+              path: 'E:/repo/.claude/settings.local.json',
+              format: 'json',
+              exists: true,
+              managedScope: 'partial-fields',
+              scope: 'local',
+              role: 'settings',
+              managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+            },
+          ],
+        },
+        risk: {
+          allowed: true,
+          riskLevel: 'high',
+          reasons: [
+            'Claude local scope 高于 project 与 user；同名字段写入后会直接成为当前项目的最终生效值。',
+          ],
+          limitations: [
+            '如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。',
+          ],
+        },
+        backupId: 'snapshot-claude-001',
+        changedFiles: ['E:/repo/.claude/settings.local.json'],
+        noChanges: false,
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+      warnings: [],
+      limitations: [],
+    }
+
+    expect(validatePublicSchema(claudeSuccessResult)).toBe(true)
+  })
+
   it('action=import-apply not-ready 失败样例能通过 machine-readable schema 校验', () => {
     const notReadyFailureResult = {
       schemaVersion: '2026-04-15.public-json.v1',

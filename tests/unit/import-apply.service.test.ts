@@ -30,6 +30,20 @@ function createCodexProfile(overrides: Partial<Profile> = {}): Profile {
   }
 }
 
+function createClaudeProfile(overrides: Partial<Profile> = {}): Profile {
+  return {
+    id: 'claude-prod',
+    name: 'claude-prod',
+    platform: 'claude',
+    source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+    apply: {
+      ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+      ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+    },
+    ...overrides,
+  }
+}
+
 function createValidationResult(overrides: Partial<ValidationResult> = {}): ValidationResult {
   return {
     ok: true,
@@ -139,7 +153,7 @@ describe('import apply service', () => {
     }))
   })
 
-  it('选中的 imported profile 不是 Gemini 时返回 IMPORT_PLATFORM_NOT_SUPPORTED', async () => {
+  it('选中的 imported profile 不是受支持的平台时返回 IMPORT_PLATFORM_NOT_SUPPORTED', async () => {
     const service = new ImportApplyService({
       load: async () => ({
         sourceFile: 'E:/tmp/export.json',
@@ -147,18 +161,18 @@ describe('import apply service', () => {
         profiles: [
           createImportedSource({
             profile: createProfile({
-              id: 'claude-prod',
-              name: 'claude-prod',
-              platform: 'claude' as any,
-              source: { token: 'sk-live-123456' },
-              apply: { ANTHROPIC_AUTH_TOKEN: 'sk-live-123456' },
+              id: 'unsupported-prod',
+              name: 'unsupported-prod',
+              platform: 'unsupported' as any,
+              source: { apiKey: 'unsupported-key-123456' },
+              apply: { UNSUPPORTED_API_KEY: 'unsupported-key-123456' } as any,
             }),
           }),
         ],
       }),
     } as any)
 
-    const result = await service.apply('E:/tmp/export.json', { profile: 'claude-prod' })
+    const result = await service.apply('E:/tmp/export.json', { profile: 'unsupported-prod' })
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
@@ -166,7 +180,7 @@ describe('import apply service', () => {
       warnings: [],
       error: {
         code: 'IMPORT_PLATFORM_NOT_SUPPORTED',
-        message: '当前仅支持导入应用 Gemini 或 Codex profile。',
+        message: '当前仅支持导入应用 Gemini、Codex 或 Claude profile。',
       },
     }))
   })
@@ -340,6 +354,328 @@ describe('import apply service', () => {
     expect(validationCalled).toBe(true)
     expect(applyCalled).toBe(true)
     expect(result.ok).toBe(true)
+  })
+
+  it('选中的 imported profile 是 Claude 时不会返回 IMPORT_PLATFORM_NOT_SUPPORTED', async () => {
+    const importedProfile = createClaudeProfile()
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'partial',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'project',
+            requiresLocalResolution: false,
+            reasonCodes: ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'claude',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'claude',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.claude/settings.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'project',
+                role: 'settings',
+                managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/test/.claude/settings.json',
+                changedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+                hasChanges: true,
+              },
+            ],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+          }),
+          apply: async () => ({
+            ok: true,
+            changedFiles: ['C:/Users/test/.claude/settings.json'],
+            noChanges: false,
+            diffSummary: [],
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-claude-20260419120000-abcdef',
+          manifestPath: 'backups/claude/snapshot-claude-20260419120000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.claude/settings.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, scope: 'project' })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.importedProfile.platform).toBe('claude')
+    expect(result.data?.appliedScope).toBe('project')
+  })
+
+  it('Claude imported profile 缺少 exportedObservation 时，不会直接被 IMPORT_APPLY_NOT_READY 阻断', async () => {
+    const importedProfile = createClaudeProfile()
+    let validationCalled = false
+    let applyCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: undefined })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'partial',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'project',
+            requiresLocalResolution: false,
+            reasonCodes: ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'claude',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => {
+            validationCalled = true
+            return createValidationResult()
+          },
+          preview: async () => createPreviewResult({
+            platform: 'claude',
+            profileId: importedProfile.id,
+            targetFiles: [],
+            diffSummary: [],
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/test/.claude/settings.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          }
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-claude-20260419120000-abcdef',
+          manifestPath: 'backups/claude/snapshot-claude-20260419120000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.claude/settings.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, scope: 'project' })
+
+    expect(result.error?.code).not.toBe('IMPORT_APPLY_NOT_READY')
+    expect(validationCalled).toBe(true)
+    expect(applyCalled).toBe(true)
+    expect(result.ok).toBe(true)
+  })
+
+  it('Claude local scope 未 --force 时返回 CONFIRMATION_REQUIRED', async () => {
+    const importedProfile = createClaudeProfile()
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'partial',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'local',
+            requiresLocalResolution: false,
+            reasonCodes: ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'claude',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'claude',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.claude/settings.local.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'local',
+                role: 'settings',
+                managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/test/.claude/settings.local.json',
+                changedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+                hasChanges: true,
+              },
+            ],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+          }),
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, scope: 'local' })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.message).toBe('当前导入应用需要确认或 --force。')
+  })
+
+  it('Claude local scope 带 --force 时可以成功 apply', async () => {
+    const importedProfile = createClaudeProfile()
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'partial',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'local',
+            requiresLocalResolution: false,
+            reasonCodes: ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'claude',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'claude',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.claude/settings.local.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'local',
+                role: 'settings',
+                managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/test/.claude/settings.local.json',
+                changedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+                hasChanges: true,
+              },
+            ],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+          }),
+          apply: async () => ({
+            ok: true,
+            changedFiles: ['C:/Users/test/.claude/settings.local.json'],
+            noChanges: false,
+            diffSummary: [],
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-claude-20260419120000-abcdef',
+          manifestPath: 'backups/claude/snapshot-claude-20260419120000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.claude/settings.local.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, scope: 'local', force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.importedProfile.platform).toBe('claude')
+    expect(result.data?.appliedScope).toBe('local')
+    expect(result.data?.backupId).toBe('snapshot-claude-20260419120000-abcdef')
+    expect(result.data?.changedFiles).toEqual(['C:/Users/test/.claude/settings.local.json'])
   })
 
   it('previewDecision 阻止 apply design 时返回 IMPORT_APPLY_NOT_READY', async () => {
