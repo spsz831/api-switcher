@@ -2,6 +2,18 @@
 
 一个面向 Claude Code、Codex、Gemini CLI 的多平台 API 配置切换工具。
 
+- 支持 `Claude / Codex / Gemini` 三个平台的配置切换与当前状态检测
+- 支持 `preview / use / rollback / current / list / validate / export / add`
+- 支持 Gemini `project scope` 显式写入、独立快照和严格回滚
+- 提供稳定公共 JSON contract，适合脚本、自动化和上层 UI 接入
+
+快速入口：
+
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [发布状态](#发布状态)
+- [文档导航](#文档导航)
+
 ## 文档导航
 
 - [`README.md`](README.md)：命令入口、能力概览和可直接复制的 JSON 示例。
