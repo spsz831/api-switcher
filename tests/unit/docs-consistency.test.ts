@@ -26,6 +26,14 @@ describe('docs consistency', () => {
     expect(readme).toContain('`preview / use / rollback / current / list / validate / export / add / schema`')
   })
 
+  it('README 保留 smoke:release 入口与验证范围，避免公开开发入口落后于实际脚本', () => {
+    expect(readme).toContain('corepack pnpm smoke:release')
+    expect(readme).toContain('顶层 `--help` 可发现性')
+    expect(readme).toContain('`schema --schema-version --json` 成功态 contract')
+    expect(readme).toContain('稳定 stderr 失败出口')
+    expect(readme).toContain('稳定 `--json` 失败 envelope')
+  })
+
   it('README / schema / changelog 对 import apply 的 Gemini-only 与单 profile 边界保持一致', () => {
     expect(readme).toContain('`import apply` 当前仅支持 Gemini')
     expect(readme).toContain('一次只应用单个 imported profile')
