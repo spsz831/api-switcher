@@ -29,6 +29,7 @@ corepack pnpm smoke:release
 
 - 成功态：`schema --schema-version --json` 仍符合当前公开 contract
 - 失败态：未知命令仍保持稳定的 Commander 失败出口（exit code `1` + `stderr` 含 `unknown command`）
+- JSON 失败态：`import <missing-file> --json` 仍返回稳定 envelope（`schemaVersion / ok=false / action / error.code`）
 
 还应确认 GitHub Actions `CI` workflow 在目标分支为绿色。
 

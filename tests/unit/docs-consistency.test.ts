@@ -51,6 +51,9 @@ describe('docs consistency', () => {
     expect(releaseChecklist).toContain('未知命令仍保持稳定的 Commander 失败出口')
     expect(releaseChecklist).toContain('exit code `1`')
     expect(releaseChecklist).toContain('stderr` 含 `unknown command`')
+    expect(releaseChecklist).toContain('JSON 失败态')
+    expect(releaseChecklist).toContain('import <missing-file> --json')
+    expect(releaseChecklist).toContain('schemaVersion / ok=false / action / error.code')
   })
 
   it('schema 文档示例与源码常量、machine-readable schema 的版本和 schemaId 保持一致', () => {
