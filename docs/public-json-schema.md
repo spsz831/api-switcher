@@ -104,6 +104,7 @@ type ScopeAvailability = {
 - `scopeCapabilities` 回答“平台理论上支持什么”。
 - `scopeAvailability` 回答“这次命令所在环境里，这个 scope 现在到底能不能用”。
 - 对 Gemini `project` 来说，即使 `scopeCapabilities.project.use=true`，`scopeAvailability.project.status` 仍可能是 `unresolved`，此时 `preview/use/rollback --scope project` 会直接失败，而不是继续进入确认门槛或回滚逻辑。
+- 对 Gemini `project` 的 availability 失败，顶层错误码当前仍可能保持 action 级通用失败码，例如 `PREVIEW_FAILED`、`USE_FAILED`、`ROLLBACK_FAILED`；机器消费方应以 `error.details.scopeAvailability` 中的 `project.status`、`reasonCode`、`reason`、`remediation` 作为稳定判定依据。
 
 ## Gemini Scope Matrix
 
@@ -447,6 +448,7 @@ api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--j
 - 一次只应用单个 profile（必须显式传 `--profile`）。
 - apply 相关决策遵循 local-first：真正进入 apply 的判定以后者 `localObservation` 为准，`exportedObservation` 只用于 fidelity 对比与解释。
 - gate 顺序固定为 availability-before-confirmation：先判定目标 scope 当前是否可用，再评估确认门槛（`CONFIRMATION_REQUIRED`）。
+- 对 Gemini 显式 `--scope project` 的失败态，如果当前 project root 无法解析，应该把它视为 availability failure；此时即使顶层 `error.code` 仍是 `USE_FAILED`，也应继续读取 `error.details.scopeAvailability.project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - apply 成功后的 rollback 依赖快照 provenance；当前 provenance 会绑定 `origin=import-apply`、`sourceFile` 与 `importedProfileId`。
 - machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 要求 `data` 匹配 `ImportApplyCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
 
@@ -593,6 +595,7 @@ type ConfirmationRequiredDetails = {
 
 - Gemini scope mismatch 失败时，`ROLLBACK_SCOPE_MISMATCH` 也应返回结构化 `error.details.scopePolicy`、`error.details.scopeCapabilities` 与 `error.details.scopeAvailability`。
 - Gemini `project` scope 当前不可解析时，`ROLLBACK_FAILED` 会先返回 `scopeAvailability` 失败，不进入 scope mismatch 判定。
+- 对这类 Gemini availability 失败，机器消费方不应只依赖顶层 `ROLLBACK_FAILED`；稳定语义在 `error.details.scopeAvailability.project.status = "unresolved"` 以及配套的 `reasonCode` / `reason` / `remediation`。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `rollback --json` 成功/失败示例。
 
 ```ts

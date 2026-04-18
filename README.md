@@ -235,6 +235,7 @@ JSON 输出的稳定公共字段见 [`docs/public-json-schema.md`](docs/public-j
 - `observedAt` 当前用于 `export --json`，表示这份 `scopeAvailability` 是在什么时候观测到的；它是环境观察，不是未来 import 时可直接信任的执行真相。
 - `import preview <file>` 只做导入对比，不会写入任何平台配置，也不会自动修复 project root。
 - `import apply <file> --profile <id>` 当前仅支持 Gemini 且一次只应用单个 profile；apply 相关决策以本地实时 observation 为准。
+- 对 Gemini `project scope` 的失败分支，顶层错误码仍可能是通用的 `PREVIEW_FAILED`、`USE_FAILED`、`ROLLBACK_FAILED`；机器消费方应继续读取 `error.details.scopeAvailability`，以 `project.status`、`reasonCode`、`reason`、`remediation` 判断是否为 availability 失败。
 
 也可以通过 CLI 直接查看当前 public JSON schema：
 
@@ -455,6 +456,7 @@ api-switcher import preview exported.json --json
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
 - gate 顺序固定为 availability-before-confirmation：先判断 `scopeAvailability`，再判断是否需要 `--force`。
+- 对显式 `--scope project` 的 Gemini 命令，如果当前 project root 无法解析，JSON 顶层通常仍是该 action 的通用失败码；但 `error.details.scopeAvailability` 会稳定给出 `project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - rollback provenance：成功 apply 的快照会记录 `origin=import-apply`、`sourceFile`、`importedProfileId`，回滚绑定这组来源信息。
 - machine-readable schema 仅对 `import-apply` 做 action-specific envelope 校验：成功态约束 `data`，失败态只约束稳定 `error.details` 联合，避免过度冻结 adapter 私有字段。
 
@@ -1498,6 +1500,7 @@ api-switcher rollback <backupId> --scope project
 - `use --scope project` 没有 `--force` 时会被确认门槛拦截。
 - `use --scope project --force` 只备份并写入 project scope 对应的 `.gemini/settings.json`，不会改 user scope。
 - `rollback <backupId> --scope project` 会按快照中的 project 文件恢复；如果快照 scope 和指定 scope 不一致，会拒绝回滚。
+- 如果当前 project root 不可解析，`preview/use/rollback --scope project --json` 会先暴露 `scopeAvailability.project.status = "unresolved"`；即使顶层错误码是通用失败码，也不应再把它解释成确认门槛失败。
 
 ## Claude 说明
 
