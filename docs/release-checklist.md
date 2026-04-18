@@ -64,19 +64,19 @@ corepack pnpm test
 
 ### Claude
 
-- [ ] Claude `user scope` 可以被 `current` / `preview` 正确探测。
-- [ ] Claude `project scope` 可以被 `current` / `preview --scope project` 正确探测。
-- [ ] Claude `local scope` 可以被 `current` / `preview --scope local` 正确探测。
-- [ ] `use` 写入 Claude 目标 scope 后，目标文件只修改托管字段，不误伤非托管字段。
-- [ ] `rollback` 可以恢复刚才写入的 Claude 快照。
-- [ ] `rollback --scope <scope>` 在 Claude 上输出与实际恢复目标一致。
+- [x] Claude `user scope` 可以被 `current` / `preview` 正确探测。
+- [x] Claude `project scope` 可以被 `current` / `preview --scope project` 正确探测。
+- [x] Claude `local scope` 可以被 `current` / `preview --scope local` 正确探测。
+- [x] `use` 写入 Claude 目标 scope 后，目标文件只修改托管字段，不误伤非托管字段。
+- [x] `rollback` 可以恢复刚才写入的 Claude 快照。
+- [x] `rollback --scope <scope>` 在 Claude 上输出与实际恢复目标一致。
 
 ### Codex
 
-- [ ] Codex `current` / `preview` 能正确解释双文件目标。
-- [ ] Codex `use` 能同时完成真实目标文件写入与快照记录。
-- [ ] Codex `rollback` 能恢复真实双文件内容。
-- [ ] Codex 预览、写入、回滚过程中没有泄露完整密钥。
+- [x] Codex `current` / `preview` 能正确解释双文件目标。
+- [x] Codex `use` 能同时完成真实目标文件写入与快照记录。
+- [x] Codex `rollback` 能恢复真实双文件内容。
+- [x] Codex 预览、写入、回滚过程中没有泄露完整密钥。
 
 ### Gemini
 
@@ -100,27 +100,27 @@ corepack pnpm test
 
 ## D. 文档与契约一致性
 
-- [ ] [`README.md`](../README.md) 中的安装、快速开始、风险说明仍与当前 CLI 行为一致。
-- [ ] [`docs/public-json-schema.md`](./public-json-schema.md) 与 [`docs/public-json-output.schema.json`](./public-json-output.schema.json) 没有语义漂移。
-- [ ] `README` 中引用的 `preview/use/rollback/import preview/import apply` 示例仍能代表当前输出。
-- [ ] 如果新增或修改了 error code、scope policy、JSON 稳定字段，相关文档已同步更新。
-- [ ] 对外文档没有把“当前仅支持 Gemini 的 import apply”误写成“所有平台都支持 import apply”。
+- [x] [`README.md`](../README.md) 中的安装、快速开始、风险说明仍与当前 CLI 行为一致。
+- [x] [`docs/public-json-schema.md`](./public-json-schema.md) 与 [`docs/public-json-output.schema.json`](./public-json-output.schema.json) 没有语义漂移。
+- [x] `README` 中引用的 `preview/use/rollback/import preview/import apply` 示例仍能代表当前输出。
+- [x] 如果新增或修改了 error code、scope policy、JSON 稳定字段，相关文档已同步更新。
+- [x] 对外文档没有把“当前仅支持 Gemini 的 import apply”误写成“所有平台都支持 import apply”。
 
 ## E. 安全与恢复确认
 
-- [ ] 文本输出与 JSON 输出不会直接泄露完整密钥。
-- [ ] 新写入前会生成可回滚快照。
-- [ ] `rollback` 对最近一次真实写入可恢复。
-- [ ] Gemini 高风险 scope 的确认门槛仍然存在，没有被绕过。
-- [ ] `--force` 只用于确认高风险写入，不会跨越 availability gate。
+- [x] 文本输出与 JSON 输出不会直接泄露完整密钥。
+- [x] 新写入前会生成可回滚快照。
+- [x] `rollback` 对最近一次真实写入可恢复。
+- [x] Gemini 高风险 scope 的确认门槛仍然存在，没有被绕过。
+- [x] `--force` 只用于确认高风险写入，不会跨越 availability gate。
 
 ## F. 仓库与发布动作
 
-- [ ] `git status --short` 为空。
-- [ ] 需要发布的提交已经整理成清晰边界。
-- [ ] release note / changelog 已说明本次新增能力、风险边界和已知限制。
-- [ ] 确认发布目标分支与 tag 名称无误。
-- [ ] 确认公开仓库中没有误提交本地凭证、状态文件或备份目录。
+- [x] `git status --short` 为空。
+- [x] 需要发布的提交已经整理成清晰边界。
+- [x] release note / changelog 已说明本次新增能力、风险边界和已知限制。
+- [x] 确认发布目标分支与 tag 名称无误。
+- [x] 确认公开仓库中没有误提交本地凭证、状态文件或备份目录。
 
 ## 最低发布标准
 
