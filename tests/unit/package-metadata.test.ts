@@ -34,4 +34,17 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("$payload.action -ne 'schema'")
     expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
   })
+
+  it('release smoke script verifies a stable dist failure path', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'unknown command failure'")
+    expect(smokeScript).toContain("Start-Process -FilePath 'node'")
+    expect(smokeScript).toContain("-ArgumentList @('dist/src/cli/index.js', 'unknown-command')")
+    expect(smokeScript).toContain('-RedirectStandardError $stderrPath')
+    expect(smokeScript).toContain('$process.ExitCode -ne 1')
+    expect(smokeScript).toContain(`"unknown command 'unknown-command'"`)
+    expect(smokeScript).toContain('Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force')
+  })
 })

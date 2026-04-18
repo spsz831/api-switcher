@@ -43,5 +43,18 @@ Invoke-Step -Name 'schema version json' -Action {
     throw "unexpected data.schemaVersion: $($payload.data.schemaVersion)"
   }
 }
+Invoke-Step -Name 'unknown command failure' -Action {
+  $stdoutPath = [System.IO.Path]::GetTempFileName()
+  $stderrPath = [System.IO.Path]::GetTempFileName()
+  $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'unknown-command') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+  $renderedOutput = Get-Content -LiteralPath $stderrPath -Raw
+  Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force
+  if ($process.ExitCode -ne 1) {
+    throw "unexpected exit code for unknown command: $($process.ExitCode)"
+  }
+  if ($renderedOutput -notmatch "unknown command 'unknown-command'") {
+    throw "unexpected stderr for unknown command: $renderedOutput"
+  }
+}
 
 Write-Host 'Release smoke checks passed.'
