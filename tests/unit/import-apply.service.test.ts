@@ -16,6 +16,20 @@ function createProfile(overrides: Partial<Profile> = {}): Profile {
   }
 }
 
+function createCodexProfile(overrides: Partial<Profile> = {}): Profile {
+  return {
+    id: 'codex-prod',
+    name: 'codex-prod',
+    platform: 'codex',
+    source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+    apply: {
+      OPENAI_API_KEY: 'sk-codex-live-123456',
+      base_url: 'https://gateway.example.com/openai/v1',
+    },
+    ...overrides,
+  }
+}
+
 function createValidationResult(overrides: Partial<ValidationResult> = {}): ValidationResult {
   return {
     ok: true,
@@ -152,9 +166,180 @@ describe('import apply service', () => {
       warnings: [],
       error: {
         code: 'IMPORT_PLATFORM_NOT_SUPPORTED',
-        message: '当前仅支持导入应用 Gemini profile。',
+        message: '当前仅支持导入应用 Gemini 或 Codex profile。',
       },
     }))
+  })
+
+  it('选中的 imported profile 是 Codex 时不会返回 IMPORT_PLATFORM_NOT_SUPPORTED', async () => {
+    const importedProfile = createCodexProfile()
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'insufficient-data',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'codex',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'codex',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.codex/config.toml',
+                format: 'toml',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'config',
+                managedKeys: ['base_url'],
+              },
+              {
+                path: 'C:/Users/test/.codex/auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/test/.codex/config.toml',
+                changedKeys: ['base_url'],
+                hasChanges: true,
+              },
+              {
+                path: 'C:/Users/test/.codex/auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+          }),
+          apply: async () => ({
+            ok: true,
+            changedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+            noChanges: false,
+            diffSummary: [],
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-codex-20260418120000-abcdef',
+          manifestPath: 'backups/codex/snapshot-codex-20260418120000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
+
+    expect(result.ok).toBe(true)
+    expect(result.action).toBe('import-apply')
+    expect(result.data?.importedProfile.platform).toBe('codex')
+  })
+
+  it('Codex apply 不进入 Gemini 的 project scope availability gate', async () => {
+    const importedProfile = createCodexProfile()
+    let validationCalled = false
+    let applyCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'insufficient-data',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'codex',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => {
+            validationCalled = true
+            return createValidationResult()
+          },
+          preview: async () => createPreviewResult({
+            platform: 'codex',
+            profileId: importedProfile.id,
+            targetFiles: [],
+            diffSummary: [],
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-codex-20260418120000-abcdef',
+          manifestPath: 'backups/codex/snapshot-codex-20260418120000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
+
+    expect(result.error?.code).not.toBe('IMPORT_SCOPE_UNAVAILABLE')
+    expect(validationCalled).toBe(true)
+    expect(applyCalled).toBe(true)
+    expect(result.ok).toBe(true)
   })
 
   it('previewDecision 阻止 apply design 时返回 IMPORT_APPLY_NOT_READY', async () => {

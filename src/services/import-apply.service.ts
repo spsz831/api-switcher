@@ -82,6 +82,17 @@ function collectValidationWarnings(validation: ValidationResult): string[] {
   ]))
 }
 
+function supportsImportApply(platform: ImportedProfileSource['profile']['platform']): boolean {
+  return platform === 'gemini' || platform === 'codex'
+}
+
+function needsScopeAvailabilityGate(
+  platform: ImportedProfileSource['profile']['platform'],
+  scope: string | undefined,
+): boolean {
+  return platform === 'gemini' && scope === 'project'
+}
+
 export class ImportApplyService {
   constructor(
     private readonly importSourceService = new ImportSourceService(),
@@ -115,21 +126,21 @@ export class ImportApplyService {
         }
       }
 
-      if (importedSource.profile.platform !== 'gemini') {
+      if (!supportsImportApply(importedSource.profile.platform)) {
         return {
           ok: false,
           action: 'import-apply',
           warnings: sourceWarnings,
           error: {
             code: 'IMPORT_PLATFORM_NOT_SUPPORTED',
-            message: '当前仅支持导入应用 Gemini profile。',
+            message: '当前仅支持导入应用 Gemini 或 Codex profile。',
           },
         }
       }
 
       assertTargetScope(importedSource.profile.platform, options.scope)
       const adapter = this.registry.get(importedSource.profile.platform)
-      const appliedScope = resolveTargetScope(importedSource.profile.platform, options.scope) as 'user' | 'project'
+      const appliedScope = resolveTargetScope(importedSource.profile.platform, options.scope)
       const detection = await adapter.detectCurrent([importedSource.profile])
       const previewItem = this.buildPreviewItem(importedSource, detection, appliedScope, Boolean(options.scope))
 
@@ -156,12 +167,13 @@ export class ImportApplyService {
       }
 
       const scopeCapabilities = getScopeCapabilityMatrix(importedSource.profile.platform)
-      const scopeAvailability = appliedScope === 'project'
+      const scopeAvailability = needsScopeAvailabilityGate(importedSource.profile.platform, appliedScope)
         ? detection?.scopeAvailability
         : undefined
       const targetScopeAvailability = findScopeAvailability(scopeAvailability, appliedScope)
 
-      if (appliedScope === 'project' && targetScopeAvailability?.status !== 'available') {
+      if (needsScopeAvailabilityGate(importedSource.profile.platform, appliedScope)
+        && targetScopeAvailability?.status !== 'available') {
         return {
           ok: false,
           action: 'import-apply',
@@ -274,7 +286,7 @@ export class ImportApplyService {
         data: {
           sourceFile: source.sourceFile,
           importedProfile: importedSource.profile,
-          appliedScope,
+          appliedScope: appliedScope as 'user' | 'project',
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
             requestedScope: options.scope,
             resolvedScope: appliedScope,
@@ -318,7 +330,7 @@ export class ImportApplyService {
   private buildPreviewItem(
     importedSource: ImportedProfileSource,
     detection: CurrentProfileResult | null,
-    appliedScope: 'user' | 'project',
+    appliedScope: string | undefined,
     explicitScope: boolean,
   ) {
     const exportedObservation: ImportObservation | undefined = importedSource.exportedObservation
