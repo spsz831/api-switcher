@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { PUBLIC_JSON_SCHEMA_VERSION } from '../../src/constants/public-json-schema'
 
 const readmePath = path.resolve(__dirname, '../../README.md')
 const readme = fs.readFileSync(readmePath, 'utf8')
@@ -10,6 +11,15 @@ const changelogPath = path.resolve(__dirname, '../../CHANGELOG.md')
 const changelog = fs.readFileSync(changelogPath, 'utf8')
 const releaseChecklistPath = path.resolve(__dirname, '../../docs/release-checklist.md')
 const releaseChecklist = fs.readFileSync(releaseChecklistPath, 'utf8')
+const machineReadableSchemaPath = path.resolve(__dirname, '../../docs/public-json-output.schema.json')
+const machineReadableSchema = JSON.parse(fs.readFileSync(machineReadableSchemaPath, 'utf8')) as {
+  $id?: string
+  properties?: {
+    schemaVersion?: {
+      const?: string
+    }
+  }
+}
 
 describe('docs consistency', () => {
   it('README 首屏能力摘要包含 schema 命令，避免公开命令面与首页摘要漂移', () => {
@@ -35,5 +45,12 @@ describe('docs consistency', () => {
     expect(releaseChecklist).toContain('corepack pnpm smoke:release')
     expect(releaseChecklist).toContain('发布前一键 smoke 入口')
     expect(releaseChecklist).toContain('CLI help / schema --json')
+  })
+
+  it('schema 文档示例与源码常量、machine-readable schema 的版本和 schemaId 保持一致', () => {
+    expect(machineReadableSchema.properties?.schemaVersion?.const).toBe(PUBLIC_JSON_SCHEMA_VERSION)
+
+    expect(publicJsonSchemaDoc).toContain(`schemaVersion: '${PUBLIC_JSON_SCHEMA_VERSION}'`)
+    expect(publicJsonSchemaDoc).toContain(`schemaId: '${machineReadableSchema.$id}'`)
   })
 })
