@@ -35,6 +35,17 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
   })
 
+  it('release smoke script verifies dist cli help keeps the top-level command surface discoverable', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'cli help'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js --help | Out-String')
+    expect(smokeScript).toContain("$helpOutput -notmatch 'Usage:'")
+    expect(smokeScript).toContain("@('preview', 'use', 'rollback', 'current', 'list', 'validate', 'export', 'add', 'schema', 'import')")
+    expect(smokeScript).toContain('cli help missing command')
+  })
+
   it('release smoke script verifies a stable dist failure path', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

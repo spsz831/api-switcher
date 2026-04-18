@@ -23,7 +23,17 @@ function Invoke-Step {
 Invoke-Step -Name 'typecheck' -Action { corepack pnpm typecheck }
 Invoke-Step -Name 'build' -Action { corepack pnpm build }
 Invoke-Step -Name 'test' -Action { corepack pnpm test }
-Invoke-Step -Name 'cli help' -Action { node dist/src/cli/index.js --help | Out-Null }
+Invoke-Step -Name 'cli help' -Action {
+  $helpOutput = node dist/src/cli/index.js --help | Out-String
+  if ($helpOutput -notmatch 'Usage:') {
+    throw "cli help missing Usage banner: $helpOutput"
+  }
+  foreach ($expectedCommand in @('preview', 'use', 'rollback', 'current', 'list', 'validate', 'export', 'add', 'schema', 'import')) {
+    if ($helpOutput -notmatch [regex]::Escape($expectedCommand)) {
+      throw "cli help missing command: $expectedCommand"
+    }
+  }
+}
 Invoke-Step -Name 'schema json' -Action { node dist/src/cli/index.js schema --json | Out-Null }
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
