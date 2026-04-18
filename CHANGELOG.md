@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Build
+
+- `smoke:release` 现在会校验 `dist` 构建产物的顶层 `--help` 关键命令面，避免安装后 CLI 可发现性漂移。
+- `smoke:release` 现在会校验 `dist` 构建产物的 `schema --schema-version --json` 成功态 contract。
+- `smoke:release` 现在会校验 `dist` 构建产物上的稳定失败出口：未知命令保持 Commander `stderr` 失败行为。
+- `smoke:release` 现在会校验 `dist` 构建产物上的稳定 JSON 失败 envelope：`import <missing-file> --json` 返回 `schemaVersion / ok=false / action / error.code`。
+
 ## 0.1.0
 
 首个可公开试用版本。当前已达到本地自用、小范围评审和 Beta 级试用的发布标准。

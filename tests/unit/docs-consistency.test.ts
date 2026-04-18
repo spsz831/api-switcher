@@ -41,6 +41,13 @@ describe('docs consistency', () => {
     expect(changelog).toContain('`add / list / current / validate / preview / use / rollback / export / schema`')
   })
 
+  it('CHANGELOG 记录当前 release smoke 护栏能力，避免自动化演进只落在脚本里', () => {
+    expect(changelog).toContain('`smoke:release` 现在会校验 `dist` 构建产物的顶层 `--help` 关键命令面')
+    expect(changelog).toContain('`schema --schema-version --json` 成功态 contract')
+    expect(changelog).toContain('未知命令保持 Commander `stderr` 失败行为')
+    expect(changelog).toContain('`import <missing-file> --json` 返回 `schemaVersion / ok=false / action / error.code`')
+  })
+
   it('release checklist 保留 smoke:release 发布前入口，避免自动化基线文档漂移', () => {
     expect(releaseChecklist).toContain('corepack pnpm smoke:release')
     expect(releaseChecklist).toContain('发布前一键 smoke 入口')
