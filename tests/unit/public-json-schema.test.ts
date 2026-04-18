@@ -170,7 +170,7 @@ describe('public JSON contract types', () => {
     expectTypeOf<ImportApplyCommandOutput>().toMatchTypeOf<{
       sourceFile: string
       importedProfile: Profile
-      appliedScope: 'user' | 'project'
+      appliedScope?: string
       scopePolicy: SnapshotScopePolicy
       scopeCapabilities: PlatformScopeCapability[]
       scopeAvailability?: ScopeAvailability[]
@@ -180,9 +180,9 @@ describe('public JSON contract types', () => {
     }>()
 
     expectTypeOf<Extract<
-      'sourceFile' | 'importedProfile' | 'appliedScope' | 'scopePolicy' | 'backupId',
+      'sourceFile' | 'importedProfile' | 'scopePolicy' | 'backupId',
       RequiredKeys<ImportApplyCommandOutput>
-    >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'appliedScope' | 'scopePolicy' | 'backupId'>()
+    >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'scopePolicy' | 'backupId'>()
   })
 
   it('暴露 import apply 最小 error detail shapes', () => {
@@ -214,7 +214,6 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.required).toEqual(expect.arrayContaining([
       'sourceFile',
       'importedProfile',
-      'appliedScope',
       'scopePolicy',
       'scopeCapabilities',
       'validation',
@@ -324,6 +323,62 @@ describe('public JSON contract types', () => {
     }
 
     expect(validatePublicSchema(successResult)).toBe(true)
+  })
+
+  it('action=import-apply codex success 样例能通过 machine-readable schema 校验', () => {
+    const codexSuccessResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: true,
+      action: 'import-apply',
+      data: {
+        sourceFile: 'E:/tmp/export.json',
+        importedProfile: {
+          id: 'codex-prod',
+          name: 'Codex 生产',
+          platform: 'codex',
+          source: {},
+          apply: {},
+        },
+        scopePolicy: {
+          explicitScope: false,
+          highRisk: false,
+          rollbackScopeMatchRequired: false,
+        },
+        scopeCapabilities: [],
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          limitations: [],
+        },
+        preview: {
+          requiresConfirmation: false,
+          backupPlanned: true,
+          noChanges: false,
+          targetFiles: [],
+        },
+        risk: {
+          allowed: true,
+          riskLevel: 'low',
+          reasons: [],
+          limitations: [],
+        },
+        backupId: 'snapshot-codex-001',
+        changedFiles: [
+          'C:/Users/test/.codex/config.toml',
+          'C:/Users/test/.codex/auth.json',
+        ],
+        noChanges: false,
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+      warnings: [],
+      limitations: [],
+    }
+
+    expect(validatePublicSchema(codexSuccessResult)).toBe(true)
   })
 
   it('action=import-apply not-ready 失败样例能通过 machine-readable schema 校验', () => {

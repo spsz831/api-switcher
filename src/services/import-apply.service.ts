@@ -286,7 +286,7 @@ export class ImportApplyService {
         data: {
           sourceFile: source.sourceFile,
           importedProfile: importedSource.profile,
-          appliedScope: appliedScope as 'user' | 'project',
+          appliedScope,
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
             requestedScope: options.scope,
             resolvedScope: appliedScope,

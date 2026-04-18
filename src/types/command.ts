@@ -325,7 +325,7 @@ export interface ImportApplyRiskSummary {
 export interface ImportApplyCommandOutput {
   sourceFile: string
   importedProfile: Profile
-  appliedScope: 'user' | 'project'
+  appliedScope?: string
   scopePolicy: SnapshotScopePolicy
   scopeCapabilities: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]

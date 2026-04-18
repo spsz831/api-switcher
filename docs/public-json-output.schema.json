@@ -662,7 +662,6 @@
       "required": [
         "sourceFile",
         "importedProfile",
-        "appliedScope",
         "scopePolicy",
         "scopeCapabilities",
         "validation",
@@ -677,8 +676,7 @@
         "sourceFile": { "type": "string" },
         "importedProfile": {},
         "appliedScope": {
-          "type": "string",
-          "enum": ["user", "project"]
+          "type": "string"
         },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
@@ -730,8 +728,7 @@
       "properties": {
         "requestedScope": { "type": "string" },
         "resolvedScope": {
-          "type": "string",
-          "enum": ["user", "project"]
+          "type": "string"
         },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
