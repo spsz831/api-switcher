@@ -53,4 +53,12 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain(`schemaVersion: '${PUBLIC_JSON_SCHEMA_VERSION}'`)
     expect(publicJsonSchemaDoc).toContain(`schemaId: '${machineReadableSchema.$id}'`)
   })
+
+  it('README 保留 schema --json 最小公开元字段示例，避免示例与真实 contract 漂移', () => {
+    expect(readme).toContain('"action": "schema"')
+    expect(readme).toContain(`"schemaVersion": "${PUBLIC_JSON_SCHEMA_VERSION}"`)
+    expect(readme).toContain(`"schemaId": "${machineReadableSchema.$id}"`)
+    expect(readme).toContain('"$schema": "https://json-schema.org/draft/2020-12/schema"')
+    expect(readme).toContain(`"$id": "${machineReadableSchema.$id}"`)
+  })
 })

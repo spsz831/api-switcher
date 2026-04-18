@@ -255,6 +255,24 @@ JSON 输出的稳定公共字段见 [`docs/public-json-schema.md`](docs/public-j
 api-switcher schema --json
 ```
 
+最小稳定返回示例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "schema",
+  "data": {
+    "schemaVersion": "2026-04-15.public-json.v1",
+    "schemaId": "https://api-switcher.local/schemas/public-json-output.schema.json",
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://api-switcher.local/schemas/public-json-output.schema.json"
+    }
+  }
+}
+```
+
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 
 ```bash
