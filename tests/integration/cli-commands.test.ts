@@ -13,6 +13,7 @@ import type { Profile } from '../../src/types/profile'
 const execFileAsync = promisify(execFile)
 const repoRoot = path.resolve(__dirname, '../..')
 const tsxCliPath = path.join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs')
+const publicJsonSchemaPath = path.join(repoRoot, 'docs', 'public-json-output.schema.json')
 
 type CliRunResult = {
   stdout: string
@@ -216,6 +217,11 @@ async function writeImportSourceFile(
 describe('cli commands integration', () => {
   it('schema --json 输出当前 public JSON schema 与版本', async () => {
     const result = await runCli(['schema', '--json'])
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as {
+      $schema: string
+      $id: string
+      $defs?: Record<string, unknown>
+    }
     const payload = parseJsonResult<{
       schemaVersion: string
       schemaId: string
@@ -237,6 +243,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.schema.$id).toBe(payload.data?.schemaId)
     expect(payload.data?.schema.$defs).toHaveProperty('ScopeCapability')
     expect(payload.data?.schema.$defs).toHaveProperty('CommandResult')
+    expect(payload.data?.schema).toEqual(staticSchema)
   })
 
   it('schema 文本输出当前 public JSON schema 摘要', async () => {
