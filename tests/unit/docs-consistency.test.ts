@@ -8,6 +8,8 @@ const publicJsonSchemaDocPath = path.resolve(__dirname, '../../docs/public-json-
 const publicJsonSchemaDoc = fs.readFileSync(publicJsonSchemaDocPath, 'utf8')
 const changelogPath = path.resolve(__dirname, '../../CHANGELOG.md')
 const changelog = fs.readFileSync(changelogPath, 'utf8')
+const releaseChecklistPath = path.resolve(__dirname, '../../docs/release-checklist.md')
+const releaseChecklist = fs.readFileSync(releaseChecklistPath, 'utf8')
 
 describe('docs consistency', () => {
   it('README 首屏能力摘要包含 schema 命令，避免公开命令面与首页摘要漂移', () => {
@@ -27,5 +29,11 @@ describe('docs consistency', () => {
 
   it('CHANGELOG 首版能力摘要包含 schema 命令，避免 release note 与 README 首页命令面漂移', () => {
     expect(changelog).toContain('`add / list / current / validate / preview / use / rollback / export / schema`')
+  })
+
+  it('release checklist 保留 smoke:release 发布前入口，避免自动化基线文档漂移', () => {
+    expect(releaseChecklist).toContain('corepack pnpm smoke:release')
+    expect(releaseChecklist).toContain('发布前一键 smoke 入口')
+    expect(releaseChecklist).toContain('CLI help / schema --json')
   })
 })
