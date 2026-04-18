@@ -2974,6 +2974,22 @@ describe('cli commands integration', () => {
     expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
     expect(payload.error?.details).toEqual(expect.objectContaining({
       resolvedScope: 'project',
+      scopePolicy: expect.objectContaining({
+        requestedScope: 'project',
+        resolvedScope: 'project',
+        defaultScope: 'user',
+        explicitScope: true,
+        highRisk: true,
+        rollbackScopeMatchRequired: true,
+      }),
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          risk: 'high',
+          confirmationRequired: true,
+          writable: true,
+        }),
+      ]),
       scopeAvailability: expect.arrayContaining([
         expect.objectContaining({
           scope: 'project',
@@ -3054,6 +3070,14 @@ describe('cli commands integration', () => {
         riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
         rollbackScopeMatchRequired: true,
       }),
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          risk: 'high',
+          confirmationRequired: true,
+          writable: true,
+        }),
+      ]),
       scopeAvailability: expect.arrayContaining([
         expect.objectContaining({
           scope: 'project',
@@ -3327,7 +3351,7 @@ describe('cli commands integration', () => {
     expect(mismatchPayload.ok).toBe(false)
     expect(mismatchPayload.error?.code).toBe('ROLLBACK_SCOPE_MISMATCH')
     expect(mismatchPayload.error?.details).toEqual(expect.objectContaining({
-      scopePolicy: {
+      scopePolicy: expect.objectContaining({
         requestedScope: 'project',
         resolvedScope: 'project',
         defaultScope: 'user',
@@ -3335,7 +3359,24 @@ describe('cli commands integration', () => {
         highRisk: true,
         riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
         rollbackScopeMatchRequired: true,
-      },
+      }),
+      scopeCapabilities: expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'project',
+          risk: 'high',
+          confirmationRequired: true,
+          writable: true,
+        }),
+      ]),
+      rollback: expect.objectContaining({
+        ok: false,
+        restoredFiles: [],
+        warnings: expect.arrayContaining([
+          expect.objectContaining({
+            code: 'rollback-scope-mismatch',
+          }),
+        ]),
+      }),
     }))
     expect(mismatchPayload.data).toBeUndefined()
     expect(mismatchPayload.data?.restoredFiles).toBeUndefined()
