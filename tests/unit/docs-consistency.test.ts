@@ -34,15 +34,18 @@ describe('docs consistency', () => {
     expect(readme).toContain('稳定 `--json` 失败 envelope')
   })
 
-  it('README / schema / changelog 对 import apply 的 Gemini-only 与单 profile 边界保持一致', () => {
-    expect(readme).toContain('`import apply` 当前仅支持 Gemini')
+  it('README / schema / changelog 对 import apply 的平台边界与单 profile 约束保持一致', () => {
+    expect(readme).toContain('`import apply` 当前支持 Gemini / Codex')
     expect(readme).toContain('一次只应用单个 imported profile')
+    expect(readme).toContain('Codex 不使用 `--scope`')
 
-    expect(publicJsonSchemaDoc).toContain('仅支持 Gemini profile（Gemini-only）。')
+    expect(publicJsonSchemaDoc).toContain('当前支持 Gemini / Codex profile；Claude 仍未开放 `import apply`。')
     expect(publicJsonSchemaDoc).toContain('一次只应用单个 profile（必须显式传 `--profile`）。')
+    expect(publicJsonSchemaDoc).toContain('Codex 不支持 `--scope`')
 
-    expect(changelog).toContain('`import apply` 当前仅支持 Gemini，不支持 Claude / Codex。')
+    expect(changelog).toContain('`import apply` 当前支持 Gemini / Codex，不支持 Claude。')
     expect(changelog).toContain('一次仅支持应用单个 imported profile')
+    expect(changelog).toContain('Codex 不支持 `--scope`')
   })
 
   it('CHANGELOG 首版能力摘要包含 schema 命令，避免 release note 与 README 首页命令面漂移', () => {
