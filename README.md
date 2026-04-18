@@ -3,7 +3,7 @@
 一个面向 Claude Code、Codex、Gemini CLI 的多平台 API 配置切换工具。
 
 - 支持 `Claude / Codex / Gemini` 三个平台的配置切换与当前状态检测
-- 支持 `preview / use / rollback / current / list / validate / export / add`
+- 支持 `preview / use / rollback / current / list / validate / export / add / schema`
 - 支持 Gemini `project scope` 显式写入、独立快照和严格回滚
 - 提供稳定公共 JSON contract，适合脚本、自动化和上层 UI 接入
 
@@ -61,7 +61,7 @@ api-switcher --help
 
 当前版本已经具备可试用的核心闭环，适合本地自用、小范围评审和 Beta 级试用：
 
-- `preview / use / rollback / current / list / validate / export / add` 已接通
+- `preview / use / rollback / current / list / validate / export / add / schema` 已接通
 - Claude、Codex、Gemini 三个平台都有真实适配链路
 - Gemini `project scope` 已支持显式写入、风险提示、独立备份和严格回滚校验
 - `import preview` 与 `import apply` 已落地，其中 `import apply` 当前只支持 Gemini 单条 profile
