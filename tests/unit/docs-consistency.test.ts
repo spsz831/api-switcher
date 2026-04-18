@@ -45,6 +45,9 @@ describe('docs consistency', () => {
     expect(releaseChecklist).toContain('corepack pnpm smoke:release')
     expect(releaseChecklist).toContain('发布前一键 smoke 入口')
     expect(releaseChecklist).toContain('CLI help / schema --json')
+    expect(releaseChecklist).toContain('schema --schema-version --json')
+    expect(releaseChecklist).toContain('`dist` 构建产物')
+    expect(releaseChecklist).toContain('当前公开 contract')
   })
 
   it('schema 文档示例与源码常量、machine-readable schema 的版本和 schemaId 保持一致', () => {

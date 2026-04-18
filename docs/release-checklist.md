@@ -25,7 +25,7 @@ corepack pnpm test
 corepack pnpm smoke:release
 ```
 
-其中 `corepack pnpm smoke:release` 作为发布前一键 smoke 入口，串联执行 `typecheck / build / test / CLI help / schema --json`。
+其中 `corepack pnpm smoke:release` 作为发布前一键 smoke 入口，串联执行 `typecheck / build / test / CLI help / schema --json`，并额外校验 `dist` 构建产物上的 `schema --schema-version --json` 仍符合当前公开 contract。
 
 还应确认 GitHub Actions `CI` workflow 在目标分支为绿色。
 
