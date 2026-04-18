@@ -72,14 +72,15 @@ api-switcher --help
 - `preview / use / rollback / current / list / validate / export / add / schema` 已接通
 - Claude、Codex、Gemini 三个平台都有真实适配链路
 - Gemini `project scope` 已支持显式写入、风险提示、独立备份和严格回滚校验
-- `import preview` 与 `import apply` 已落地，其中 `import apply` 当前只支持 Gemini 单条 profile
+- `import preview` 与 `import apply` 已落地，其中 `import apply` 当前支持 Gemini / Codex 单条 profile
 - `--json` 公共 contract、机器可读 schema 和消费者文档已发布
 
 当前不应误读为“所有平台所有导入写入能力都完全开放”。首版产品边界仍然是：
 
-- `import apply` 当前仅支持 Gemini
+- `import apply` 当前支持 Gemini / Codex
 - 一次只应用单个 imported profile
 - Gemini `project scope` 属于高风险写入，必须显式 `--scope project --force`
+- Codex 不使用 `--scope`，会直接写入平台 adapter 的双文件目标
 - project scope 的 apply / rollback 以本地实时解析结果为准，不信任导出时的旧 observation
 
 ## 快速开始
@@ -254,7 +255,7 @@ JSON 输出的稳定公共字段见 [`docs/public-json-schema.md`](docs/public-j
 - `defaultWriteScope` 当前用于 `export --json`，表示平台默认写入目标；Gemini 目前为 `user`。
 - `observedAt` 当前用于 `export --json`，表示这份 `scopeAvailability` 是在什么时候观测到的；它是环境观察，不是未来 import 时可直接信任的执行真相。
 - `import preview <file>` 只做导入对比，不会写入任何平台配置，也不会自动修复 project root。
-- `import apply <file> --profile <id>` 当前仅支持 Gemini 且一次只应用单个 profile；apply 相关决策以本地实时 observation 为准。
+- `import apply <file> --profile <id>` 当前支持 Gemini / Codex 且一次只应用单个 profile；apply 相关决策以本地实时 observation 为准。
 - 对 Gemini `project scope` 的失败分支，顶层错误码仍可能是通用的 `PREVIEW_FAILED`、`USE_FAILED`、`ROLLBACK_FAILED`；机器消费方应继续读取 `error.details.scopeAvailability`，以 `project.status`、`reasonCode`、`reason`、`remediation` 判断是否为 availability 失败。
 
 也可以通过 CLI 直接查看当前 public JSON schema：
@@ -503,10 +504,12 @@ api-switcher import preview exported.json --json
 `import apply` 负责真正写入，当前 contract 边界如下：
 
 - 命令语法：`api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--json]`
-- Gemini-only：只支持 Gemini 导入应用。
+- 当前支持 Gemini / Codex 导入应用；Claude 仍未开放。
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
-- gate 顺序固定为 availability-before-confirmation：先判断 `scopeAvailability`，再判断是否需要 `--force`。
+- gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判断 `scopeAvailability`，再判断是否需要 `--force`。
+- Gemini 继续支持 `--scope user|project`，其中 `project` 属于高风险显式目标。
+- Codex 不支持 `--scope`；成功时会按真实双文件目标写入，`appliedScope` 可缺省。
 - 对显式 `--scope project` 的 Gemini 命令，如果当前 project root 无法解析，JSON 顶层通常仍是该 action 的通用失败码；但 `error.details.scopeAvailability` 会稳定给出 `project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - rollback provenance：成功 apply 的快照会记录 `origin=import-apply`、`sourceFile`、`importedProfileId`，回滚绑定这组来源信息。
 - machine-readable schema 仅对 `import-apply` 做 action-specific envelope 校验：成功态约束 `data`，失败态只约束稳定 `error.details` 联合，避免过度冻结 adapter 私有字段。

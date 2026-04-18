@@ -444,10 +444,11 @@ api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--j
 
 当前契约边界：
 
-- 仅支持 Gemini profile（Gemini-only）。
+- 当前支持 Gemini / Codex profile；Claude 仍未开放 `import apply`。
 - 一次只应用单个 profile（必须显式传 `--profile`）。
 - apply 相关决策遵循 local-first：真正进入 apply 的判定以后者 `localObservation` 为准，`exportedObservation` 只用于 fidelity 对比与解释。
-- gate 顺序固定为 availability-before-confirmation：先判定目标 scope 当前是否可用，再评估确认门槛（`CONFIRMATION_REQUIRED`）。
+- gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判定目标 scope 当前是否可用，再评估确认门槛（`CONFIRMATION_REQUIRED`）。
+- Gemini 支持 `--scope user|project`；Codex 不支持 `--scope`，会直接按平台真实双文件目标写入。
 - 对 Gemini 显式 `--scope project` 的失败态，如果当前 project root 无法解析，应该把它视为 availability failure；此时即使顶层 `error.code` 仍是 `USE_FAILED`，也应继续读取 `error.details.scopeAvailability.project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - apply 成功后的 rollback 依赖快照 provenance；当前 provenance 会绑定 `origin=import-apply`、`sourceFile` 与 `importedProfileId`。
 - machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 要求 `data` 匹配 `ImportApplyCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
@@ -470,7 +471,7 @@ type ImportApplySummary = {
 type ImportApplyCommandOutput = {
   sourceFile: string
   importedProfile: Profile
-  appliedScope: 'user' | 'project'
+  appliedScope?: string
   scopePolicy: SnapshotScopePolicy
   scopeCapabilities: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
@@ -483,6 +484,12 @@ type ImportApplyCommandOutput = {
   summary: ImportApplySummary
 }
 ```
+
+补充语义：
+
+- `appliedScope` 表示本次写入最终解析出的平台 scope。
+- 对 Gemini，它通常是 `user` 或 `project`。
+- 对 Codex 这类无 scoped target 平台，它可以缺省；机器消费方不应把缺省误解为失败。
 
 失败态稳定 detail（只冻结稳定字段）：
 

@@ -18,7 +18,7 @@
 - 接通 `add / list / current / validate / preview / use / rollback / export / schema` 主命令。
 - 发布稳定公共 JSON contract，并提供 [`docs/public-json-schema.md`](docs/public-json-schema.md) 与 [`docs/public-json-output.schema.json`](docs/public-json-output.schema.json)。
 - 新增 `import preview` mixed-batch 导入预览，包含 `summary.decisionCodeStats`、`summary.driftKindStats` 和 explainable 聚合字段。
-- 新增 `import apply <file> --profile <id>`，当前支持 Gemini 单条 profile 导入应用。
+- 新增 `import apply <file> --profile <id>`，当前支持 Gemini / Codex 单条 profile 导入应用。
 - 发布 [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)，明确 mixed-batch 机器消费方式。
 - 新增 GitHub Actions CI。
 
@@ -46,7 +46,8 @@
 
 ### Known Limits
 
-- `import apply` 当前仅支持 Gemini，不支持 Claude / Codex。
+- `import apply` 当前支持 Gemini / Codex，不支持 Claude。
 - 一次仅支持应用单个 imported profile，必须显式传 `--profile`。
 - Gemini `project scope` 属于高风险显式 opt-in 写入，不会默认升级为 project。
+- Codex 不支持 `--scope`，导入应用时会直接写入 `config.toml` 与 `auth.json`。
 - `system-defaults` 与 `system-overrides` 当前只参与 Gemini effective config 检测，不允许写入或回滚。
