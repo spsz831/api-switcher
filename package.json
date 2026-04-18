@@ -3,6 +3,23 @@
   "version": "0.1.0",
   "description": "多平台 API 配置切换 CLI 工具",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spsz831/api-switcher.git"
+  },
+  "homepage": "https://github.com/spsz831/api-switcher#readme",
+  "bugs": {
+    "url": "https://github.com/spsz831/api-switcher/issues"
+  },
+  "keywords": [
+    "cli",
+    "api",
+    "config",
+    "switcher",
+    "claude",
+    "codex",
+    "gemini"
+  ],
   "bin": {
     "api-switcher": "dist/src/cli/index.js"
   },
