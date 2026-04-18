@@ -63,6 +63,10 @@ export function assertTargetScope(platform: PlatformName, scope?: string): void 
   }
 
   const policy = getScopePolicy(platform)
+  if (!policy) {
+    throw new InvalidScopeError(`当前平台不支持 --scope。收到：${scope}`)
+  }
+
   if (policy && !isAllowedScope(platform, scope)) {
     throw new InvalidScopeError(`${policy.invalidScopeMessage}收到：${scope}`)
   }

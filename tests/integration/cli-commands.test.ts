@@ -2907,6 +2907,55 @@ describe('cli commands integration', () => {
     expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
   })
 
+  it('import apply --json 可以成功应用 Codex profile 并写入双文件目标', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-codex-success.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--force', '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      importedProfile: { id: string; platform: string }
+      appliedScope?: string
+      backupId: string
+      changedFiles: string[]
+      noChanges: boolean
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.sourceFile).toBe(importFile)
+    expect(payload.data?.importedProfile).toEqual(expect.objectContaining({
+      id: 'codex-prod',
+      platform: 'codex',
+    }))
+    expect(payload.data?.appliedScope).toBeUndefined()
+    expect(payload.data?.backupId).toMatch(/^snapshot-codex-/)
+    expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
+    expect(payload.data?.noChanges).toBe(false)
+
+    const codexConfig = await fs.readFile(codexConfigPath, 'utf8')
+    const codexAuth = JSON.parse(await fs.readFile(codexAuthPath, 'utf8')) as Record<string, unknown>
+    expect(codexConfig).toContain('base_url = "https://gateway.example.com/openai/v1"')
+    expect(codexConfig).toContain('default_provider = "openai"')
+    expect(codexAuth.OPENAI_API_KEY).toBe('sk-codex-live-123456')
+    expect(codexAuth.user_id).toBe('u-1')
+  })
+
   it('import apply 缺少 --profile 时保持 Commander 用法失败', async () => {
     const importFile = path.join(runtimeDir, 'import-apply-missing-profile.json')
     await writeImportSourceFile(importFile, [])
@@ -2918,7 +2967,7 @@ describe('cli commands integration', () => {
     expect(result.exitCode).toBe(1)
   })
 
-  it('import apply 对 non-Gemini profile 返回 IMPORT_PLATFORM_NOT_SUPPORTED 而非 CONFIRMATION_REQUIRED', async () => {
+  it('import apply 对 Claude profile 仍返回 IMPORT_PLATFORM_NOT_SUPPORTED 而非 CONFIRMATION_REQUIRED', async () => {
     const importFile = path.join(runtimeDir, 'import-apply-claude.json')
     await writeImportSourceFile(importFile, [
       {
@@ -2945,6 +2994,34 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('import-apply')
     expect(payload.error?.code).toBe('IMPORT_PLATFORM_NOT_SUPPORTED')
     expect(payload.error?.code).not.toBe('CONFIRMATION_REQUIRED')
+  })
+
+  it('import apply 对 Codex 传入非法 --scope 时返回 INVALID_SCOPE', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-codex-invalid-scope.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--scope', 'project', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('INVALID_SCOPE')
+    expect(payload.error?.message).toContain('收到：project')
   })
 
   it('import apply --scope project 在 availability 不可用时先返回 IMPORT_SCOPE_UNAVAILABLE 而非 CONFIRMATION_REQUIRED', async () => {

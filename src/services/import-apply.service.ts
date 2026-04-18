@@ -333,12 +333,14 @@ export class ImportApplyService {
     appliedScope: string | undefined,
     explicitScope: boolean,
   ) {
-    const exportedObservation: ImportObservation | undefined = importedSource.exportedObservation
+    const exportedObservationBase = importedSource.exportedObservation
+      ?? (importedSource.profile.platform === 'codex' ? {} : undefined)
+    const exportedObservation: ImportObservation | undefined = exportedObservationBase
       ? {
-          ...importedSource.exportedObservation,
+          ...exportedObservationBase,
           defaultWriteScope: explicitScope
             ? appliedScope
-            : importedSource.exportedObservation.defaultWriteScope,
+            : exportedObservationBase.defaultWriteScope,
         }
       : undefined
     const localObservation: ImportObservation = {
