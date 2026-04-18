@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { PUBLIC_JSON_SCHEMA_VERSION } from '../../src/constants/public-json-schema'
 
 describe('package metadata', () => {
   it('points the CLI bin to the built entrypoint', () => {
@@ -21,5 +22,16 @@ describe('package metadata', () => {
 
     expect(packageJson.scripts?.['smoke:release']).toBe('powershell -ExecutionPolicy Bypass -File ./scripts/release-smoke.ps1')
     expect(fs.existsSync(smokeScriptPath)).toBe(true)
+  })
+
+  it('release smoke script verifies dist schema version json contract', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema version json'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json')
+    expect(smokeScript).toContain(`$publicJsonSchemaVersion = '${PUBLIC_JSON_SCHEMA_VERSION}'`)
+    expect(smokeScript).toContain("$payload.action -ne 'schema'")
+    expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
   })
 })
