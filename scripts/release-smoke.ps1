@@ -56,5 +56,36 @@ Invoke-Step -Name 'unknown command failure' -Action {
     throw "unexpected stderr for unknown command: $renderedOutput"
   }
 }
+Invoke-Step -Name 'json failure envelope' -Action {
+  $missingImportFile = Join-Path -Path $repoRoot -ChildPath 'missing-file.json'
+  $stdoutPath = [System.IO.Path]::GetTempFileName()
+  $stderrPath = [System.IO.Path]::GetTempFileName()
+  $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'import', $missingImportFile, '--json') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+  $renderedStdout = Get-Content -LiteralPath $stdoutPath -Raw
+  $renderedStderr = Get-Content -LiteralPath $stderrPath -Raw
+  Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force
+  if ($process.ExitCode -ne 1) {
+    throw "unexpected exit code for import failure: $($process.ExitCode)"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($renderedStderr)) {
+    throw "unexpected stderr for import failure: $renderedStderr"
+  }
+  $payload = $renderedStdout | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'import missing file --json returned no payload'
+  }
+  if ($payload.schemaVersion -ne $publicJsonSchemaVersion) {
+    throw "unexpected top-level schemaVersion for import failure: $($payload.schemaVersion)"
+  }
+  if ($payload.ok -ne $false) {
+    throw "unexpected ok for import failure: $($payload.ok)"
+  }
+  if ($payload.action -ne 'import') {
+    throw "unexpected action for import failure: $($payload.action)"
+  }
+  if ($null -eq $payload.error -or $payload.error.code -ne 'IMPORT_SOURCE_NOT_FOUND') {
+    throw "unexpected error code for import failure: $($payload.error.code)"
+  }
+}
 
 Write-Host 'Release smoke checks passed.'
