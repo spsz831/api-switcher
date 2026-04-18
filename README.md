@@ -279,6 +279,19 @@ api-switcher schema --json
 api-switcher schema --schema-version --json
 ```
 
+最小稳定返回示例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "schema",
+  "data": {
+    "schemaVersion": "2026-04-15.public-json.v1"
+  }
+}
+```
+
 ### JSON 输出示例
 
 `list --json` 会在每个 profile 条目上带出所属平台的 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`：

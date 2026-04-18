@@ -61,4 +61,12 @@ describe('docs consistency', () => {
     expect(readme).toContain('"$schema": "https://json-schema.org/draft/2020-12/schema"')
     expect(readme).toContain(`"$id": "${machineReadableSchema.$id}"`)
   })
+
+  it('README 保留 schema --schema-version --json 轻量返回示例，避免版本探测 contract 漂移', () => {
+    expect(readme).toContain('api-switcher schema --schema-version --json')
+    expect(readme).toContain('"ok": true')
+    expect(readme).toContain('"action": "schema"')
+    expect(readme).toContain(`"schemaVersion": "${PUBLIC_JSON_SCHEMA_VERSION}"`)
+    expect(readme).toContain('"data": {')
+  })
 })
