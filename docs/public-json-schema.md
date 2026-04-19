@@ -192,6 +192,18 @@ type PlatformExplainableSummary = {
 - `currentScope`: 当前检测到的生效 scope；如果该命令没有本地检测结果，则可能不存在。
 - `composedFiles`: 多文件平台当前观测到的组成文件；在 `list` 中如果没有对应 detection，可能为空数组。
 
+当前稳定机器码：
+
+| Code | 出现位置 | 语义 |
+| --- | --- | --- |
+| `GEMINI_SCOPE_PRECEDENCE` | Gemini `current/list` | Gemini 按 `system-defaults < user < project < system-overrides` 四层 precedence 推导最终生效值。 |
+| `GEMINI_PROJECT_OVERRIDES_USER` | Gemini `current/list` | Gemini `project` scope 会覆盖 `user` 中的同名字段。 |
+| `CLAUDE_SCOPE_PRECEDENCE` | Claude `current/list` | Claude 按 `user < project < local` 三层 precedence 推导最终生效值。 |
+| `CLAUDE_LOCAL_SCOPE_HIGHEST` | Claude `current/list` | Claude `local` scope 高于 `project` 与 `user`。 |
+| `CODEX_MULTI_FILE_CONFIGURATION` | Codex `current/list` | Codex 当前由 `config.toml` 与 `auth.json` 共同组成有效配置。 |
+| `CODEX_CURRENT_REQUIRES_BOTH_FILES` | Codex `current` | Codex `current` 检测不能把单个文件视为完整状态。 |
+| `CODEX_LIST_IS_PROFILE_LEVEL` | Codex `list` | Codex `list` 仅展示 profile 级状态，不表示单文件可独立切换。 |
+
 ## Command-Specific Contracts
 
 ### schema --json
