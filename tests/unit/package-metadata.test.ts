@@ -35,6 +35,19 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
   })
 
+  it('release smoke script verifies current/list json platformSummary contracts', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'current list json platform summaries'")
+    expect(smokeScript).toContain("node dist/src/cli/index.js current --json | ConvertFrom-Json")
+    expect(smokeScript).toContain("node dist/src/cli/index.js list --json | ConvertFrom-Json")
+    expect(smokeScript).toContain("GEMINI_SCOPE_PRECEDENCE")
+    expect(smokeScript).toContain("CODEX_MULTI_FILE_CONFIGURATION")
+    expect(smokeScript).toContain("scope-precedence")
+    expect(smokeScript).toContain("multi-file-composition")
+  })
+
   it('release smoke script verifies dist cli help keeps the top-level command surface discoverable', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

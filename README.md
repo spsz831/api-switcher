@@ -56,7 +56,7 @@ node dist/src/cli/index.js --help
 corepack pnpm smoke:release
 ```
 
-这条 smoke 会同时检查构建产物的顶层 `--help` 可发现性、`schema --schema-version --json` 成功态 contract、稳定 stderr 失败出口，以及稳定 `--json` 失败 envelope。
+这条 smoke 会同时检查构建产物的顶层 `--help` 可发现性、`schema --schema-version --json` 成功态 contract、`current/list --json` platformSummary contract、稳定 stderr 失败出口，以及稳定 `--json` 失败 envelope。
 
 如果要作为命令行工具全局使用，可以在仓库内执行：
 
