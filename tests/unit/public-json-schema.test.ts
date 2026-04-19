@@ -205,6 +205,27 @@ describe('public JSON contract types', () => {
     >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'scopePolicy' | 'backupId'>()
   })
 
+  it('用类型断言定义 import apply 成功态共享字段矩阵', () => {
+    expectTypeOf<ImportApplyCommandOutput>().toMatchTypeOf<{
+      scopePolicy: SnapshotScopePolicy
+      scopeCapabilities: PlatformScopeCapability[]
+      scopeAvailability?: ScopeAvailability[]
+      preview: PreviewResult
+      risk: {
+        allowed: true
+        riskLevel: string
+        reasons: string[]
+        limitations: string[]
+      }
+      changedFiles: string[]
+      noChanges: boolean
+      summary: {
+        warnings: string[]
+        limitations: string[]
+      }
+    }>()
+  })
+
   it('暴露 import apply 最小 error detail shapes', () => {
     expectTypeOf<ImportApplySourceDetails>().toMatchTypeOf<{
       sourceFile: string
@@ -214,6 +235,15 @@ describe('public JSON contract types', () => {
     expectTypeOf<ImportApplyNotReadyDetails>().toMatchTypeOf<{
       sourceFile: string
       profileId: string
+      previewDecision: ImportPreviewDecision
+      fidelity?: ImportFidelityReport
+      localObservation?: ImportObservation
+      exportedObservation?: ImportObservation
+    }>()
+  })
+
+  it('用类型断言定义 import apply failure details 的共享字段边界', () => {
+    expectTypeOf<ImportApplyNotReadyDetails>().toMatchTypeOf<{
       previewDecision: ImportPreviewDecision
       fidelity?: ImportFidelityReport
       localObservation?: ImportObservation
@@ -282,6 +312,18 @@ describe('public JSON contract types', () => {
       'noChanges',
       'summary',
     ]))
+
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopePolicy).toEqual({
+      $ref: '#/$defs/SnapshotScopePolicy',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopeCapabilities).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeCapability' },
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopeAvailability).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeAvailability' },
+    })
   })
 
   it('machine-readable schema 覆盖 import preview / observation 稳定 defs', () => {
@@ -338,6 +380,18 @@ describe('public JSON contract types', () => {
       'profileId',
       'previewDecision',
     ]))
+    expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails?.properties?.previewDecision).toEqual({
+      $ref: '#/$defs/ImportPreviewDecision',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails?.properties?.fidelity).toEqual({
+      $ref: '#/$defs/ImportFidelityReport',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails?.properties?.localObservation).toEqual({
+      $ref: '#/$defs/ImportObservation',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails?.properties?.exportedObservation).toEqual({
+      $ref: '#/$defs/ImportObservation',
+    })
 
     expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails).toBeDefined()
     expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails?.required).toEqual(expect.arrayContaining([
@@ -346,6 +400,17 @@ describe('public JSON contract types', () => {
       'scopeCapabilities',
       'scopeAvailability',
     ]))
+    expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails?.properties?.scopePolicy).toEqual({
+      $ref: '#/$defs/SnapshotScopePolicy',
+    })
+    expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails?.properties?.scopeCapabilities).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeCapability' },
+    })
+    expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails?.properties?.scopeAvailability).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeAvailability' },
+    })
   })
 
   it('用类型断言定义 current/list platformSummary 的最小公共 contract', () => {
