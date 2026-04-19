@@ -181,6 +181,14 @@ describe('export service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(result.data?.profiles[0]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
     expect(result.data?.profiles[1]).toMatchObject({
       profile: profiles[1],
       defaultWriteScope: 'user',
@@ -190,6 +198,14 @@ describe('export service', () => {
       expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
       expect.objectContaining({ scope: 'project', status: 'unresolved', reasonCode: 'PROJECT_ROOT_UNRESOLVED' }),
     ]))
+    expect(result.data?.profiles[1]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
     expect(new Date(result.data?.profiles[1]?.observedAt ?? '').toString()).not.toBe('Invalid Date')
     expect(result.data?.profiles[0]?.observedAt).toBeUndefined()
   })

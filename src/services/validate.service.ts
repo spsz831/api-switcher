@@ -2,6 +2,7 @@ import { collectIssueMessages } from '../domain/masking'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput } from '../types/command'
+import { buildPlatformSummary } from './platform-summary'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -18,6 +19,7 @@ export class ValidateService {
         profileId: profile.id,
         platform: profile.platform,
         validation: await this.registry.get(profile.platform).validate(profile),
+        platformSummary: buildPlatformSummary(profile.platform, { listMode: true }),
         scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
       })))
       const summary = this.buildValidateSummary(items)

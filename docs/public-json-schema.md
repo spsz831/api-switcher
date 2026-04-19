@@ -280,7 +280,7 @@ type ListCommandItem = {
 
 ### validate --json
 
-`validate` 的每个 item 会带出对应 profile 平台的 scope 能力矩阵，便于 UI 在校验结果页展示该平台可写 scope、只读 scope 和确认门槛。
+`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。
 
 ```ts
 type ValidateCommandOutput = {
@@ -292,13 +292,14 @@ type ValidateCommandItem = {
   profileId: string
   platform: string
   validation: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
 }
 ```
 
 ### export --json
 
-`export` 的每个导出 profile 条目会带出所属平台的 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 保留“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。
+`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。
 
 ```ts
 type ExportCommandOutput = {
@@ -309,6 +310,7 @@ type ExportCommandOutput = {
 type ExportedProfileItem = {
   profile: Profile
   validation?: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   observedAt?: string
   defaultWriteScope?: string
   scopeCapabilities?: ScopeCapability[]

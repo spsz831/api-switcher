@@ -411,7 +411,7 @@ api-switcher schema --schema-version --json
 }
 ```
 
-`validate --json` 与 `export --json` 也是按条目输出 `scopeCapabilities`；其中 `export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
+`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；其中 `export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
 
 ```json
 {
@@ -423,6 +423,20 @@ api-switcher schema --schema-version --json
       {
         "profileId": "gemini-prod",
         "platform": "gemini",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
         "validation": {
           "ok": true,
           "errors": [],
@@ -474,8 +488,20 @@ api-switcher schema --schema-version --json
           "warnings": [],
           "limitations": []
         },
-        "defaultWriteScope": "user",
-        "observedAt": "2026-04-16T06:30:00.000Z",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["user", "project", "local"],
+          "facts": [
+            {
+              "code": "CLAUDE_SCOPE_PRECEDENCE",
+              "message": "Claude 支持 user < project < local 三层 precedence。"
+            },
+            {
+              "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+              "message": "如果存在 local，同名字段最终以 local 为准。"
+            }
+          ]
+        },
         "scopeCapabilities": [
           {
             "scope": "user",
@@ -503,6 +529,83 @@ api-switcher schema --schema-version --json
             "rollback": true,
             "writable": true,
             "risk": "normal"
+          }
+        ]
+      },
+      {
+        "profile": {
+          "id": "codex-prod",
+          "platform": "codex",
+          "name": "Codex 生产"
+        },
+        "platformSummary": {
+          "kind": "multi-file-composition",
+          "composedFiles": [],
+          "facts": [
+            {
+              "code": "CODEX_MULTI_FILE_CONFIGURATION",
+              "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+            },
+            {
+              "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+              "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+            }
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "limitations": []
+        }
+      },
+      {
+        "profile": {
+          "id": "gemini-prod",
+          "platform": "gemini",
+          "name": "Gemini 生产"
+        },
+        "validation": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "limitations": []
+        },
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
+        "defaultWriteScope": "user",
+        "observedAt": "2026-04-16T06:30:00.000Z",
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "high",
+            "confirmationRequired": true
           }
         ],
         "scopeAvailability": [

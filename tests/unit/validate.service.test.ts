@@ -171,5 +171,13 @@ describe('validate service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
       expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
     ]))
+    expect(result.data?.items[0]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
   })
 })

@@ -559,6 +559,13 @@ describe('cli commands integration', () => {
       items: Array<{
         profileId: string
         platform: string
+        platformSummary?: {
+          kind: string
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+          facts: Array<{ code: string; message: string }>
+        }
         scopeCapabilities?: ScopeCapabilityContract[]
         validation: {
           ok: boolean
@@ -593,6 +600,14 @@ describe('cli commands integration', () => {
       expect.objectContaining({ scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
       expect.objectContaining({ scope: 'system-overrides', detect: true, preview: true, use: false, rollback: false, writable: false }),
     ]))
+    expect(payload.data?.items[0]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
@@ -819,6 +834,13 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       profiles: Array<{
         profile: Profile
+        platformSummary?: {
+          kind: string
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+          facts: Array<{ code: string; message: string }>
+        }
         scopeCapabilities?: ScopeCapabilityContract[]
         scopeAvailability?: ScopeAvailabilityContract[]
         defaultWriteScope?: string
@@ -866,6 +888,14 @@ describe('cli commands integration', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(claudeProfile?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
     expect(claudeProfile?.validation?.ok).toBe(true)
     expect(claudeProfile?.validation?.errors).toEqual([])
     expect(claudeProfile?.validation?.warnings).toEqual([])
@@ -884,6 +914,14 @@ describe('cli commands integration', () => {
     ]))
 
     expect(codexProfile?.profile.source).toEqual({ apiKey: 'sk-c***56', baseURL: 'https://gateway.example.com/openai/v1' })
+    expect(codexProfile?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
     expect(codexProfile?.validation?.limitations.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(codexProfile?.validation?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
 
@@ -898,6 +936,14 @@ describe('cli commands integration', () => {
       expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
       expect.objectContaining({ scope: 'project', status: 'available', writable: true, path: geminiProjectSettingsPath }),
     ]))
+    expect(geminiProfile?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
     expect(geminiProfile?.defaultWriteScope).toBe('user')
     expect(geminiProfile?.observedAt).toEqual(expect.any(String))
     expect(new Date(geminiProfile?.observedAt ?? '').toString()).not.toBe('Invalid Date')

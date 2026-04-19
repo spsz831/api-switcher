@@ -1,10 +1,10 @@
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CurrentProfileResult, ValidationIssue } from '../types/adapter'
-import type { PlatformExplainableSummary } from '../types/capabilities'
 import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandOutput } from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
+import { buildPlatformSummary } from './platform-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -100,7 +100,7 @@ export class CurrentStateService {
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .map((item) => ({
         ...item,
-        platformSummary: this.buildPlatformSummary(item.platform, {
+        platformSummary: buildPlatformSummary(item.platform, {
           currentScope: item.currentScope,
           composedFiles: item.targetFiles.map((target) => target.path),
           listMode: false,
@@ -182,7 +182,7 @@ export class CurrentStateService {
       current: isCurrent,
       riskLevel,
       healthStatus,
-      platformSummary: this.buildPlatformSummary(profile.platform, {
+      platformSummary: buildPlatformSummary(profile.platform, {
         currentScope: detection?.currentScope,
         composedFiles: detection?.targetFiles.map((target) => target.path) ?? [],
         listMode: true,
@@ -190,53 +190,6 @@ export class CurrentStateService {
       scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
       scopeAvailability: detection?.scopeAvailability,
     }
-  }
-
-  private buildPlatformSummary(
-    platform: PlatformName,
-    context: { currentScope?: string; composedFiles: string[]; listMode: boolean },
-  ): PlatformExplainableSummary | undefined {
-    if (platform === 'gemini') {
-      return {
-        kind: 'scope-precedence',
-        precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
-        currentScope: context.currentScope,
-        facts: [
-          { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
-          { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
-        ],
-      }
-    }
-
-    if (platform === 'claude') {
-      return {
-        kind: 'scope-precedence',
-        precedence: ['user', 'project', 'local'],
-        currentScope: context.currentScope,
-        facts: [
-          { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
-          { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
-        ],
-      }
-    }
-
-    if (platform === 'codex') {
-      return {
-        kind: 'multi-file-composition',
-        composedFiles: context.composedFiles,
-        facts: [
-          { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
-          {
-            code: context.listMode ? 'CODEX_LIST_IS_PROFILE_LEVEL' : 'CODEX_CURRENT_REQUIRES_BOTH_FILES',
-            message: context.listMode
-              ? 'list 仅展示 profile 级状态，不表示单文件可独立切换。'
-              : 'current 检测不能把单个文件视为完整状态。',
-          },
-        ],
-      }
-    }
-
-    return undefined
   }
 
   private inferRiskLevel(profile: Profile, current: boolean, managedMatch: boolean): RiskLevel {

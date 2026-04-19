@@ -65,6 +65,15 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain('CODEX_MULTI_FILE_CONFIGURATION')
   })
 
+  it('README / schema 文档对 validate/export platformSummary contract 保持一致', () => {
+    expect(readme).toContain('`validate --json` 与 `export --json` 也是按条目输出 `platformSummary`')
+    expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
+
+    expect(publicJsonSchemaDoc).toContain('`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary`')
+    expect(publicJsonSchemaDoc).toContain('`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary`')
+    expect(publicJsonSchemaDoc).toContain('platformSummary?: PlatformExplainableSummary')
+  })
+
   it('CHANGELOG 首版能力摘要包含 schema 命令，避免 release note 与 README 首页命令面漂移', () => {
     expect(changelog).toContain('`add / list / current / validate / preview / use / rollback / export / schema`')
   })

@@ -2,6 +2,7 @@ import { collectIssueMessages, collectSecretReferences } from '../domain/masking
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
+import { buildPlatformSummary } from './platform-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -37,6 +38,7 @@ export class ExportService {
         return {
           profile,
           validation,
+          platformSummary: buildPlatformSummary(profile.platform, { listMode: true }),
           scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
           scopeAvailability,
           defaultWriteScope: profile.platform === 'gemini' ? 'user' : undefined,

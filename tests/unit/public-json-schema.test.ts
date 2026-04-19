@@ -5,6 +5,7 @@ import type { PreviewResult, ValidationResult } from '../../src/types/adapter'
 import type { PlatformScopeCapability, ScopeAvailability } from '../../src/types/capabilities'
 import type {
   CurrentCommandOutput,
+  ExportCommandOutput,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
   ImportApplySourceDetails,
@@ -12,6 +13,7 @@ import type {
   ImportObservation,
   ImportPreviewDecision,
   ListCommandOutput,
+  ValidateCommandOutput,
 } from '../../src/types/command'
 import { COMMAND_ACTIONS } from '../../src/types/command'
 import type { Profile } from '../../src/types/profile'
@@ -311,6 +313,50 @@ describe('public JSON contract types', () => {
     })
   })
 
+  it('用类型断言定义 validate/export platformSummary 的最小公共 contract', () => {
+    expectTypeOf<ValidateCommandOutput>().toMatchTypeOf<{
+      items: Array<{
+        platformSummary?: {
+          kind: 'scope-precedence' | 'multi-file-composition'
+          facts: Array<{
+            code: string
+            message: string
+          }>
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+        }
+      }>
+    }>()
+
+    expectTypeOf<ExportCommandOutput>().toMatchTypeOf<{
+      profiles: Array<{
+        platformSummary?: {
+          kind: 'scope-precedence' | 'multi-file-composition'
+          facts: Array<{
+            code: string
+            message: string
+          }>
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+        }
+      }>
+    }>()
+  })
+
+  it('machine-readable schema 覆盖 validate/export platformSummary defs', () => {
+    expect(publicJsonSchema.$defs?.ValidateCommandOutput).toBeDefined()
+    expect(publicJsonSchema.$defs?.ValidateCommandItem?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
+
+    expect(publicJsonSchema.$defs?.ExportCommandOutput).toBeDefined()
+    expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
   it('current --json platformSummary 样例能通过 machine-readable schema def 校验', () => {
     const currentOutput = {
       current: {
@@ -483,6 +529,97 @@ describe('public JSON contract types', () => {
     }
 
     expect(validatePublicSchemaDef('ListCommandOutput', listOutput)).toBe(true)
+  })
+
+  it('validate --json platformSummary 样例能通过 machine-readable schema def 校验', () => {
+    const validateOutput = {
+      items: [
+        {
+          profileId: 'gemini-prod',
+          platform: 'gemini',
+          platformSummary: {
+            kind: 'scope-precedence',
+            precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+            facts: [
+              {
+                code: 'GEMINI_SCOPE_PRECEDENCE',
+                message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。',
+              },
+              {
+                code: 'GEMINI_PROJECT_OVERRIDES_USER',
+                message: 'project scope 会覆盖 user 中的同名字段。',
+              },
+            ],
+          },
+          validation: {
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          },
+          scopeCapabilities: [
+            {
+              scope: 'project',
+              detect: true,
+              preview: true,
+              use: true,
+              rollback: true,
+              writable: true,
+              risk: 'high',
+              confirmationRequired: true,
+            },
+          ],
+        },
+      ],
+      summary: {
+        warnings: [],
+        limitations: [],
+      },
+    }
+
+    expect(validatePublicSchemaDef('ValidateCommandOutput', validateOutput)).toBe(true)
+  })
+
+  it('export --json platformSummary 样例能通过 machine-readable schema def 校验', () => {
+    const exportOutput = {
+      profiles: [
+        {
+          profile: {
+            id: 'codex-prod',
+            name: 'Codex 生产',
+            platform: 'codex',
+            source: {},
+            apply: {},
+          },
+          platformSummary: {
+            kind: 'multi-file-composition',
+            composedFiles: [],
+            facts: [
+              {
+                code: 'CODEX_MULTI_FILE_CONFIGURATION',
+                message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。',
+              },
+              {
+                code: 'CODEX_LIST_IS_PROFILE_LEVEL',
+                message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。',
+              },
+            ],
+          },
+          validation: {
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          },
+        },
+      ],
+      summary: {
+        warnings: [],
+        limitations: [],
+      },
+    }
+
+    expect(validatePublicSchemaDef('ExportCommandOutput', exportOutput)).toBe(true)
   })
 
   it('action=import-apply success 样例能通过 machine-readable schema 校验', () => {

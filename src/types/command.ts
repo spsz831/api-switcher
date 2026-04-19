@@ -153,6 +153,7 @@ export interface ValidateCommandItem {
   profileId: string
   platform: PlatformName
   validation: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
 }
 
@@ -164,6 +165,7 @@ export interface ValidateCommandOutput {
 export interface ExportedProfileItem {
   profile: Profile
   validation?: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   defaultWriteScope?: string

@@ -365,6 +365,7 @@
         "profileId": { "type": "string" },
         "platform": { "type": "string" },
         "validation": {},
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -394,6 +395,7 @@
       "properties": {
         "profile": {},
         "validation": {},
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "defaultWriteScope": { "type": "string" },
         "observedAt": { "type": "string" },
         "scopeCapabilities": {
