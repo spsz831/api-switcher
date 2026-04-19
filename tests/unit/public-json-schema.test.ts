@@ -11,6 +11,7 @@ import type {
   ImportApplySourceDetails,
   ImportFidelityReport,
   ImportObservation,
+  ImportPreviewCommandOutput,
   ImportPreviewDecision,
   ListCommandOutput,
   ValidateCommandOutput,
@@ -220,6 +221,44 @@ describe('public JSON contract types', () => {
     }>()
   })
 
+  it('用类型断言定义 import preview / observation 的最小公共 contract', () => {
+    expectTypeOf<ImportObservation>().toMatchTypeOf<{
+      scopeCapabilities?: PlatformScopeCapability[]
+      scopeAvailability?: ScopeAvailability[]
+      defaultWriteScope?: string
+      observedAt?: string
+    }>()
+
+    expectTypeOf<ImportPreviewDecision>().toMatchTypeOf<{
+      canProceedToApplyDesign: boolean
+      recommendedScope?: string
+      requiresLocalResolution: boolean
+      reasonCodes: string[]
+      reasons: Array<{
+        code: string
+        blocking: boolean
+        message: string
+      }>
+    }>()
+
+    expectTypeOf<{
+      sourceCompatibility: ImportPreviewCommandOutput['sourceCompatibility']
+      items: ImportPreviewCommandOutput['items']
+    }>().toMatchTypeOf<{
+      sourceCompatibility: {
+        mode: 'strict' | 'schema-version-missing'
+        schemaVersion?: string
+        warnings: string[]
+      }
+      items: Array<{
+        exportedObservation?: ImportObservation
+        localObservation?: ImportObservation
+        fidelity?: ImportFidelityReport
+        previewDecision: ImportPreviewDecision
+      }>
+    }>()
+  })
+
   it('machine-readable schema 覆盖 import-apply action 与 success contract defs', () => {
     expect(publicJsonSchema.properties?.action).toMatchObject({
       type: 'string',
@@ -243,6 +282,48 @@ describe('public JSON contract types', () => {
       'noChanges',
       'summary',
     ]))
+  })
+
+  it('machine-readable schema 覆盖 import preview / observation 稳定 defs', () => {
+    expect(publicJsonSchema.$defs?.ImportObservation).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportObservation?.properties?.scopeCapabilities).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeCapability' },
+    })
+    expect(publicJsonSchema.$defs?.ImportObservation?.properties?.scopeAvailability).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ScopeAvailability' },
+    })
+
+    expect(publicJsonSchema.$defs?.ImportPreviewItem).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.required).toEqual(expect.arrayContaining([
+      'profile',
+      'platform',
+      'previewDecision',
+    ]))
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.exportedObservation).toEqual({
+      $ref: '#/$defs/ImportObservation',
+    })
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.localObservation).toEqual({
+      $ref: '#/$defs/ImportObservation',
+    })
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.fidelity).toEqual({
+      $ref: '#/$defs/ImportFidelityReport',
+    })
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.previewDecision).toEqual({
+      $ref: '#/$defs/ImportPreviewDecision',
+    })
+
+    expect(publicJsonSchema.$defs?.ImportPreviewCommandOutput).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportPreviewCommandOutput?.required).toEqual(expect.arrayContaining([
+      'sourceFile',
+      'sourceCompatibility',
+      'items',
+      'summary',
+    ]))
+    expect(publicJsonSchema.$defs?.ImportPreviewCommandOutput?.properties?.sourceCompatibility).toEqual({
+      $ref: '#/$defs/ImportSourceCompatibility',
+    })
   })
 
   it('machine-readable schema 冻结 import-apply 稳定 failure detail defs', () => {
