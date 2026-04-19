@@ -1,7 +1,13 @@
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CurrentProfileResult, ValidationIssue } from '../types/adapter'
-import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandOutput } from '../types/command'
+import type {
+  CommandResult,
+  CurrentCommandOutput,
+  CurrentListPlatformStat,
+  ListCommandItem,
+  ListCommandOutput,
+} from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
 import { buildPlatformSummary } from './platform-summary'
@@ -20,7 +26,7 @@ export class CurrentStateService {
   async getCurrent(): Promise<CommandResult<CurrentCommandOutput>> {
     try {
       const context = await this.collectStateContext()
-      const summary = this.buildCurrentSummary(context.detections)
+      const summary = this.buildCurrentSummary(context.profiles, context.state.current, context.detections)
 
       return {
         ok: true,
@@ -58,7 +64,7 @@ export class CurrentStateService {
         this.registry.get(profile.platform)
       }
       const profiles = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
-      const summary = this.buildCurrentSummary(context.detections)
+      const summary = this.buildListSummary(targetProfiles, context.state.current, context.detectionsByPlatform, context.detections)
 
       return {
         ok: true,
@@ -120,11 +126,63 @@ export class CurrentStateService {
     }
   }
 
-  private buildCurrentSummary(detections: CurrentProfileResult[]): CurrentCommandOutput['summary'] {
+  private buildCurrentSummary(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detections: CurrentProfileResult[],
+  ): CurrentCommandOutput['summary'] {
+    const detectionsByPlatform = detections.reduce<DetectionMap>((acc, item) => {
+      acc[item.platform] = item
+      return acc
+    }, {})
+
     return {
+      platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, PLATFORM_NAMES, false),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
       limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
     }
+  }
+
+  private buildListSummary(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detectionsByPlatform: DetectionMap,
+    detections: CurrentProfileResult[],
+  ): ListCommandOutput['summary'] {
+    const targetPlatforms = Array.from(new Set(profiles.map((item) => item.platform))).sort()
+
+    return {
+      platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, targetPlatforms, true),
+      warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
+      limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+    }
+  }
+
+  private buildPlatformStats(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detectionsByPlatform: DetectionMap,
+    platforms: readonly PlatformName[],
+    listMode: boolean,
+  ): CurrentListPlatformStat[] {
+    return platforms.map((platform) => {
+      const detection = detectionsByPlatform[platform]
+      const profileCount = profiles.filter((item) => item.platform === platform).length
+
+      return {
+        platform,
+        profileCount,
+        currentProfileId: current[platform],
+        detectedProfileId: detection?.matchedProfileId,
+        managed: detection?.managed ?? false,
+        currentScope: detection?.currentScope,
+        platformSummary: buildPlatformSummary(platform, {
+          currentScope: detection?.currentScope,
+          composedFiles: detection?.targetFiles.map((target) => target.path) ?? [],
+          listMode,
+        }),
+      }
+    })
   }
 
   private collectIssueMessages(issues: ValidationIssue[]): string[] {

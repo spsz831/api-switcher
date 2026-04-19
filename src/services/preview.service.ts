@@ -4,6 +4,8 @@ import { ProfileNotFoundError, ProfileService } from './profile.service'
 import type { ScopeAvailability } from '../types/capabilities'
 import type { CommandResult, PreviewCommandOutput } from '../types/command'
 import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
+import { buildPlatformSummary } from './platform-summary'
+import { buildSinglePlatformStats } from './single-platform-summary'
 
 function findScopeAvailability(scopeAvailability: ScopeAvailability[] | undefined, scope: string | undefined): ScopeAvailability | undefined {
   if (!scope) {
@@ -62,6 +64,21 @@ export class PreviewService {
         limitations: Array.from(new Set(decision.limitations)),
       }
       const summary = {
+        platformStats: buildSinglePlatformStats({
+          platform: profile.platform,
+          profileId: profile.id,
+          targetScope: resolvedScope,
+          warningCount: risk.reasons.length,
+          limitationCount: risk.limitations.length,
+          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+          backupCreated: preview.backupPlanned,
+          noChanges: preview.noChanges,
+          platformSummary: buildPlatformSummary(profile.platform, {
+            currentScope: resolvedScope,
+            composedFiles: preview.targetFiles.map((item) => item.path),
+            listMode: true,
+          }),
+        }),
         warnings: risk.reasons,
         limitations: risk.limitations,
       }
@@ -75,6 +92,10 @@ export class PreviewService {
           preview,
           risk,
           summary,
+          scopePolicy: buildSnapshotScopePolicy(profile.platform, {
+            requestedScope: options.scope,
+            resolvedScope,
+          }),
           scopeCapabilities,
           scopeAvailability,
         },

@@ -303,7 +303,7 @@ api-switcher schema --schema-version --json
 
 ### JSON 输出示例
 
-`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`：
+`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`。同时，`data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要聚合出来，方便列表页先按平台分组再决定是否展开单个 profile：
 
 ```json
 {
@@ -461,6 +461,71 @@ api-switcher schema --schema-version --json
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "managed": false,
+          "currentScope": "local",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "currentScope": "local",
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        },
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "currentProfileId": "gemini-prod",
+          "detectedProfileId": "gemini-prod",
+          "managed": true,
+          "currentScope": "user",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["system-defaults", "user", "project", "system-overrides"],
+            "currentScope": "user",
+            "facts": [
+              {
+                "code": "GEMINI_SCOPE_PRECEDENCE",
+                "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+              },
+              {
+                "code": "GEMINI_PROJECT_OVERRIDES_USER",
+                "message": "project scope 会覆盖 user 中的同名字段。"
+              }
+            ]
+          }
+        },
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "managed": false,
+          "platformSummary": {
+            "kind": "multi-file-composition",
+            "composedFiles": [],
+            "facts": [
+              {
+                "code": "CODEX_MULTI_FILE_CONFIGURATION",
+                "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+              },
+              {
+                "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+                "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -468,7 +533,7 @@ api-switcher schema --schema-version --json
 }
 ```
 
-`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；其中 `export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
+`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；它们的 `data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、校验通过数、warnings/limitations 总数和平台 explainable 摘要聚合出来。`export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
 
 ```json
 {
@@ -515,6 +580,29 @@ api-switcher schema --schema-version --json
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "okCount": 1,
+          "warningCount": 0,
+          "limitationCount": 0,
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["system-defaults", "user", "project", "system-overrides"],
+            "facts": [
+              {
+                "code": "GEMINI_SCOPE_PRECEDENCE",
+                "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+              },
+              {
+                "code": "GEMINI_PROJECT_OVERRIDES_USER",
+                "message": "project scope 会覆盖 user 中的同名字段。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -677,6 +765,50 @@ api-switcher schema --schema-version --json
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "okCount": 1,
+          "warningCount": 0,
+          "limitationCount": 0,
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        },
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "okCount": 1,
+          "warningCount": 0,
+          "limitationCount": 0,
+          "platformSummary": {
+            "kind": "multi-file-composition",
+            "composedFiles": [],
+            "facts": [
+              {
+                "code": "CODEX_MULTI_FILE_CONFIGURATION",
+                "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+              },
+              {
+                "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+                "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -696,15 +828,65 @@ api-switcher import preview exported.json --json
 约定：
 
 - `import preview` 不会写回任何配置文件。
+- `import --json` 会在每个 item 上带出所属平台的 `platformSummary`；Gemini / Claude 用它表达 scope precedence，Codex 用它表达双文件组合语义。
 - `exportedObservation` 只是历史观察；真正与后续 apply 设计相关的判断，必须以 `localObservation` 为准。
 - 即使导出文件里记录了 Gemini `project scope = available`，如果导入机本地现在解析为 `unresolved`，也只会得到 fidelity mismatch，不会进入写入路径。
 - 如果导入文件缺少 `schemaVersion`，CLI 会进入兼容模式读取，并在 `sourceCompatibility` / 文本摘要里明确提示。
+
+一条 Gemini `import --json` item 的典型结构如下：
+
+```json
+{
+  "platform": "gemini",
+  "platformSummary": {
+    "kind": "scope-precedence",
+    "precedence": ["system-defaults", "user", "project", "system-overrides"],
+    "facts": [
+      {
+        "code": "GEMINI_SCOPE_PRECEDENCE",
+        "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+      },
+      {
+        "code": "GEMINI_PROJECT_OVERRIDES_USER",
+        "message": "project scope 会覆盖 user 中的同名字段。"
+      }
+    ]
+  },
+  "exportedObservation": {
+    "defaultWriteScope": "user",
+    "observedAt": "2026-04-16T00:00:00.000Z"
+  },
+  "localObservation": {
+    "defaultWriteScope": "user",
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "unresolved",
+        "detected": false,
+        "writable": false,
+        "reasonCode": "PROJECT_ROOT_UNRESOLVED"
+      }
+    ]
+  },
+  "previewDecision": {
+    "canProceedToApplyDesign": false,
+    "recommendedScope": "user",
+    "requiresLocalResolution": true,
+    "reasonCodes": [
+      "BLOCKED_BY_FIDELITY_MISMATCH",
+      "REQUIRES_LOCAL_SCOPE_RESOLUTION"
+    ]
+  }
+}
+```
 
 `import apply` 负责真正写入，当前 contract 边界如下：
 
 - 命令语法：`api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--json]`
 - 当前支持 Gemini / Codex / Claude 导入应用。
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
+- `import apply --json` 成功态也会返回 `platformSummary`，用于把平台 precedence / 多文件组合语义与本次 apply 结果一起交给机器消费方。
+- `import apply --json` 成功态也会在 `data.summary.platformStats[]` 中提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 拿平台、scope、warning/limitation、变更文件计数，再决定是否展开 `platformSummary` 与 `preview`。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判断 `scopeAvailability`，再判断是否需要 `--force`。
 - Gemini 继续支持 `--scope user|project`，其中 `project` 属于高风险显式目标。
@@ -741,6 +923,20 @@ api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --sc
       }
     },
     "appliedScope": "project",
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": ["system-defaults", "user", "project", "system-overrides"],
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
     "scopePolicy": {
       "requestedScope": "project",
       "resolvedScope": "project",
@@ -872,6 +1068,19 @@ api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --sc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [
         "Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。"
       ],
@@ -916,6 +1125,23 @@ api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --forc
         "OPENAI_API_KEY": "sk-c***56",
         "base_url": "https://gateway.example.com/openai/v1"
       }
+    },
+    "platformSummary": {
+      "kind": "multi-file-composition",
+      "composedFiles": [
+        "C:/Users/test/.codex/config.toml",
+        "C:/Users/test/.codex/auth.json"
+      ],
+      "facts": [
+        {
+          "code": "CODEX_MULTI_FILE_CONFIGURATION",
+          "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+        },
+        {
+          "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+          "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+        }
+      ]
     },
     "scopePolicy": {
       "explicitScope": false,
@@ -1031,6 +1257,18 @@ api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --forc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "profileId": "codex-prod",
+          "warningCount": 0,
+          "limitationCount": 1,
+          "changedFileCount": 2,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [],
       "limitations": [
         "当前会同时托管 Codex 的 config.toml 与 auth.json。"
@@ -1073,6 +1311,20 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       }
     },
     "appliedScope": "local",
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": ["user", "project", "local"],
+      "facts": [
+        {
+          "code": "CLAUDE_SCOPE_PRECEDENCE",
+          "message": "Claude 支持 user < project < local 三层 precedence。"
+        },
+        {
+          "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+          "message": "如果存在 local，同名字段最终以 local 为准。"
+        }
+      ]
+    },
     "scopePolicy": {
       "requestedScope": "local",
       "resolvedScope": "local",
@@ -1239,6 +1491,19 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "profileId": "claude-prod",
+          "targetScope": "local",
+          "warningCount": 0,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [],
       "limitations": [
         "当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。"
@@ -1943,7 +2208,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
-`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
+`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；`data.summary.platformStats[]` 则把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做了一层聚合，便于 UI 或自动化脚本不扫描完整 `detections[]` 也能先拿到平台级摘要。对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
 
 ```json
 {
@@ -2128,6 +2393,78 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "currentProfileId": "claude-prod",
+          "detectedProfileId": "claude-prod",
+          "managed": true,
+          "currentScope": "local",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "currentScope": "local",
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        },
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "currentProfileId": "gemini-prod",
+          "detectedProfileId": "gemini-prod",
+          "managed": true,
+          "currentScope": "user",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["system-defaults", "user", "project", "system-overrides"],
+            "currentScope": "user",
+            "facts": [
+              {
+                "code": "GEMINI_SCOPE_PRECEDENCE",
+                "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+              },
+              {
+                "code": "GEMINI_PROJECT_OVERRIDES_USER",
+                "message": "project scope 会覆盖 user 中的同名字段。"
+              }
+            ]
+          }
+        },
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "currentProfileId": "codex-prod",
+          "detectedProfileId": "codex-prod",
+          "managed": true,
+          "platformSummary": {
+            "kind": "multi-file-composition",
+            "composedFiles": [
+              "C:/Users/test/.codex/config.toml",
+              "C:/Users/test/.codex/auth.json"
+            ],
+            "facts": [
+              {
+                "code": "CODEX_MULTI_FILE_CONFIGURATION",
+                "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+              },
+              {
+                "code": "CODEX_CURRENT_REQUIRES_BOTH_FILES",
+                "message": "current 检测不能把单个文件视为完整状态。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -2135,7 +2472,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
-`preview --json` 的语义是“先按平台 precedence 推导 effective config，再评估本次写入目标”。当显式请求 Gemini `project scope` 时，返回里会同时给出 `scopeCapabilities` 与当前的 `scopeAvailability`：
+`preview --json` 的语义是“先按平台 precedence 推导 effective config，再评估本次写入目标”。成功时也会返回 `scopePolicy`，把“请求了哪一层、最终解析到哪一层、是否高风险、回滚是否要求同 scope”稳定暴露给机器消费方。单平台命令也统一提供 `data.summary.platformStats[]`，用于输出平台级聚合入口；对 `preview` 来说，推荐先读 `summary.platformStats[0]`，再按需展开 `preview/scopePolicy/scopeCapabilities/scopeAvailability`。当显式请求 Gemini `project scope` 时，返回里会同时给出 `scopePolicy`、`scopeCapabilities` 与当前的 `scopeAvailability`：
 
 ```json
 {
@@ -2170,12 +2507,34 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       ]
     },
     "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [
         "高风险操作需要确认"
       ],
       "limitations": [
         "Gemini 最终认证结果仍受环境变量影响。"
       ]
+    },
+    "scopePolicy": {
+      "requestedScope": "project",
+      "resolvedScope": "project",
+      "defaultScope": "user",
+      "explicitScope": true,
+      "highRisk": true,
+      "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+      "rollbackScopeMatchRequired": true
     },
     "scopeAvailability": [
       {
@@ -2197,12 +2556,35 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
         "risk": "high",
         "confirmationRequired": true
       }
-    ]
+    ],
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
+      "warnings": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    }
   }
 }
 ```
 
-`use --json` 需要区分成功态和确认门槛失败态。成功时，`data.scopeCapabilities` 与 `data.scopeAvailability` 共同说明“平台支持什么”和“当前环境里能不能真写”；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`：
+`use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]` 也会给出单平台聚合入口，推荐机器消费方先读 `summary.platformStats[0]`，再展开 `platformSummary` 与 `preview` 细节。
+
+`use --json` 需要区分成功态和确认门槛失败态。成功时会把平台 precedence / 多文件组合语义和本次写入结果一起交给机器消费方；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`：
 
 ```json
 {
@@ -2220,6 +2602,26 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       "C:/work/.gemini/settings.json"
     ],
     "noChanges": false,
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
     "scopeAvailability": [
       {
         "scope": "project",
@@ -2314,7 +2716,9 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
-`rollback --json` 也分成功和失败两类。成功时会带快照里的 `scopePolicy`、当前平台 `scopeCapabilities` 和当前环境里的 `scopeAvailability`；如果 Gemini 请求 scope 与快照 scope 不匹配，或 project scope 当前不可解析，则返回结构化失败对象：
+`rollback --json` 成功时也会返回 `platformSummary`。同时，`data.summary.platformStats[]` 会提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 理解本次恢复涉及的平台、scope 与 warning/limitation 计数，再决定是否展开 `rollback` 明细。
+
+`rollback --json` 也分成功和失败两类。成功时会同时带上快照里的 `scopePolicy`、当前平台 `scopeCapabilities` 和当前环境里的 `scopeAvailability`；如果 Gemini 请求 scope 与快照 scope 不匹配，或 project scope 当前不可解析，则返回结构化失败对象：
 
 ```json
 {
@@ -2326,6 +2730,26 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
     "restoredFiles": [
       "C:/work/.gemini/settings.json"
     ],
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
     "scopePolicy": {
       "requestedScope": "project",
       "resolvedScope": "project",
@@ -2357,6 +2781,17 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "restoredFileCount": 1,
+          "noChanges": false
+        }
+      ],
       "warnings": [
         "已恢复快照中的托管文件"
       ],

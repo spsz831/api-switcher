@@ -18,11 +18,13 @@ import {
   resolveTargetScope,
 } from './scope-options'
 import { ImportFidelityService } from './import-fidelity.service'
+import { buildSinglePlatformStats } from './single-platform-summary'
 import {
   type ImportedProfileSource,
   ImportSourceError,
   ImportSourceService,
 } from './import-source.service'
+import { buildPlatformSummary } from './platform-summary'
 import { SnapshotService } from './snapshot.service'
 
 function findImportedProfile(
@@ -70,6 +72,16 @@ function buildSummary(
   ]))
 
   return {
+    platformStats: buildSinglePlatformStats({
+      platform: preview.platform,
+      profileId: preview.profileId,
+      targetScope: preview.targetFiles.find((item) => item.scope)?.scope,
+      warningCount: warnings.length,
+      limitationCount: limitations.length,
+      changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+      backupCreated: preview.backupPlanned,
+      noChanges: preview.noChanges,
+    }),
     warnings,
     limitations,
   }
@@ -304,6 +316,10 @@ export class ImportApplyService {
           sourceFile: source.sourceFile,
           importedProfile: importedSource.profile,
           appliedScope,
+          platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+            listMode: true,
+            composedFiles: preview.targetFiles.map((item) => item.path),
+          }),
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
             requestedScope: options.scope,
             resolvedScope: appliedScope,
@@ -321,7 +337,24 @@ export class ImportApplyService {
           backupId: backup.backupId,
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
-          summary,
+          summary: {
+            ...summary,
+            platformStats: buildSinglePlatformStats({
+              platform: importedSource.profile.platform,
+              profileId: importedSource.profile.id,
+              targetScope: appliedScope,
+              warningCount: summary.warnings.length,
+              limitationCount: summary.limitations.length,
+              changedFileCount: applyResult.changedFiles.length,
+              backupCreated: true,
+              noChanges: applyResult.noChanges,
+              platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+                currentScope: appliedScope,
+                composedFiles: preview.targetFiles.map((item) => item.path),
+                listMode: true,
+              }),
+            }),
+          },
         },
         warnings: summary.warnings,
         limitations: summary.limitations,

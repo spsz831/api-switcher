@@ -12,6 +12,7 @@ import type {
 } from '../types/command'
 import { type ImportedProfileSource, ImportSourceError, ImportSourceService } from './import-source.service'
 import { ImportFidelityService } from './import-fidelity.service'
+import { buildPlatformSummary } from './platform-summary'
 import { getScopeCapabilityMatrix, resolveTargetScope } from './scope-options'
 
 export class ImportPreviewService {
@@ -68,6 +69,10 @@ export class ImportPreviewService {
     return {
       profile: sourceItem.profile,
       platform: sourceItem.profile.platform,
+      platformSummary: buildPlatformSummary(sourceItem.profile.platform, {
+        listMode: true,
+        composedFiles: detection?.targetFiles.map((item) => item.path),
+      }),
       exportedObservation: sourceItem.exportedObservation,
       localObservation,
       fidelity,

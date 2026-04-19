@@ -220,6 +220,54 @@ const currentPayload: CurrentCommandOutput = {
     status: 'success',
   },
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+        currentScope: 'user',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'current 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+      {
+        platform: 'claude',
+        profileCount: 1,
+        currentProfileId: 'claude-prod',
+        detectedProfileId: 'claude-prod',
+        managed: true,
+        currentScope: 'local',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+          currentScope: 'local',
+          facts: [
+            { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'current 汇总 Claude precedence 摘要。' },
+          ],
+        },
+      },
+      {
+        platform: 'codex',
+        profileCount: 1,
+        currentProfileId: 'codex-prod',
+        detectedProfileId: 'codex-prod',
+        managed: true,
+        platformSummary: {
+          kind: 'multi-file-composition',
+          composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'current 汇总 Codex 双文件摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -237,6 +285,15 @@ const currentPayload: CurrentCommandOutput = {
         },
       ],
       currentScope: 'user',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        currentScope: 'user',
+        facts: [
+          { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 current Gemini precedence 摘要。' },
+          { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 current Gemini project 覆盖提示。' },
+        ],
+      },
       scopeCapabilities: geminiScopeCapabilities,
       scopeAvailability: geminiScopeAvailability,
       effectiveConfig: {
@@ -333,6 +390,15 @@ const currentPayload: CurrentCommandOutput = {
         },
       ],
       currentScope: 'local',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['user', 'project', 'local'],
+        currentScope: 'local',
+        facts: [
+          { code: 'CLAUDE_SCOPE_PRECEDENCE', message: '自定义 current Claude precedence 摘要。' },
+          { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '自定义 current Claude local 覆盖提示。' },
+        ],
+      },
       scopeCapabilities: claudeScopeCapabilities,
       scopeAvailability: [
         {
@@ -412,6 +478,14 @@ const currentPayload: CurrentCommandOutput = {
           managedKeys: ['OPENAI_API_KEY'],
         },
       ],
+      platformSummary: {
+        kind: 'multi-file-composition',
+        composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+        facts: [
+          { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: '自定义 current Codex 双文件摘要。' },
+          { code: 'CODEX_CURRENT_REQUIRES_BOTH_FILES', message: '自定义 current Codex 双文件缺一不可提示。' },
+        ],
+      },
       effectiveConfig: {
         stored: [
           {
@@ -595,6 +669,27 @@ const previewPayload: PreviewCommandOutput = {
     limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        profileId: 'gemini-prod',
+        targetScope: 'user',
+        warningCount: 1,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'preview 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['高风险操作需要确认'],
     limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
@@ -714,6 +809,15 @@ const validationPreviewPayloadWithLimitations: PreviewCommandOutput = {
 const usePayload: UseCommandOutput = {
   profile: previewPayload.profile,
   backupId: 'snapshot-gemini-001',
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+    currentScope: 'user',
+    facts: [
+      { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 use Gemini precedence 摘要。' },
+      { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 use Gemini project 覆盖提示。' },
+    ],
+  },
   preview: previewPayload.preview,
   risk: {
     allowed: true,
@@ -722,6 +826,27 @@ const usePayload: UseCommandOutput = {
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        profileId: 'gemini-prod',
+        targetScope: 'user',
+        warningCount: 1,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'use 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -745,6 +870,15 @@ const noChangesUsePayload: UseCommandOutput = {
 const geminiProjectUsePayload: UseCommandOutput = {
   ...usePayload,
   backupId: 'snapshot-gemini-project-001',
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+    currentScope: 'project',
+    facts: [
+      { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 use Gemini project 摘要。' },
+      { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 use Gemini project 回滚提示。' },
+    ],
+  },
   preview: {
     ...usePayload.preview,
     targetFiles: [
@@ -822,6 +956,15 @@ const geminiProjectUsePayload: UseCommandOutput = {
 const rollbackPayload: RollbackCommandOutput = {
   backupId: 'snapshot-gemini-001',
   restoredFiles: ['C:/Users/test/.gemini/settings.json'],
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+    currentScope: 'project',
+    facts: [
+      { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 rollback Gemini project 摘要。' },
+      { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 rollback Gemini scope 匹配提示。' },
+    ],
+  },
   scopePolicy: {
     requestedScope: 'project',
     resolvedScope: 'project',
@@ -901,6 +1044,25 @@ const rollbackPayload: RollbackCommandOutput = {
     ],
   },
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        targetScope: 'project',
+        warningCount: 1,
+        limitationCount: 1,
+        restoredFileCount: 1,
+        noChanges: false,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'project',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'rollback 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['已恢复快照中的托管文件'],
     limitations: ['回滚仅恢复快照覆盖的托管文件。'],
   },
@@ -1011,6 +1173,23 @@ const validatePayload: ValidateCommandOutput = {
     },
   ],
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        okCount: 0,
+        warningCount: 1,
+        limitationCount: 1,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'validate 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['Gemini base URL 当前未确认支持。', 'Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
     limitations: ['Gemini API key 仍需通过环境变量生效。'],
   },
@@ -1058,6 +1237,14 @@ const importPreviewPayload: ImportPreviewCommandOutput = {
         apply: {},
       },
       platform: 'gemini',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        facts: [
+          { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 Gemini precedence 摘要。' },
+          { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 Gemini project 覆盖 user 提示。' },
+        ],
+      },
       exportedObservation: {
         defaultWriteScope: 'user',
         observedAt: '2026-04-16T00:00:00.000Z',
@@ -1270,6 +1457,23 @@ const exportPayload: ExportCommandOutput = {
     },
   ],
   summary: {
+    platformStats: [
+      {
+        platform: 'claude',
+        profileCount: 1,
+        okCount: 1,
+        warningCount: 1,
+        limitationCount: 1,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+          currentScope: 'project',
+          facts: [
+            { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'export 汇总 Claude precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['Claude 当前项目级配置会覆盖用户级同名字段。'],
     limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
   },
@@ -1425,6 +1629,15 @@ const listPayload: ListCommandOutput = {
       current: true,
       healthStatus: 'valid',
       riskLevel: 'low',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['user', 'project', 'local'],
+        currentScope: 'local',
+        facts: [
+          { code: 'CLAUDE_SCOPE_PRECEDENCE', message: '自定义 list Claude precedence 摘要。' },
+          { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '自定义 list Claude local 覆盖提示。' },
+        ],
+      },
       scopeCapabilities: claudeScopeCapabilities,
     },
     {
@@ -1438,6 +1651,15 @@ const listPayload: ListCommandOutput = {
       current: false,
       healthStatus: 'warning',
       riskLevel: 'medium',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        currentScope: 'user',
+        facts: [
+          { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 list Gemini precedence 摘要。' },
+          { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 list Gemini project 覆盖提示。' },
+        ],
+      },
       scopeCapabilities: geminiScopeCapabilities,
       scopeAvailability: geminiScopeAvailability,
     },
@@ -1452,9 +1674,60 @@ const listPayload: ListCommandOutput = {
       current: false,
       healthStatus: 'valid',
       riskLevel: 'medium',
+      platformSummary: {
+        kind: 'multi-file-composition',
+        composedFiles: [],
+        facts: [
+          { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: '自定义 list Codex 双文件摘要。' },
+          { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: '自定义 list Codex profile-level 提示。' },
+        ],
+      },
     },
   ],
   summary: {
+    platformStats: [
+      {
+        platform: 'claude',
+        profileCount: 1,
+        currentProfileId: 'claude-prod',
+        managed: true,
+        currentScope: 'local',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+          currentScope: 'local',
+          facts: [
+            { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'list 汇总 Claude precedence 摘要。' },
+          ],
+        },
+      },
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        managed: false,
+        currentScope: 'user',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'list 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+      {
+        platform: 'codex',
+        profileCount: 1,
+        managed: false,
+        platformSummary: {
+          kind: 'multi-file-composition',
+          composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'list 汇总 Codex 双文件摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。', 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -1472,6 +1745,14 @@ const importApplyPayload: ImportApplyCommandOutput = {
   sourceFile: 'E:/tmp/export.json',
   importedProfile: previewPayload.profile,
   appliedScope: 'project',
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+    facts: [
+      { code: 'GEMINI_SCOPE_PRECEDENCE', message: '自定义 Gemini project apply 摘要。' },
+      { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: '自定义 Gemini rollback scope 提示。' },
+    ],
+  },
   scopePolicy: {
     requestedScope: 'project',
     resolvedScope: 'project',
@@ -1498,6 +1779,27 @@ const importApplyPayload: ImportApplyCommandOutput = {
   changedFiles: ['C:/Users/test/.gemini/settings.json'],
   noChanges: false,
   summary: {
+    platformStats: [
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        profileId: 'gemini-prod',
+        targetScope: 'project',
+        warningCount: 1,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'project',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'import apply 汇总 Gemini precedence 摘要。' },
+          ],
+        },
+      },
+    ],
     warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -1511,6 +1813,14 @@ const codexImportApplyPayload: ImportApplyCommandOutput = {
     platform: 'codex',
     source: {},
     apply: {},
+  },
+  platformSummary: {
+    kind: 'multi-file-composition',
+    composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+    facts: [
+      { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: '自定义 Codex 双文件摘要。' },
+      { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: '自定义 Codex profile-level 提示。' },
+    ],
   },
   scopePolicy: {
     explicitScope: false,
@@ -1609,6 +1919,14 @@ const claudeImportApplyPayload: ImportApplyCommandOutput = {
     apply: {},
   },
   appliedScope: 'local',
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['user', 'project', 'local'],
+    facts: [
+      { code: 'CLAUDE_SCOPE_PRECEDENCE', message: '自定义 Claude precedence 摘要。' },
+      { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '自定义 Claude local 最高优先级提示。' },
+    ],
+  },
   scopePolicy: {
     requestedScope: 'local',
     resolvedScope: 'local',
@@ -1680,6 +1998,14 @@ const claudeImportApplyPayload: ImportApplyCommandOutput = {
 const codexUsePayload: UseCommandOutput = {
   profile: codexImportApplyPayload.importedProfile,
   backupId: 'snapshot-codex-use-001',
+  platformSummary: {
+    kind: 'multi-file-composition',
+    composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+    facts: [
+      { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: '自定义 use Codex 双文件摘要。' },
+      { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: '自定义 use Codex 成组写入提示。' },
+    ],
+  },
   preview: codexImportApplyPayload.preview,
   risk: codexImportApplyPayload.risk,
   summary: codexImportApplyPayload.summary,
@@ -1690,6 +2016,15 @@ const codexUsePayload: UseCommandOutput = {
 const claudeUsePayload: UseCommandOutput = {
   profile: claudeImportApplyPayload.importedProfile,
   backupId: 'snapshot-claude-use-001',
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['user', 'project', 'local'],
+    currentScope: 'local',
+    facts: [
+      { code: 'CLAUDE_SCOPE_PRECEDENCE', message: '自定义 use Claude precedence 摘要。' },
+      { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '自定义 use Claude local 提示。' },
+    ],
+  },
   preview: claudeImportApplyPayload.preview,
   risk: claudeImportApplyPayload.risk,
   summary: claudeImportApplyPayload.summary,
@@ -1701,6 +2036,14 @@ const claudeUsePayload: UseCommandOutput = {
 const codexRollbackPayload: RollbackCommandOutput = {
   backupId: 'snapshot-codex-001',
   restoredFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+  platformSummary: {
+    kind: 'multi-file-composition',
+    composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+    facts: [
+      { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: '自定义 rollback Codex 双文件摘要。' },
+      { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: '自定义 rollback Codex 成组恢复提示。' },
+    ],
+  },
   rollback: {
     ok: true,
     backupId: 'snapshot-codex-001',
@@ -1747,6 +2090,15 @@ const codexRollbackPayload: RollbackCommandOutput = {
 const claudeRollbackPayload: RollbackCommandOutput = {
   backupId: 'snapshot-claude-001',
   restoredFiles: ['C:/Users/test/.claude/settings.local.json'],
+  platformSummary: {
+    kind: 'scope-precedence',
+    precedence: ['user', 'project', 'local'],
+    currentScope: 'local',
+    facts: [
+      { code: 'CLAUDE_SCOPE_PRECEDENCE', message: '自定义 rollback Claude precedence 摘要。' },
+      { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '自定义 rollback Claude local 提示。' },
+    ],
+  },
   scopePolicy: {
     requestedScope: 'local',
     resolvedScope: 'local',
@@ -2216,6 +2568,13 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('- codex: codex-prod')
     expect(outputCurrent).toContain('- gemini: gemini-prod')
     expect(outputCurrent).toContain('最近切换: gemini / gemini-prod / success')
+    expect(outputCurrent).toContain('按平台汇总:')
+    expect(outputCurrent).toContain('  - gemini: profiles=1, current=gemini-prod, detected=gemini-prod, managed=yes, scope=user')
+    expect(outputCurrent).toContain('    - current 汇总 Gemini precedence 摘要。')
+    expect(outputCurrent).toContain('  - claude: profiles=1, current=claude-prod, detected=claude-prod, managed=yes, scope=local')
+    expect(outputCurrent).toContain('    - current 汇总 Claude precedence 摘要。')
+    expect(outputCurrent).toContain('  - codex: profiles=1, current=codex-prod, detected=codex-prod, managed=yes')
+    expect(outputCurrent).toContain('    - current 汇总 Codex 双文件摘要。')
     expect(outputCurrent).toContain('检测结果:')
     expect(outputCurrent).toContain('- 平台: gemini')
     expect(outputCurrent).toContain('  托管识别: 是')
@@ -2253,14 +2612,16 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('- 平台: claude')
     expect(outputCurrent).toContain('  当前作用域: local')
     expect(outputCurrent).toContain('  - 生效优先级: user < project < local')
-    expect(outputCurrent).toContain('  - Claude 当前检测到 local scope 生效。')
-    expect(outputCurrent).toContain('  - local 高于 project 与 user，同名字段会以 local 为准。')
+    expect(outputCurrent).toContain('  - 当前生效作用域: local scope')
+    expect(outputCurrent).toContain('  - 自定义 current Claude precedence 摘要。')
+    expect(outputCurrent).toContain('  - 自定义 current Claude local 覆盖提示。')
     expect(outputCurrent).toContain('- 平台: codex')
     expect(outputCurrent).toContain('  - 类型: multi-file-transaction')
     expect(outputCurrent).toContain('    说明: Codex current 检测需要同时结合 config.toml 与 auth.json。')
     expect(outputCurrent).toContain('  - OPENAI_API_KEY: sk-o***99 (source=inline, present=yes)')
-    expect(outputCurrent).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
-    expect(outputCurrent).toContain('  - current 检测不能把单个文件视为完整状态。')
+    expect(outputCurrent).toContain('  - 组成文件: C:/Users/test/.codex/config.toml, C:/Users/test/.codex/auth.json')
+    expect(outputCurrent).toContain('  - 自定义 current Codex 双文件摘要。')
+    expect(outputCurrent).toContain('  - 自定义 current Codex 双文件缺一不可提示。')
     expect(outputCurrent).toContain('附加提示:')
     expect(outputCurrent).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputCurrent).toContain('限制说明:')
@@ -2275,6 +2636,9 @@ describe('text renderer', () => {
 
   it('渲染 preview 结果时输出校验、风险、文件、提示与限制说明', () => {
     expect(outputPreview).toContain('[preview] 成功')
+    expect(outputPreview).toContain('按平台汇总:')
+    expect(outputPreview).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=user, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
+    expect(outputPreview).toContain('    - preview 汇总 Gemini precedence 摘要。')
     expect(outputPreview).toContain('- 配置: gemini-prod (gemini)')
     expect(outputPreview).toContain('  校验结果: 通过')
     expect(outputPreview).toContain('  风险等级: medium')
@@ -2342,6 +2706,9 @@ describe('text renderer', () => {
 
   it('渲染 use 结果时输出备份、变更文件、提示与限制说明', () => {
     expect(outputUse).toContain('[use] 成功')
+    expect(outputUse).toContain('按平台汇总:')
+    expect(outputUse).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=user, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
+    expect(outputUse).toContain('    - use 汇总 Gemini precedence 摘要。')
     expect(outputUse).toContain('- 配置: gemini-prod (gemini)')
     expect(outputUse).toContain('  备份ID: snapshot-gemini-001')
     expect(outputUse).toContain('  无变更: 否')
@@ -2375,24 +2742,27 @@ describe('text renderer', () => {
     expect(outputGeminiProjectUse).toContain('[use] 成功')
     expect(outputGeminiProjectUse).toContain('- 配置: gemini-prod (gemini)')
     expect(outputGeminiProjectUse).toContain('平台摘要:')
-    expect(outputGeminiProjectUse).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
-    expect(outputGeminiProjectUse).toContain('  - 当前快照要求 rollback 时必须匹配 project scope。')
+    expect(outputGeminiProjectUse).toContain('  - 当前生效作用域: project scope')
+    expect(outputGeminiProjectUse).toContain('  - 自定义 use Gemini project 摘要。')
+    expect(outputGeminiProjectUse).toContain('  - 自定义 use Gemini project 回滚提示。')
   })
 
   it('渲染 use 结果时会为 Codex success 输出双文件事务摘要', () => {
     expect(outputCodexUse).toContain('[use] 成功')
     expect(outputCodexUse).toContain('- 配置: codex-prod (codex)')
     expect(outputCodexUse).toContain('平台摘要:')
-    expect(outputCodexUse).toContain('  - Codex 当前按双文件事务写入 config.toml 与 auth.json。')
-    expect(outputCodexUse).toContain('  - config.toml 承载配置字段，auth.json 承载认证字段。')
+    expect(outputCodexUse).toContain('  - 组成文件: C:/Users/test/.codex/config.toml, C:/Users/test/.codex/auth.json')
+    expect(outputCodexUse).toContain('  - 自定义 use Codex 双文件摘要。')
+    expect(outputCodexUse).toContain('  - 自定义 use Codex 成组写入提示。')
   })
 
   it('渲染 use 结果时会为 Claude local success 输出最高优先级作用域摘要', () => {
     expect(outputClaudeUse).toContain('[use] 成功')
     expect(outputClaudeUse).toContain('- 配置: claude-prod (claude)')
     expect(outputClaudeUse).toContain('平台摘要:')
-    expect(outputClaudeUse).toContain('  - Claude 当前写入目标是 local scope。')
-    expect(outputClaudeUse).toContain('  - local 是当前项目最高优先级层，会直接成为最终生效值。')
+    expect(outputClaudeUse).toContain('  - 当前生效作用域: local scope')
+    expect(outputClaudeUse).toContain('  - 自定义 use Claude precedence 摘要。')
+    expect(outputClaudeUse).toContain('  - 自定义 use Claude local 提示。')
   })
 
   it('use 无变化时显示未创建备份与无变更文件', () => {
@@ -2403,6 +2773,9 @@ describe('text renderer', () => {
 
   it('渲染 rollback 结果时输出备份、恢复文件与限制说明', () => {
     expect(outputRollback).toContain('[rollback] 成功')
+    expect(outputRollback).toContain('按平台汇总:')
+    expect(outputRollback).toContain('  - gemini: profiles=1, scope=project, warnings=1, limitations=1, restoredFiles=1, noChanges=no')
+    expect(outputRollback).toContain('    - rollback 汇总 Gemini precedence 摘要。')
     expect(outputRollback).toContain('- 备份ID: snapshot-gemini-001')
     expect(outputRollback).toContain('  已恢复文件:')
     expect(outputRollback).toContain('  - C:/Users/test/.gemini/settings.json')
@@ -2439,24 +2812,27 @@ describe('text renderer', () => {
 
   it('渲染 rollback 结果时会为 Gemini project success 输出 scope 匹配约束摘要', () => {
     expect(outputRollback).toContain('平台摘要:')
-    expect(outputRollback).toContain('  - 当前正在恢复 Gemini project scope 快照。')
-    expect(outputRollback).toContain('  - project scope 快照只能按同一 scope 恢复。')
+    expect(outputRollback).toContain('  - 当前生效作用域: project scope')
+    expect(outputRollback).toContain('  - 自定义 rollback Gemini project 摘要。')
+    expect(outputRollback).toContain('  - 自定义 rollback Gemini scope 匹配提示。')
   })
 
   it('渲染 rollback 结果时会为 Codex success 输出双文件恢复摘要', () => {
     expect(outputCodexRollback).toContain('[rollback] 成功')
     expect(outputCodexRollback).toContain('- 备份ID: snapshot-codex-001')
     expect(outputCodexRollback).toContain('平台摘要:')
-    expect(outputCodexRollback).toContain('  - Codex 当前按双文件事务恢复 config.toml 与 auth.json。')
-    expect(outputCodexRollback).toContain('  - config.toml 恢复配置字段，auth.json 恢复认证字段。')
+    expect(outputCodexRollback).toContain('  - 组成文件: C:/Users/test/.codex/config.toml, C:/Users/test/.codex/auth.json')
+    expect(outputCodexRollback).toContain('  - 自定义 rollback Codex 双文件摘要。')
+    expect(outputCodexRollback).toContain('  - 自定义 rollback Codex 成组恢复提示。')
   })
 
   it('渲染 rollback 结果时会为 Claude local success 输出 local 恢复语义摘要', () => {
     expect(outputClaudeRollback).toContain('[rollback] 成功')
     expect(outputClaudeRollback).toContain('- 备份ID: snapshot-claude-001')
     expect(outputClaudeRollback).toContain('平台摘要:')
-    expect(outputClaudeRollback).toContain('  - Claude 当前恢复的是 local scope 快照。')
-    expect(outputClaudeRollback).toContain('  - local 恢复后会重新成为当前项目最高优先级层。')
+    expect(outputClaudeRollback).toContain('  - 当前生效作用域: local scope')
+    expect(outputClaudeRollback).toContain('  - 自定义 rollback Claude precedence 摘要。')
+    expect(outputClaudeRollback).toContain('  - 自定义 rollback Claude local 提示。')
   })
 
   it('rollback 无恢复文件时输出无', () => {
@@ -2467,6 +2843,9 @@ describe('text renderer', () => {
   it('渲染 validate 结果时输出 explainable 校验细节与平台限制', () => {
     expect(outputValidate).toContain('[validate] 成功')
     expect(outputValidate).toContain('- gemini-prod (gemini)')
+    expect(outputValidate).toContain('按平台汇总:')
+    expect(outputValidate).toContain('  - gemini: profiles=1, ok=0, warnings=1, limitations=1')
+    expect(outputValidate).toContain('    - validate 汇总 Gemini precedence 摘要。')
     expect(outputValidate).toContain('  校验结果: 失败')
     expect(outputValidate).toContain('  错误: 缺少 GEMINI_API_KEY')
     expect(outputValidate).toContain('  警告: Gemini base URL 当前未确认支持。')
@@ -2507,6 +2886,9 @@ describe('text renderer', () => {
 
   it('渲染 export 结果时输出名称与校验摘要说明', () => {
     expect(outputExport).toContain('[export] 成功')
+    expect(outputExport).toContain('按平台汇总:')
+    expect(outputExport).toContain('  - claude: profiles=1, ok=1, warnings=1, limitations=1')
+    expect(outputExport).toContain('    - export 汇总 Claude precedence 摘要。')
     expect(outputExport).toContain('- claude-prod (claude)')
     expect(outputExport).toContain('  名称: Claude 生产')
     expect(outputExport).toContain('  默认写入作用域: user scope')
@@ -2566,11 +2948,17 @@ describe('text renderer', () => {
     expect(outputImportPreview).toContain('  决策代码: BLOCKED_BY_FIDELITY_MISMATCH, REQUIRES_LOCAL_SCOPE_RESOLUTION')
     expect(outputImportPreview).toContain('  决策原因: [BLOCKED_BY_FIDELITY_MISMATCH] blocking / 导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。')
     expect(outputImportPreview).toContain('  决策原因: [REQUIRES_LOCAL_SCOPE_RESOLUTION] blocking / 当前本地 scope 解析未完成，需先修复本地解析结果。')
+    expect(outputImportPreview).toContain('  平台摘要:')
+    expect(outputImportPreview).toContain('  - 自定义 Gemini precedence 摘要。')
+    expect(outputImportPreview).toContain('  - 自定义 Gemini project 覆盖 user 提示。')
     expect(outputImportPreview).toContain('  建议: 先修复本地作用域解析，再考虑进入 apply 设计。')
   })
 
   it('渲染 import apply 结果时输出稳定成功字段与 explainable 摘要', () => {
     expect(outputImportApply).toContain('[import-apply] 成功')
+    expect(outputImportApply).toContain('按平台汇总:')
+    expect(outputImportApply).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=project, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
+    expect(outputImportApply).toContain('    - import apply 汇总 Gemini precedence 摘要。')
     expect(outputImportApply).toContain('导入文件: E:/tmp/export.json')
     expect(outputImportApply).toContain('导入配置: gemini-prod (gemini)')
     expect(outputImportApply).toContain('应用作用域: project scope')
@@ -2598,8 +2986,8 @@ describe('text renderer', () => {
 
   it('渲染 import apply 结果时会为 Gemini success 输出 project 回滚约束与目标作用域语义', () => {
     expect(outputImportApply).toContain('平台摘要:')
-    expect(outputImportApply).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
-    expect(outputImportApply).toContain('  - 当前快照要求 rollback 时必须匹配 project scope。')
+    expect(outputImportApply).toContain('  - 自定义 Gemini project apply 摘要。')
+    expect(outputImportApply).toContain('  - 自定义 Gemini rollback scope 提示。')
   })
 
   it('渲染 import apply 结果时会为 Codex success 输出双文件事务摘要', () => {
@@ -2607,8 +2995,8 @@ describe('text renderer', () => {
     expect(outputCodexImportApply).toContain('导入配置: codex-prod (codex)')
     expect(outputCodexImportApply).not.toContain('应用作用域:')
     expect(outputCodexImportApply).toContain('平台摘要:')
-    expect(outputCodexImportApply).toContain('  - Codex 当前按双文件事务写入 config.toml 与 auth.json。')
-    expect(outputCodexImportApply).toContain('  - config.toml 承载配置字段，auth.json 承载认证字段。')
+    expect(outputCodexImportApply).toContain('  - 自定义 Codex 双文件摘要。')
+    expect(outputCodexImportApply).toContain('  - 自定义 Codex profile-level 提示。')
   })
 
   it('渲染 import apply 结果时会为 Claude local success 输出最高优先级作用域摘要', () => {
@@ -2616,8 +3004,8 @@ describe('text renderer', () => {
     expect(outputClaudeImportApply).toContain('导入配置: claude-prod (claude)')
     expect(outputClaudeImportApply).toContain('应用作用域: local scope')
     expect(outputClaudeImportApply).toContain('平台摘要:')
-    expect(outputClaudeImportApply).toContain('  - Claude 当前写入目标是 local scope。')
-    expect(outputClaudeImportApply).toContain('  - local 是当前项目最高优先级层，会直接成为最终生效值。')
+    expect(outputClaudeImportApply).toContain('  - 自定义 Claude precedence 摘要。')
+    expect(outputClaudeImportApply).toContain('  - 自定义 Claude local 最高优先级提示。')
   })
 
   it('空 export 结果返回空正文', () => {
@@ -2668,6 +3056,13 @@ describe('text renderer', () => {
 
   it('渲染 list 结果时输出配置列表与状态摘要', () => {
     expect(outputList).toContain('[list] 成功')
+    expect(outputList).toContain('按平台汇总:')
+    expect(outputList).toContain('  - claude: profiles=1, current=claude-prod, managed=yes, scope=local')
+    expect(outputList).toContain('    - list 汇总 Claude precedence 摘要。')
+    expect(outputList).toContain('  - gemini: profiles=1, managed=no, scope=user')
+    expect(outputList).toContain('    - list 汇总 Gemini precedence 摘要。')
+    expect(outputList).toContain('  - codex: profiles=1, managed=no')
+    expect(outputList).toContain('    - list 汇总 Codex 双文件摘要。')
     expect(outputList).toContain('- claude-prod (claude)')
     expect(outputList).toContain('  名称: Claude 生产')
     expect(outputList).toContain('  当前生效: 是')
@@ -2683,12 +3078,13 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
     expect(outputList).toContain('  作用域可用性:')
     expect(outputList).toContain('  - project: status=unresolved, detected=no, writable=no')
-    expect(outputList).toContain('  - Claude 支持 user < project < local 三层 precedence。')
-    expect(outputList).toContain('  - 如果存在 local，同名字段最终以 local 为准。')
+    expect(outputList).toContain('  - 当前生效作用域: local scope')
+    expect(outputList).toContain('  - 自定义 list Claude precedence 摘要。')
+    expect(outputList).toContain('  - 自定义 list Claude local 覆盖提示。')
     expect(outputList).toContain('- codex-prod (codex)')
     expect(outputList).toContain('  名称: Codex 生产')
-    expect(outputList).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
-    expect(outputList).toContain('  - list 仅展示 profile 级状态，不表示单文件可独立切换。')
+    expect(outputList).toContain('  - 自定义 list Codex 双文件摘要。')
+    expect(outputList).toContain('  - 自定义 list Codex profile-level 提示。')
     expect(outputList).toContain('附加提示:')
     expect(outputList).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputList).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')

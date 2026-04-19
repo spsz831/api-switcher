@@ -188,10 +188,31 @@ describe('current state service', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
     })
+    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        currentProfileId: 'claude-prod',
+        detectedProfileId: 'claude-prod',
+        managed: true,
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 1,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+      }),
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 0,
+        managed: false,
+      }),
+    ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
     expect(result.limitations).toEqual(result.data?.summary.limitations)
   })
@@ -409,10 +430,38 @@ describe('current state service', () => {
         { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
       ],
     })
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
     })
+    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        detectedProfileId: 'claude-prod',
+        managed: true,
+      }),
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 1,
+        managed: false,
+        platformSummary: {
+          kind: 'multi-file-composition',
+          composedFiles: [],
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+            { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+          ],
+        },
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 1,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+      }),
+    ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
     expect(result.limitations).toEqual(result.data?.summary.limitations)
   })

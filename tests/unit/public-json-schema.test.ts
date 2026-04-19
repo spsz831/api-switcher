@@ -5,6 +5,7 @@ import type { PreviewResult, ValidationResult } from '../../src/types/adapter'
 import type { PlatformScopeCapability, ScopeAvailability } from '../../src/types/capabilities'
 import type {
   CurrentCommandOutput,
+  CurrentSummary,
   ExportCommandOutput,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
@@ -14,6 +15,10 @@ import type {
   ImportPreviewCommandOutput,
   ImportPreviewDecision,
   ListCommandOutput,
+  ListSummary,
+  PreviewCommandOutput,
+  RollbackCommandOutput,
+  UseCommandOutput,
   ValidateCommandOutput,
 } from '../../src/types/command'
 import { COMMAND_ACTIONS } from '../../src/types/command'
@@ -191,6 +196,16 @@ describe('public JSON contract types', () => {
       sourceFile: string
       importedProfile: Profile
       appliedScope?: string
+      platformSummary?: {
+        kind: 'scope-precedence' | 'multi-file-composition'
+        facts: Array<{
+          code: string
+          message: string
+        }>
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+      }
       scopePolicy: SnapshotScopePolicy
       scopeCapabilities: PlatformScopeCapability[]
       scopeAvailability?: ScopeAvailability[]
@@ -281,6 +296,16 @@ describe('public JSON contract types', () => {
         warnings: string[]
       }
       items: Array<{
+        platformSummary?: {
+          kind: 'scope-precedence' | 'multi-file-composition'
+          facts: Array<{
+            code: string
+            message: string
+          }>
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+        }
         exportedObservation?: ImportObservation
         localObservation?: ImportObservation
         fidelity?: ImportFidelityReport
@@ -316,6 +341,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopePolicy).toEqual({
       $ref: '#/$defs/SnapshotScopePolicy',
     })
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
     expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopeCapabilities).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/ScopeCapability' },
@@ -345,6 +373,9 @@ describe('public JSON contract types', () => {
     ]))
     expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.exportedObservation).toEqual({
       $ref: '#/$defs/ImportObservation',
+    })
+    expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
     })
     expect(publicJsonSchema.$defs?.ImportPreviewItem?.properties?.localObservation).toEqual({
       $ref: '#/$defs/ImportObservation',
@@ -443,6 +474,48 @@ describe('public JSON contract types', () => {
         }
       }>
     }>()
+
+    expectTypeOf<CurrentSummary>().toMatchTypeOf<{
+      platformStats?: Array<{
+        platform: string
+        profileCount: number
+        currentProfileId?: string
+        detectedProfileId?: string
+        managed: boolean
+        currentScope?: string
+        platformSummary?: {
+          kind: 'scope-precedence' | 'multi-file-composition'
+          facts: Array<{
+            code: string
+            message: string
+          }>
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+        }
+      }>
+    }>()
+
+    expectTypeOf<ListSummary>().toMatchTypeOf<{
+      platformStats?: Array<{
+        platform: string
+        profileCount: number
+        currentProfileId?: string
+        detectedProfileId?: string
+        managed: boolean
+        currentScope?: string
+        platformSummary?: {
+          kind: 'scope-precedence' | 'multi-file-composition'
+          facts: Array<{
+            code: string
+            message: string
+          }>
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+        }
+      }>
+    }>()
   })
 
   it('machine-readable schema 覆盖 current/list platformSummary defs', () => {
@@ -462,6 +535,25 @@ describe('public JSON contract types', () => {
     ]))
     expect(publicJsonSchema.$defs?.PlatformExplainableSummary?.properties?.kind).toMatchObject({
       enum: expect.arrayContaining(['scope-precedence', 'multi-file-composition']),
+    })
+  })
+
+  it('machine-readable schema 覆盖 current/list summary.platformStats def', () => {
+    expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/CurrentListPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ListSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/CurrentListPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.required).toEqual(expect.arrayContaining([
+      'platform',
+      'profileCount',
+      'managed',
+    ]))
+    expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
     })
   })
 
@@ -495,6 +587,50 @@ describe('public JSON contract types', () => {
         }
       }>
     }>()
+
+    expectTypeOf<ValidateCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          okCount: number
+          warningCount: number
+          limitationCount: number
+          platformSummary?: {
+            kind: 'scope-precedence' | 'multi-file-composition'
+            facts: Array<{
+              code: string
+              message: string
+            }>
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+          }
+        }>
+      }
+    }>()
+
+    expectTypeOf<ExportCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          okCount: number
+          warningCount: number
+          limitationCount: number
+          platformSummary?: {
+            kind: 'scope-precedence' | 'multi-file-composition'
+            facts: Array<{
+              code: string
+              message: string
+            }>
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+          }
+        }>
+      }
+    }>()
   })
 
   it('machine-readable schema 覆盖 validate/export platformSummary defs', () => {
@@ -506,6 +642,158 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ExportCommandOutput).toBeDefined()
     expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
+  it('machine-readable schema 覆盖 validate/export summary.platformStats def', () => {
+    expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ValidateExportPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ExportSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ValidateExportPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.required).toEqual(expect.arrayContaining([
+      'platform',
+      'profileCount',
+      'okCount',
+      'warningCount',
+      'limitationCount',
+    ]))
+    expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
+  it('用类型断言定义 use/rollback platformSummary 的最小公共 contract', () => {
+    expectTypeOf<UseCommandOutput>().toMatchTypeOf<{
+      platformSummary?: {
+        kind: 'scope-precedence' | 'multi-file-composition'
+        facts: Array<{
+          code: string
+          message: string
+        }>
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+      }
+    }>()
+
+    expectTypeOf<RollbackCommandOutput>().toMatchTypeOf<{
+      platformSummary?: {
+        kind: 'scope-precedence' | 'multi-file-composition'
+        facts: Array<{
+          code: string
+          message: string
+        }>
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+      }
+    }>()
+  })
+
+  it('用类型断言定义 preview scopePolicy 的最小公共 contract', () => {
+    expectTypeOf<PreviewCommandOutput>().toMatchTypeOf<{
+      scopePolicy?: SnapshotScopePolicy
+    }>()
+  })
+
+  it('用类型断言定义 preview/use/rollback/import apply summary.platformStats 的最小公共 contract', () => {
+    expectTypeOf<PreviewCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          targetScope?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          restoredFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+          platformSummary?: {
+            kind: 'scope-precedence' | 'multi-file-composition'
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
+      }
+    }>()
+
+    expectTypeOf<UseCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          warningCount: number
+          limitationCount: number
+        }>
+      }
+    }>()
+
+    expectTypeOf<RollbackCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          warningCount: number
+          limitationCount: number
+        }>
+      }
+    }>()
+
+    expectTypeOf<ImportApplyCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          warningCount: number
+          limitationCount: number
+        }>
+      }
+    }>()
+  })
+
+  it('machine-readable schema 覆盖 use/rollback platformSummary defs', () => {
+    expect(publicJsonSchema.$defs?.UseCommandOutput?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
+    expect(publicJsonSchema.$defs?.RollbackCommandOutput?.properties?.platformSummary).toEqual({
+      $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
+  it('machine-readable schema 覆盖 preview scopePolicy def', () => {
+    expect(publicJsonSchema.$defs?.PreviewCommandOutput?.properties?.scopePolicy).toEqual({
+      $ref: '#/$defs/SnapshotScopePolicy',
+    })
+  })
+
+  it('machine-readable schema 覆盖单平台命令 summary.platformStats def', () => {
+    expect(publicJsonSchema.$defs?.SinglePlatformStat?.properties).toEqual(expect.objectContaining({
+      platform: { type: 'string' },
+      profileCount: { type: 'integer', minimum: 0 },
+      warningCount: { type: 'integer', minimum: 0 },
+      limitationCount: { type: 'integer', minimum: 0 },
+      platformSummary: { $ref: '#/$defs/PlatformExplainableSummary' },
+    }))
+    expect(publicJsonSchema.$defs?.PreviewSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.UseSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.RollbackSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ImportApplySummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SinglePlatformStat' },
     })
   })
 
@@ -540,6 +828,14 @@ describe('public JSON contract types', () => {
           apply: {},
         },
         appliedScope: 'project',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        },
         scopePolicy: {
           requestedScope: 'project',
           resolvedScope: 'project',
@@ -591,6 +887,27 @@ describe('public JSON contract types', () => {
         changedFiles: ['E:/repo/.gemini/settings.json'],
         noChanges: false,
         summary: {
+          platformStats: [
+            {
+              platform: 'gemini',
+              profileCount: 1,
+              profileId: 'gemini-prod',
+              targetScope: 'project',
+              warningCount: 0,
+              limitationCount: 0,
+              changedFileCount: 0,
+              backupCreated: true,
+              noChanges: false,
+              platformSummary: {
+                kind: 'scope-precedence',
+                precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+                facts: [
+                  { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+                  { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+                ],
+              },
+            },
+          ],
           warnings: [],
           limitations: [],
         },
@@ -615,6 +932,17 @@ describe('public JSON contract types', () => {
           platform: 'codex',
           source: {},
           apply: {},
+        },
+        platformSummary: {
+          kind: 'multi-file-composition',
+          composedFiles: [
+            'C:/Users/test/.codex/config.toml',
+            'C:/Users/test/.codex/auth.json',
+          ],
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+            { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+          ],
         },
         scopePolicy: {
           explicitScope: false,
@@ -647,6 +975,29 @@ describe('public JSON contract types', () => {
         ],
         noChanges: false,
         summary: {
+          platformStats: [
+            {
+              platform: 'codex',
+              profileCount: 1,
+              profileId: 'codex-prod',
+              warningCount: 0,
+              limitationCount: 0,
+              changedFileCount: 2,
+              backupCreated: true,
+              noChanges: false,
+              platformSummary: {
+                kind: 'multi-file-composition',
+                composedFiles: [
+                  'C:/Users/test/.codex/config.toml',
+                  'C:/Users/test/.codex/auth.json',
+                ],
+                facts: [
+                  { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+                  { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+                ],
+              },
+            },
+          ],
           warnings: [],
           limitations: [],
         },

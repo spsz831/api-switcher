@@ -189,6 +189,133 @@
       },
       "additionalProperties": false
     },
+    "SinglePlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "warningCount", "limitationCount"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "profileId": { "type": "string" },
+        "targetScope": { "type": "string" },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "limitationCount": { "type": "integer", "minimum": 0 },
+        "changedFileCount": { "type": "integer", "minimum": 0 },
+        "restoredFileCount": { "type": "integer", "minimum": 0 },
+        "backupCreated": { "type": "boolean" },
+        "noChanges": { "type": "boolean" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "PreviewSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "UseSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RollbackSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CurrentListPlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "managed"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "currentProfileId": { "type": "string" },
+        "detectedProfileId": { "type": "string" },
+        "managed": { "type": "boolean" },
+        "currentScope": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "CurrentSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ListSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
     "SchemaCommandOutput": {
       "type": "object",
       "required": ["schemaVersion"],
@@ -231,7 +358,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/CurrentProfileResult" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/CurrentSummary" }
       },
       "additionalProperties": true
     },
@@ -289,7 +416,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ListCommandItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ListSummary" }
       },
       "additionalProperties": true
     },
@@ -346,6 +473,57 @@
       },
       "additionalProperties": false
     },
+    "ValidateExportPlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "okCount", "warningCount", "limitationCount"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "okCount": { "type": "integer", "minimum": 0 },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "limitationCount": { "type": "integer", "minimum": 0 },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "ValidateSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExportSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
     "ValidateCommandOutput": {
       "type": "object",
       "required": ["items", "summary"],
@@ -354,7 +532,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ValidateCommandItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ValidateSummary" }
       },
       "additionalProperties": true
     },
@@ -385,7 +563,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ExportedProfileItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ExportSummary" }
       },
       "additionalProperties": true
     },
@@ -650,6 +828,7 @@
       "properties": {
         "profile": {},
         "platform": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "exportedObservation": { "$ref": "#/$defs/ImportObservation" },
         "localObservation": { "$ref": "#/$defs/ImportObservation" },
         "fidelity": { "$ref": "#/$defs/ImportFidelityReport" },
@@ -692,7 +871,23 @@
       "additionalProperties": false
     },
     "ImportApplySummary": {
-      "$ref": "#/$defs/Summary"
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
     },
     "ImportApplyCommandOutput": {
       "type": "object",
@@ -715,6 +910,7 @@
         "appliedScope": {
           "type": "string"
         },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
@@ -850,7 +1046,8 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "summary": { "$ref": "#/$defs/PreviewSummary" },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -866,7 +1063,8 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "summary": { "$ref": "#/$defs/UseSummary" },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -884,6 +1082,7 @@
       "properties": {
         "profile": {},
         "backupId": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/UseRiskSummary" },
@@ -913,6 +1112,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "rollback": {},
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
@@ -923,7 +1123,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/RollbackSummary" }
       },
       "additionalProperties": true
     },

@@ -48,6 +48,7 @@ export interface PreviewRiskSummary {
 }
 
 export interface PreviewSummary {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -58,6 +59,7 @@ export interface PreviewCommandOutput {
   preview: PreviewResult
   risk: PreviewRiskSummary
   summary: PreviewSummary
+  scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }
@@ -70,6 +72,7 @@ export interface UseRiskSummary {
 }
 
 export interface UseSummary {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -84,6 +87,7 @@ export interface ConfirmationRequiredDetails {
 export interface UseCommandOutput {
   profile: Profile
   backupId?: string
+  platformSummary?: PlatformExplainableSummary
   validation?: ValidationResult
   preview: PreviewResult
   risk: UseRiskSummary
@@ -95,21 +99,58 @@ export interface UseCommandOutput {
 }
 
 export interface RollbackSummary {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }
 
+export interface SinglePlatformStat {
+  platform: PlatformName
+  profileCount: number
+  profileId?: string
+  targetScope?: string
+  warningCount: number
+  limitationCount: number
+  changedFileCount?: number
+  restoredFileCount?: number
+  backupCreated?: boolean
+  noChanges?: boolean
+  platformSummary?: PlatformExplainableSummary
+}
+
+export interface CurrentListPlatformStat {
+  platform: PlatformName
+  profileCount: number
+  currentProfileId?: string
+  detectedProfileId?: string
+  managed: boolean
+  currentScope?: string
+  platformSummary?: PlatformExplainableSummary
+}
+
 export interface CurrentSummary {
+  platformStats?: CurrentListPlatformStat[]
   warnings: string[]
   limitations: string[]
 }
 
 export interface ListSummary {
+  platformStats?: CurrentListPlatformStat[]
   warnings: string[]
   limitations: string[]
 }
 
+export interface ValidateExportPlatformStat {
+  platform: PlatformName
+  profileCount: number
+  okCount: number
+  warningCount: number
+  limitationCount: number
+  platformSummary?: PlatformExplainableSummary
+}
+
 export interface ExportSummary {
+  platformStats?: ValidateExportPlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -123,6 +164,7 @@ export interface SchemaCommandOutput {
 export interface RollbackCommandOutput {
   backupId: string
   restoredFiles: string[]
+  platformSummary?: PlatformExplainableSummary
   rollback?: RollbackResult
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
@@ -145,6 +187,7 @@ export interface CurrentCommandOutput {
 }
 
 export interface ValidateSummary {
+  platformStats?: ValidateExportPlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -279,6 +322,7 @@ export interface ImportPreviewDecisionReason {
 export interface ImportPreviewItem {
   profile: Profile
   platform: PlatformName
+  platformSummary?: PlatformExplainableSummary
   exportedObservation?: ImportObservation
   localObservation?: ImportObservation
   fidelity?: ImportFidelityReport
@@ -313,6 +357,7 @@ export interface ImportApplyNotReadyDetails {
 }
 
 export interface ImportApplySummary {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -328,6 +373,7 @@ export interface ImportApplyCommandOutput {
   sourceFile: string
   importedProfile: Profile
   appliedScope?: string
+  platformSummary?: PlatformExplainableSummary
   scopePolicy: SnapshotScopePolicy
   scopeCapabilities: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]

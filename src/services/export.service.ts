@@ -1,6 +1,6 @@
 import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
-import type { CommandResult, ExportCommandOutput } from '../types/command'
+import type { CommandResult, ExportCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
 import { buildPlatformSummary } from './platform-summary'
 import { ProfileService } from './profile.service'
@@ -71,12 +71,29 @@ export class ExportService {
 
   private buildExportSummary(items: ExportCommandOutput['profiles']): ExportCommandOutput['summary'] {
     return {
+      platformStats: this.buildPlatformStats(items),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation?.warnings ?? []),
         ...item.validation?.effectiveConfig?.overrides.map((override) => override.message) ?? [],
       ]).filter(Boolean))),
       limitations: this.collectMessages(items.flatMap((item) => item.validation?.limitations ?? [])),
     }
+  }
+
+  private buildPlatformStats(items: ExportCommandOutput['profiles']): ValidateExportPlatformStat[] {
+    const platforms = Array.from(new Set(items.map((item) => item.profile.platform))).sort()
+
+    return platforms.map((platform) => {
+      const platformItems = items.filter((item) => item.profile.platform === platform)
+      return {
+        platform,
+        profileCount: platformItems.length,
+        okCount: platformItems.filter((item) => item.validation?.ok).length,
+        warningCount: platformItems.reduce((count, item) => count + (item.validation?.warnings?.length ?? 0), 0),
+        limitationCount: platformItems.reduce((count, item) => count + (item.validation?.limitations?.length ?? 0), 0),
+        platformSummary: platformItems[0]?.platformSummary,
+      }
+    })
   }
 
   private collectMessages(issues: ValidationIssue[]): string[] {

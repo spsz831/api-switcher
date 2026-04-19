@@ -302,6 +302,21 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       current: Record<string, string>
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          currentProfileId?: string
+          detectedProfileId?: string
+          managed: boolean
+          currentScope?: string
+          platformSummary?: {
+            kind: string
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -337,6 +352,25 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('current')
     expect(payload.data?.current.gemini).toBe('gemini-prod')
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 2,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+        currentScope: 'user',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        },
+      }),
+    ]))
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
@@ -493,6 +527,21 @@ describe('cli commands integration', () => {
         scopeAvailability?: ScopeAvailabilityContract[]
       }>
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          currentProfileId?: string
+          detectedProfileId?: string
+          managed: boolean
+          currentScope?: string
+          platformSummary?: {
+            kind: string
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -503,6 +552,52 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('list')
     expect(payload.data?.profiles).toHaveLength(4)
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        managed: false,
+        currentScope: 'project',
+        platformSummary: expect.objectContaining({
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+          currentScope: 'project',
+          facts: [
+            { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+            { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+          ],
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 1,
+        managed: false,
+        platformSummary: expect.objectContaining({
+          kind: 'multi-file-composition',
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+            { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+          ],
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 2,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+        currentScope: 'user',
+        platformSummary: expect.objectContaining({
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          currentScope: 'user',
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        }),
+      }),
+    ]))
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
@@ -583,6 +678,20 @@ describe('cli commands integration', () => {
         }
       }>
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          okCount: number
+          warningCount: number
+          limitationCount: number
+          platformSummary?: {
+            kind: string
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -608,6 +717,19 @@ describe('cli commands integration', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 1,
+        okCount: 1,
+        warningCount: 0,
+        limitationCount: 3,
+        platformSummary: expect.objectContaining({
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        }),
+      }),
+    ]))
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
@@ -859,6 +981,20 @@ describe('cli commands integration', () => {
         }
       }>
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          okCount: number
+          warningCount: number
+          limitationCount: number
+          platformSummary?: {
+            kind: string
+            precedence?: string[]
+            currentScope?: string
+            composedFiles?: string[]
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -944,6 +1080,40 @@ describe('cli commands integration', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        okCount: 1,
+        warningCount: 0,
+        limitationCount: 1,
+        platformSummary: expect.objectContaining({
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 1,
+        okCount: 1,
+        warningCount: 0,
+        limitationCount: 1,
+        platformSummary: expect.objectContaining({
+          kind: 'multi-file-composition',
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 2,
+        okCount: 1,
+        warningCount: 1,
+        limitationCount: 6,
+        platformSummary: expect.objectContaining({
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        }),
+      }),
+    ]))
     expect(geminiProfile?.defaultWriteScope).toBe('user')
     expect(geminiProfile?.observedAt).toEqual(expect.any(String))
     expect(new Date(geminiProfile?.observedAt ?? '').toString()).not.toBe('Invalid Date')
@@ -987,6 +1157,17 @@ describe('cli commands integration', () => {
         limitations: string[]
       }
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          targetScope?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -1013,6 +1194,18 @@ describe('cli commands integration', () => {
       riskLevel: 'medium',
     }))
     expect(payload.data?.summary).toEqual({
+      platformStats: expect.arrayContaining([
+        expect.objectContaining({
+          platform: 'codex',
+          profileCount: 1,
+          profileId: 'codex-prod',
+          warningCount: payload.data?.risk.reasons.length ?? 0,
+          limitationCount: payload.data?.risk.limitations.length ?? 0,
+          changedFileCount: 2,
+          backupCreated: true,
+          noChanges: false,
+        }),
+      ]),
       warnings: payload.data?.risk.reasons ?? [],
       limitations: payload.data?.risk.limitations ?? [],
     })
@@ -1071,6 +1264,15 @@ describe('cli commands integration', () => {
   it('preview --json 输出 Gemini scope capability contract', async () => {
     const result = await runCli(['preview', 'gemini-prod', '--scope', 'project', '--json'])
     const payload = parseJsonResult<{
+      scopePolicy?: {
+        requestedScope?: string
+        resolvedScope?: string
+        defaultScope?: string
+        explicitScope: boolean
+        highRisk: boolean
+        riskWarning?: string
+        rollbackScopeMatchRequired: boolean
+      }
       scopeCapabilities?: ScopeCapabilityContract[]
       preview: {
         targetFiles: Array<{ path: string; scope?: string }>
@@ -1087,6 +1289,15 @@ describe('cli commands integration', () => {
         scope: 'project',
       }),
     ])
+    expect(payload.data?.scopePolicy).toEqual({
+      requestedScope: 'project',
+      resolvedScope: 'project',
+      defaultScope: 'user',
+      explicitScope: true,
+      highRisk: true,
+      riskWarning: 'Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。',
+      rollbackScopeMatchRequired: true,
+    })
     expect(payload.data?.scopeCapabilities).toEqual([
       expect.objectContaining({
         scope: 'system-defaults',
@@ -1136,6 +1347,13 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       profile: Profile
       backupId?: string
+      platformSummary?: {
+        kind: string
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+        facts: Array<{ code: string; message: string }>
+      }
       risk: {
         allowed: boolean
         riskLevel: string
@@ -1143,6 +1361,15 @@ describe('cli commands integration', () => {
         limitations: string[]
       }
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          targetScope?: string
+          warningCount: number
+          limitationCount: number
+          restoredFileCount?: number
+          noChanges?: boolean
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -1166,6 +1393,18 @@ describe('cli commands integration', () => {
       riskLevel: 'medium',
     }))
     expect(payload.data?.summary).toEqual({
+      platformStats: expect.arrayContaining([
+        expect.objectContaining({
+          platform: 'codex',
+          profileCount: 1,
+          profileId: 'codex-prod',
+          warningCount: payload.data?.risk.reasons.length ?? 0,
+          limitationCount: payload.data?.risk.limitations.length ?? 0,
+          changedFileCount: 2,
+          backupCreated: true,
+          noChanges: false,
+        }),
+      ]),
       warnings: payload.data?.risk.reasons ?? [],
       limitations: payload.data?.risk.limitations ?? [],
     })
@@ -1173,6 +1412,14 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
     expect(payload.data?.risk.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.data?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [codexConfigPath, codexAuthPath],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
     expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(payload.data?.preview?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
     expect(payload.data?.preview?.secretReferences).toEqual([
@@ -1266,7 +1513,25 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       backupId: string
       restoredFiles: string[]
+      platformSummary?: {
+        kind: string
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+        facts: Array<{ code: string; message: string }>
+      }
       summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          targetScope?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
         warnings: string[]
         limitations: string[]
       }
@@ -1287,6 +1552,24 @@ describe('cli commands integration', () => {
     expect(payload.data?.summary.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.summary.warnings).toContain('Codex 配置切换会联动 config.toml 与 auth.json。')
     expect(payload.data?.summary.limitations).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 1,
+        warningCount: payload.data?.summary.warnings.length ?? 0,
+        limitationCount: 1,
+        restoredFileCount: 2,
+        noChanges: false,
+      }),
+    ]))
+    expect(payload.data?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [codexConfigPath, codexAuthPath],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
     expect(payload.data?.restoredFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(payload.data?.rollback?.targetFiles).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -2437,6 +2720,13 @@ describe('cli commands integration', () => {
       sourceFile: string
       items: Array<{
         platform: string
+        platformSummary?: {
+          kind: string
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+          facts: Array<{ code: string; message: string }>
+        }
         exportedObservation?: { defaultWriteScope?: string; observedAt?: string }
         localObservation?: { defaultWriteScope?: string; scopeAvailability?: ScopeAvailabilityContract[] }
         fidelity?: {
@@ -2506,6 +2796,14 @@ describe('cli commands integration', () => {
     expect(payload.data?.sourceFile).toBe(importFile)
     expect(payload.data?.items[0]).toEqual(expect.objectContaining({
       platform: 'gemini',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+        facts: [
+          { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+          { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+        ],
+      },
       exportedObservation: expect.objectContaining({
         defaultWriteScope: 'user',
         observedAt: '2026-04-16T00:00:00.000Z',
@@ -3184,9 +3482,31 @@ describe('cli commands integration', () => {
       sourceFile: string
       importedProfile: { id: string; platform: string }
       appliedScope?: string
+      platformSummary?: {
+        kind: string
+        precedence?: string[]
+        currentScope?: string
+        composedFiles?: string[]
+        facts: Array<{ code: string; message: string }>
+      }
       backupId: string
       changedFiles: string[]
       noChanges: boolean
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          targetScope?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -3199,9 +3519,29 @@ describe('cli commands integration', () => {
       platform: 'codex',
     }))
     expect(payload.data?.appliedScope).toBeUndefined()
+    expect(payload.data?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [codexConfigPath, codexAuthPath],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
     expect(payload.data?.backupId).toMatch(/^snapshot-codex-/)
     expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
     expect(payload.data?.noChanges).toBe(false)
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 1,
+        profileId: 'codex-prod',
+        warningCount: payload.data?.summary.warnings.length ?? 0,
+        limitationCount: 1,
+        changedFileCount: 2,
+        backupCreated: true,
+        noChanges: false,
+      }),
+    ]))
 
     const codexConfig = await fs.readFile(codexConfigPath, 'utf8')
     const codexAuth = JSON.parse(await fs.readFile(codexAuthPath, 'utf8')) as Record<string, unknown>

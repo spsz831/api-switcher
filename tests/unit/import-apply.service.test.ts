@@ -278,6 +278,14 @@ describe('import apply service', () => {
     expect(result.ok).toBe(true)
     expect(result.action).toBe('import-apply')
     expect(result.data?.importedProfile.platform).toBe('codex')
+    expect(result.data?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
   })
 
   it('Codex apply 不进入 Gemini 的 project scope availability gate', async () => {

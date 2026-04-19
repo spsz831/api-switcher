@@ -60,6 +60,14 @@ describe('import preview service', () => {
       expect.objectContaining({
         profile,
         platform: 'gemini',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        },
         exportedObservation: expect.objectContaining({
           defaultWriteScope: 'user',
           observedAt: '2026-04-16T00:00:00.000Z',
@@ -275,6 +283,14 @@ describe('import preview service', () => {
     expect(result.ok).toBe(true)
     expect(result.data?.items[0]).toEqual(expect.objectContaining({
       platform: 'claude',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['user', 'project', 'local'],
+        facts: [
+          { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+          { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+        ],
+      },
       localObservation: expect.objectContaining({
         defaultWriteScope: 'user',
       }),

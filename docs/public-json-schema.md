@@ -167,7 +167,7 @@ type SnapshotScopePolicy = {
 
 ## PlatformExplainableSummary
 
-`current/list` 会输出 `platformSummary`，用于给机器消费者提供与文本摘要等价的结构化平台语义。它不是 adapter 私有详情，而是稳定公共 contract。
+`current/list/validate/export/import preview/import apply` 会输出 `platformSummary`，用于给机器消费者提供与文本摘要等价的结构化平台语义。它不是 adapter 私有详情，而是稳定公共 contract。
 
 ```ts
 type PlatformExplainableSummary = {
@@ -258,13 +258,13 @@ type PlatformExplainableSummary = {
 
 ### Field Presence Matrix
 
-| Field | `current` | `list` | `validate` | `export` | Notes |
-| --- | --- | --- | --- | --- | --- |
-| `platformSummary` | yes | yes | yes | yes | 平台 explainable 摘要主入口 |
-| `scopeCapabilities` | yes | yes | yes | yes | 平台能力矩阵 |
-| `scopeAvailability` | yes | yes | no | yes | 当前机器环境观察 |
-| `defaultWriteScope` | no | no | no | yes | 导出时暴露平台默认写入目标 |
-| `observedAt` | no | no | no | yes | 导出时记录 observation 时间 |
+| Field | `current` | `list` | `validate` | `export` | `import preview` | `import apply` | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `platformSummary` | yes | yes | yes | yes | yes | yes | 平台 explainable 摘要主入口 |
+| `scopeCapabilities` | yes | yes | yes | yes | via observation | yes | 平台能力矩阵 |
+| `scopeAvailability` | yes | yes | no | yes | via observation | conditional | 当前机器环境观察或 observation |
+| `defaultWriteScope` | no | no | no | yes | via observation | no | 导出或导入观察里的默认写入目标 |
+| `observedAt` | no | no | no | yes | via observation | no | 导出或导入观察里的观测时间 |
 
 ## Cross-Command Alignment
 
@@ -276,7 +276,7 @@ type PlatformExplainableSummary = {
 
 | Field | 当前命令面 | 语义 |
 | --- | --- | --- |
-| `platformSummary` | `current` / `list` / `validate` / `export` | 平台级 precedence 或多文件组合摘要 |
+| `platformSummary` | `current` / `list` / `validate` / `export` / `import preview` / `import apply` | 平台级 precedence 或多文件组合摘要 |
 | `scopeCapabilities` | `current` / `list` / `validate` / `export` / `import preview` / `import apply` | 平台理论能力矩阵 |
 | `scopeAvailability` | `current` / `list` / `export` / `import preview` / `import apply` | 当前环境或 observation 中的 scope 可用性 |
 | `defaultWriteScope` | `export` / `import preview` | 默认写入目标 |
@@ -347,14 +347,21 @@ type SchemaVersionCommandOutput = {
 
 ### JSON 示例导航
 
-- [`current --json`](#current---json): 当前环境检测结果，强调 `currentScope`、`platformSummary`、`scopeCapabilities`、`scopeAvailability`
-- [`list --json`](#list---json): profile 列表结果，强调 profile 级 `platformSummary` 与 Gemini `scopeAvailability`
-- [`validate --json`](#validate---json): 校验结果列表，强调每个 item 的 `platformSummary` 与 `scopeCapabilities`
-- [`export --json`](#export---json): 导出结果列表，强调 `platformSummary`、`defaultWriteScope`、`observedAt` 与 Gemini `scopeAvailability`
+| Command | 适合谁读 | 成功重点字段 | 失败重点字段 / 失败码 |
+| --- | --- | --- | --- |
+| [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 拿平台级聚合，再读 `detections[].platform/currentScope`，最后按需展开 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 做平台分组，再读 `profiles[]` 的平台与 selector，最后按需读取 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
+| [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再展开 `preview/platformSummary`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED` |
+| [`rollback --json`](#rollback---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级恢复聚合，再展开 `rollback`。 | `scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED` |
+| [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`。推荐消费顺序：先读 `summary.platformStats[]` 看平台级通过/限制聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 看平台级聚合，再读 `profile` 基本信息，最后结合 `observedAt` 理解 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`import preview --json`](#import-preview---json) | UI 接入方、导入迁移工具 | item 级 `platformSummary`、`exportedObservation`、`localObservation`、`previewDecision`、`summary` | 重点看 `previewDecision`、`fidelity`、`sourceCompatibility`；命令本身通常不以 item 阻塞作为顶层失败 |
+| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`preview`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再展开 `platformSummary/preview`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败 |
 
 ### current --json
 
-`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
+`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`summary.platformStats[]` 进一步把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做成稳定聚合。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
 
 语义补充：
 
@@ -369,7 +376,23 @@ type CurrentCommandOutput = {
   current: Record<string, string>
   lastSwitch?: unknown
   detections: CurrentProfileResult[]
-  summary: Summary
+  summary: CurrentSummary
+}
+
+type CurrentSummary = {
+  platformStats?: CurrentListPlatformStat[]
+  warnings: string[]
+  limitations: string[]
+}
+
+type CurrentListPlatformStat = {
+  platform: string
+  profileCount: number
+  currentProfileId?: string
+  detectedProfileId?: string
+  managed: boolean
+  currentScope?: string
+  platformSummary?: PlatformExplainableSummary
 }
 
 type CurrentProfileResult = {
@@ -569,6 +592,31 @@ type CurrentProfileResult = {
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "currentProfileId": "claude-prod",
+          "detectedProfileId": "claude-prod",
+          "managed": true,
+          "currentScope": "local",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "currentScope": "local",
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -578,14 +626,14 @@ type CurrentProfileResult = {
 
 ### list --json
 
-`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。
+`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。`summary.platformStats[]` 则提供当前返回批次的 platform-aware 聚合，调用方可以先按平台分组，再决定是否展开单个 profile。
 
 相关示例：[`current --json`](#current---json)、[`validate --json`](#validate---json)、[`export --json`](#export---json)
 
 ```ts
 type ListCommandOutput = {
   profiles: ListCommandItem[]
-  summary: Summary
+  summary: ListSummary
 }
 
 type ListCommandItem = {
@@ -596,6 +644,12 @@ type ListCommandItem = {
   platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+}
+
+type ListSummary = {
+  platformStats?: CurrentListPlatformStat[]
+  warnings: string[]
+  limitations: string[]
 }
 ```
 
@@ -757,6 +811,29 @@ type ListCommandItem = {
       }
     ],
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "managed": false,
+          "currentScope": "local",
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "currentScope": "local",
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     }
@@ -766,14 +843,14 @@ type ListCommandItem = {
 
 ### validate --json
 
-`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。
+`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。`summary.platformStats[]` 则提供当前校验批次的 platform-aware 聚合，调用方可先读每个平台的通过数、warning 数与 limitation 数，再决定是否展开单条 item。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`export --json`](#export---json)
 
 ```ts
 type ValidateCommandOutput = {
   items: ValidateCommandItem[]
-  summary: Summary
+  summary: ValidateSummary
 }
 
 type ValidateCommandItem = {
@@ -783,18 +860,33 @@ type ValidateCommandItem = {
   platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
 }
+
+type ValidateSummary = {
+  platformStats?: ValidateExportPlatformStat[]
+  warnings: string[]
+  limitations: string[]
+}
+
+type ValidateExportPlatformStat = {
+  platform: string
+  profileCount: number
+  okCount: number
+  warningCount: number
+  limitationCount: number
+  platformSummary?: PlatformExplainableSummary
+}
 ```
 
 ### export --json
 
-`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。
+`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。`summary.platformStats[]` 则把当前导出批次按平台聚合，方便调用方先看每个平台导出了几条 profile、其中多少条校验通过、warning/limitation 有多少。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`validate --json`](#validate---json)
 
 ```ts
 type ExportCommandOutput = {
   profiles: ExportedProfileItem[]
-  summary: Summary
+  summary: ExportSummary
 }
 
 type ExportedProfileItem = {
@@ -805,6 +897,12 @@ type ExportedProfileItem = {
   defaultWriteScope?: string
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+}
+
+type ExportSummary = {
+  platformStats?: ValidateExportPlatformStat[]
+  warnings: string[]
+  limitations: string[]
 }
 ```
 
@@ -939,6 +1037,7 @@ type ImportPreviewDriftKindStat = {
 type ImportPreviewItem = {
   profile: Profile
   platform: string
+  platformSummary?: PlatformExplainableSummary
   exportedObservation?: ImportObservation
   localObservation?: ImportObservation
   fidelity?: ImportFidelityReport
@@ -949,6 +1048,7 @@ type ImportPreviewItem = {
 约定：
 
 - `exportedObservation` 与 `localObservation` 不得相互覆盖，也不得被合并成一份模糊对象。
+- `platformSummary` 是 item 级稳定平台摘要；Gemini / Claude 用它表达 precedence，Codex 用它表达双文件组合语义。
 - `fidelity.status='mismatch'` 表示导出环境与当前本地环境在关键执行语义上存在偏差。
 - `driftKind` 用来区分 mismatch 的来源：默认作用域漂移、availability 漂移、capability 漂移。
 - `severity` 用来表达该 drift 对后续 apply 设计的影响强度；当前 `availability-drift` 中的 Gemini `project` 不可解析会被标为 `blocking`。
@@ -968,6 +1068,72 @@ type ImportPreviewItem = {
 3. 对 batch-level UI、批处理脚本或路由决策，优先消费 `summary.decisionCodeStats` 与 `summary.driftKindStats`，不要先遍历 `items[]` 自己重算。
 4. 只有在需要展开单条 profile 细节时，再读取 `items[]` 下的 `fidelity`、`previewDecision`、`exportedObservation` 与 `localObservation`。
 5. 对单条 item，机器消费方应优先使用 `previewDecision.reasonCodes`、`previewDecision.reasons[].code`、`fidelity.groupedMismatches[].driftKind` 这类稳定 code/enum；`message`、`highlights` 和文本摘要主要用于展示。
+
+最小 Gemini `import preview --json` item 样例：
+
+```json
+{
+  "profile": {
+    "id": "gemini-prod",
+    "name": "gemini-prod",
+    "platform": "gemini",
+    "source": {},
+    "apply": {}
+  },
+  "platform": "gemini",
+  "platformSummary": {
+    "kind": "scope-precedence",
+    "precedence": ["system-defaults", "user", "project", "system-overrides"],
+    "facts": [
+      {
+        "code": "GEMINI_SCOPE_PRECEDENCE",
+        "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+      },
+      {
+        "code": "GEMINI_PROJECT_OVERRIDES_USER",
+        "message": "project scope 会覆盖 user 中的同名字段。"
+      }
+    ]
+  },
+  "exportedObservation": {
+    "defaultWriteScope": "user",
+    "observedAt": "2026-04-16T00:00:00.000Z"
+  },
+  "localObservation": {
+    "defaultWriteScope": "user",
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "unresolved",
+        "detected": false,
+        "writable": false,
+        "reasonCode": "PROJECT_ROOT_UNRESOLVED"
+      }
+    ]
+  },
+  "previewDecision": {
+    "canProceedToApplyDesign": false,
+    "recommendedScope": "user",
+    "requiresLocalResolution": true,
+    "reasonCodes": [
+      "BLOCKED_BY_FIDELITY_MISMATCH",
+      "REQUIRES_LOCAL_SCOPE_RESOLUTION"
+    ],
+    "reasons": [
+      {
+        "code": "BLOCKED_BY_FIDELITY_MISMATCH",
+        "blocking": true,
+        "message": "导出观察与当前本地观察存在关键漂移，当前不应继续进入 apply 设计。"
+      },
+      {
+        "code": "REQUIRES_LOCAL_SCOPE_RESOLUTION",
+        "blocking": true,
+        "message": "当前本地 scope 解析未完成，需先修复本地解析结果。"
+      }
+    ]
+  }
+}
+```
 
 ### import apply --json
 
@@ -999,6 +1165,7 @@ type ImportApplyRiskSummary = {
 }
 
 type ImportApplySummary = {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }
@@ -1007,6 +1174,7 @@ type ImportApplyCommandOutput = {
   sourceFile: string
   importedProfile: Profile
   appliedScope?: string
+  platformSummary?: PlatformExplainableSummary
   scopePolicy: SnapshotScopePolicy
   scopeCapabilities: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
@@ -1023,6 +1191,8 @@ type ImportApplyCommandOutput = {
 补充语义：
 
 - `appliedScope` 表示本次写入最终解析出的平台 scope。
+- `platformSummary` 是 success payload 上的平台摘要；它与 `current/list/validate/export/import preview` 的同名字段保持语义一致。
+- `summary.platformStats[]` 是 success payload 上的单平台聚合入口；它包含平台、profile、目标 scope、warning/limitation、变更文件计数、是否创建备份和 `noChanges`。
 - 对 Gemini，它通常是 `user` 或 `project`。
 - 对 Claude，它通常是 `user`、`project` 或 `local`。
 - 对 Codex 这类无 scoped target 平台，它可以缺省；机器消费方不应把缺省误解为失败。
@@ -1059,6 +1229,13 @@ type ImportScopeUnavailableDetails = {
 - `IMPORT_APPLY_FAILED`、`VALIDATION_FAILED` 等失败的 `error.details` 只保证保留结构化对象，不冻结 adapter 内部字段。
 - machine-readable schema 只冻结失败路径里的稳定字段，不对失败 `code` 与 adapter 私有 detail 做过度枚举。
 
+样例阅读方式：
+
+- 成功样例重点看 success payload 中的 `platformSummary`、`scopePolicy`、`preview`、`backupId` 与 `changedFiles`。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 或 scope unavailable 类失败下的 `risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+
+成功样例：
+
 Gemini `import apply --json` 成功样例：
 
 ```bash
@@ -1086,6 +1263,20 @@ api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --sc
       }
     },
     "appliedScope": "project",
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": ["system-defaults", "user", "project", "system-overrides"],
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
     "scopePolicy": {
       "requestedScope": "project",
       "resolvedScope": "project",
@@ -1217,6 +1408,19 @@ api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --sc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [
         "Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。"
       ],
@@ -1261,6 +1465,23 @@ api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --forc
         "OPENAI_API_KEY": "sk-c***56",
         "base_url": "https://gateway.example.com/openai/v1"
       }
+    },
+    "platformSummary": {
+      "kind": "multi-file-composition",
+      "composedFiles": [
+        "C:/Users/test/.codex/config.toml",
+        "C:/Users/test/.codex/auth.json"
+      ],
+      "facts": [
+        {
+          "code": "CODEX_MULTI_FILE_CONFIGURATION",
+          "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+        },
+        {
+          "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+          "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+        }
+      ]
     },
     "scopePolicy": {
       "explicitScope": false,
@@ -1376,6 +1597,18 @@ api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --forc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "profileId": "codex-prod",
+          "warningCount": 0,
+          "limitationCount": 1,
+          "changedFileCount": 2,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [],
       "limitations": [
         "当前会同时托管 Codex 的 config.toml 与 auth.json。"
@@ -1418,6 +1651,20 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       }
     },
     "appliedScope": "local",
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": ["user", "project", "local"],
+      "facts": [
+        {
+          "code": "CLAUDE_SCOPE_PRECEDENCE",
+          "message": "Claude 支持 user < project < local 三层 precedence。"
+        },
+        {
+          "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+          "message": "如果存在 local，同名字段最终以 local 为准。"
+        }
+      ]
+    },
     "scopePolicy": {
       "requestedScope": "local",
       "resolvedScope": "local",
@@ -1584,6 +1831,19 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
     ],
     "noChanges": false,
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "profileId": "claude-prod",
+          "targetScope": "local",
+          "warningCount": 0,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
       "warnings": [],
       "limitations": [
         "当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。"
@@ -1598,6 +1858,8 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 ```
 
 这个样例对应“显式指定 `--scope local` 且带 `--force`”的成功路径。如果去掉 `--force`，Claude 会先返回 `CONFIRMATION_REQUIRED`，并把更高确认门槛的解释放进 `error.details.risk.reasons` 与 `limitations`。
+
+失败样例：
 
 对应的高风险失败样例如下：
 
@@ -1684,12 +1946,187 @@ type AddCommandOutput = {
 
 ### preview --json
 
-`data.scopeCapabilities` 描述当前平台的 scope 操作能力。
+`data.scopePolicy` 描述本次预览请求的目标 scope 语义；`data.scopeCapabilities` 描述当前平台的 scope 操作能力。
+`data.summary.platformStats[]` 是单平台命令的稳定平台级聚合入口；对 `preview`，它包含目标 scope、warning/limitation 计数、变更文件计数、是否计划备份和 `noChanges`。
 
 语义补充：
 
 - 对 Gemini 来说，`preview` 是先按四层 precedence 推导 effective config，再评估本次写入目标 scope 的风险、备份和变更结果。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `preview --json` 示例。
+
+样例阅读方式：
+
+- 成功样例重点看 success payload 中的 `summary.platformStats`、`preview`、`risk`、`summary`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+- 失败样例重点看 action 级失败 envelope，以及 `error.details.scopePolicy`、`scopeAvailability` 里的稳定 failure details。
+
+成功样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "preview",
+  "data": {
+    "profile": {
+      "id": "gemini-prod",
+      "platform": "gemini",
+      "name": "Gemini 生产"
+    },
+    "preview": {
+      "requiresConfirmation": true,
+      "backupPlanned": true,
+      "noChanges": false,
+      "targetFiles": [
+        {
+          "path": "C:/Users/test/.gemini/settings.json",
+          "scope": "project"
+        }
+      ]
+    },
+    "risk": {
+      "allowed": false,
+      "riskLevel": "high",
+      "reasons": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
+      "warnings": [
+        "高风险操作需要确认"
+      ],
+      "limitations": [
+        "Gemini 最终认证结果仍受环境变量影响。"
+      ]
+    },
+    "scopePolicy": {
+      "requestedScope": "project",
+      "resolvedScope": "project",
+      "defaultScope": "user",
+      "explicitScope": true,
+      "highRisk": true,
+      "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+      "rollbackScopeMatchRequired": true
+    },
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/work/.gemini/settings.json"
+      }
+    ],
+    "scopeCapabilities": [
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ],
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 1,
+          "backupCreated": true,
+          "noChanges": false
+        }
+      ],
+      "warnings": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    }
+  }
+}
+```
+
+失败样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "preview",
+  "error": {
+    "code": "PREVIEW_FAILED",
+    "message": "当前无法解析 Gemini project scope 的 project root。",
+    "details": {
+      "requestedScope": "project",
+      "resolvedScope": "project",
+      "scopePolicy": {
+        "requestedScope": "project",
+        "resolvedScope": "project",
+        "defaultScope": "user",
+        "explicitScope": true,
+        "highRisk": true,
+        "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+        "rollbackScopeMatchRequired": true
+      },
+      "scopeCapabilities": [
+        {
+          "scope": "user",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true,
+          "risk": "normal"
+        },
+        {
+          "scope": "project",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true,
+          "risk": "high",
+          "confirmationRequired": true
+        }
+      ],
+      "scopeAvailability": [
+        {
+          "scope": "project",
+          "status": "unresolved",
+          "detected": false,
+          "writable": false,
+          "reasonCode": "PROJECT_ROOT_UNRESOLVED",
+          "reason": "当前无法解析 Gemini project scope 的 project root。",
+          "remediation": "请确认当前命令位于 Gemini project 根目录内，或显式设置 API_SWITCHER_GEMINI_PROJECT_ROOT。"
+        }
+      ]
+    }
+  }
+}
+```
 
 ```ts
 type PreviewCommandOutput = {
@@ -1698,6 +2135,7 @@ type PreviewCommandOutput = {
   preview: PreviewResult
   risk: PreviewRiskSummary
   summary: PreviewSummary
+  scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }
@@ -1705,17 +2143,159 @@ type PreviewCommandOutput = {
 
 ### use --json
 
-成功时，`data.scopeCapabilities` 描述本次平台能力矩阵。
+成功时，`data.platformSummary` 会把平台 precedence 或多文件组合语义一起返回。
+`data.scopeCapabilities` 描述本次平台能力矩阵。
+`data.summary.platformStats[]` 是成功态的单平台聚合入口，包含目标 scope、warning/limitation 计数、变更文件计数、是否创建备份和 `noChanges`。
 
 语义补充：
 
 - 成功态与 `CONFIRMATION_REQUIRED` 失败态都属于公共契约面；失败时结构化信息位于 `error.details`。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `use --json` 成功/失败示例。
 
+样例阅读方式：
+
+- 成功样例重点看 success payload 中的 `summary.platformStats`、`platformSummary`、`scopeCapabilities`、`scopeAvailability` 与写入结果字段。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 下的 `risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+
+成功样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "use",
+  "data": {
+    "profile": {
+      "id": "gemini-prod",
+      "platform": "gemini",
+      "name": "Gemini 生产"
+    },
+    "backupId": "snapshot-gemini-001",
+    "changedFiles": [
+      "C:/work/.gemini/settings.json"
+    ],
+    "noChanges": false,
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/work/.gemini/settings.json"
+      }
+    ],
+    "scopeCapabilities": [
+      {
+        "scope": "user",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "normal"
+      },
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ]
+  }
+}
+```
+
+失败样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "use",
+  "warnings": [
+    "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+  ],
+  "limitations": [
+    "GEMINI_API_KEY 仍需通过环境变量生效。"
+  ],
+  "error": {
+    "code": "CONFIRMATION_REQUIRED",
+    "message": "当前切换需要确认或 --force。",
+    "details": {
+      "risk": {
+        "allowed": false,
+        "riskLevel": "high",
+        "reasons": [
+          "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+        ],
+        "limitations": [
+          "GEMINI_API_KEY 仍需通过环境变量生效。"
+        ]
+      },
+      "scopePolicy": {
+        "requestedScope": "project",
+        "resolvedScope": "project",
+        "defaultScope": "user",
+        "explicitScope": true,
+        "highRisk": true,
+        "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+        "rollbackScopeMatchRequired": true
+      },
+      "scopeCapabilities": [
+        {
+          "scope": "project",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true,
+          "risk": "high",
+          "confirmationRequired": true
+        }
+      ],
+      "scopeAvailability": [
+        {
+          "scope": "project",
+          "status": "available",
+          "detected": true,
+          "writable": true,
+          "path": "C:/work/.gemini/settings.json"
+        }
+      ]
+    }
+  }
+}
+```
+
 ```ts
 type UseCommandOutput = {
   profile: Profile
   backupId?: string
+  platformSummary?: PlatformExplainableSummary
   validation?: ValidationResult
   preview: PreviewResult
   risk: UseRiskSummary
@@ -1740,7 +2320,9 @@ type ConfirmationRequiredDetails = {
 
 ### rollback --json
 
-成功时，`data.scopePolicy` 来自快照 manifest，`data.scopeCapabilities` 来自当前平台 policy；Gemini `project` 回滚还会附带当前环境里的 `scopeAvailability`。
+成功时，`data.platformSummary` 会把恢复目标所属平台的 explainable 摘要一起返回。
+`data.scopePolicy` 来自快照 manifest，`data.scopeCapabilities` 来自当前平台 policy；Gemini `project` 回滚还会附带当前环境里的 `scopeAvailability`。
+`data.summary.platformStats[]` 是成功态的单平台聚合入口，包含目标 scope、warning/limitation 计数、恢复文件计数和 `noChanges`。
 
 语义补充：
 
@@ -1749,10 +2331,146 @@ type ConfirmationRequiredDetails = {
 - 对这类 Gemini availability 失败，机器消费方不应只依赖顶层 `ROLLBACK_FAILED`；稳定语义在 `error.details.scopeAvailability.project.status = "unresolved"` 以及配套的 `reasonCode` / `reason` / `remediation`。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `rollback --json` 成功/失败示例。
 
+样例阅读方式：
+
+- 成功样例重点看 success payload 中的 `summary.platformStats`、`platformSummary`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability` 与恢复结果字段。
+- 失败样例重点看 `ROLLBACK_SCOPE_MISMATCH` 或 `ROLLBACK_FAILED` 下的 `scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+
+成功样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "rollback",
+  "data": {
+    "backupId": "snapshot-gemini-001",
+    "restoredFiles": [
+      "C:/work/.gemini/settings.json"
+    ],
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
+    "scopePolicy": {
+      "requestedScope": "project",
+      "resolvedScope": "project",
+      "defaultScope": "user",
+      "explicitScope": true,
+      "highRisk": true,
+      "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+      "rollbackScopeMatchRequired": true
+    },
+    "scopeCapabilities": [
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ],
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/work/.gemini/settings.json"
+      }
+    ],
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "restoredFileCount": 1,
+          "noChanges": false
+        }
+      ],
+      "warnings": [
+        "已恢复快照中的托管文件"
+      ],
+      "limitations": [
+        "回滚仅恢复快照覆盖的托管文件。"
+      ]
+    }
+  }
+}
+```
+
+失败样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "rollback",
+  "error": {
+    "code": "ROLLBACK_SCOPE_MISMATCH",
+    "message": "快照属于 user scope，不能按 project scope 回滚。",
+    "details": {
+      "scopePolicy": {
+        "requestedScope": "project",
+        "resolvedScope": "user",
+        "defaultScope": "user",
+        "explicitScope": true,
+        "highRisk": true,
+        "rollbackScopeMatchRequired": true
+      },
+      "scopeCapabilities": [
+        {
+          "scope": "project",
+          "detect": true,
+          "preview": true,
+          "use": true,
+          "rollback": true,
+          "writable": true,
+          "risk": "high",
+          "confirmationRequired": true
+        }
+      ],
+      "scopeAvailability": [
+        {
+          "scope": "project",
+          "status": "available",
+          "detected": true,
+          "writable": true,
+          "path": "C:/work/.gemini/settings.json"
+        }
+      ]
+    }
+  }
+}
+```
+
 ```ts
 type RollbackCommandOutput = {
   backupId: string
   restoredFiles: string[]
+  platformSummary?: PlatformExplainableSummary
   rollback?: RollbackResult
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: ScopeCapability[]

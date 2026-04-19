@@ -5,6 +5,8 @@ import { StateStore } from '../stores/state.store'
 import type { ScopeAvailability } from '../types/capabilities'
 import type { CommandResult, RollbackCommandOutput, RollbackErrorDetails } from '../types/command'
 import type { PlatformName } from '../types/platform'
+import { buildPlatformSummary } from './platform-summary'
+import { buildSinglePlatformStats } from './single-platform-summary'
 import {
   assertTargetScope,
   buildSnapshotScopePolicy,
@@ -142,11 +144,29 @@ export class RollbackService {
         data: {
           backupId: targetBackupId,
           restoredFiles: result.restoredFiles,
+          platformSummary: buildPlatformSummary(platform, {
+            currentScope: resolvedScope,
+            composedFiles: result.restoredFiles,
+            listMode: true,
+          }),
           rollback: result,
           scopePolicy: snapshot.manifest.scopePolicy,
           scopeCapabilities,
           scopeAvailability,
           summary: {
+            platformStats: buildSinglePlatformStats({
+              platform,
+              targetScope: resolvedScope,
+              warningCount: warnings.length,
+              limitationCount: limitations.length,
+              restoredFileCount: result.restoredFiles.length,
+              noChanges: result.restoredFiles.length === 0,
+              platformSummary: buildPlatformSummary(platform, {
+                currentScope: resolvedScope,
+                composedFiles: result.restoredFiles,
+                listMode: true,
+              }),
+            }),
             warnings,
             limitations,
           },

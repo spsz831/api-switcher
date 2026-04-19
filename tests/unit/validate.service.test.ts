@@ -179,5 +179,22 @@ describe('validate service', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
+    expect(result.data?.summary.platformStats).toEqual([
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        okCount: 1,
+        warningCount: 0,
+        limitationCount: 0,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        },
+      },
+    ])
   })
 })

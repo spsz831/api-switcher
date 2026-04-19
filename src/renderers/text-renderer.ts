@@ -25,7 +25,7 @@ import type {
   UseCommandOutput,
   ValidateCommandOutput,
 } from '../types/command'
-import type { PlatformScopeCapability, ScopeAvailability } from '../types/capabilities'
+import type { PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from '../types/capabilities'
 import type { SnapshotScopePolicy } from '../types/snapshot'
 import { renderCurrentScopeSummary, renderPreviewScopeSummary } from './scope-renderer'
 
@@ -41,6 +41,105 @@ function renderWarnings(title: string, warnings?: string[]): string[] {
 
 function renderCommandLimitations(limitations?: string[]): string[] {
   return limitations && limitations.length > 0 ? ['限制说明:', ...limitations.map((item) => `  - ${item}`)] : []
+}
+
+function renderPlatformSummary(summary?: PlatformExplainableSummary, indent = ''): string[] {
+  if (!summary) {
+    return []
+  }
+
+  const lines = [`${indent}平台摘要:`]
+
+  if (summary.precedence && summary.precedence.length > 0) {
+    lines.push(`${indent}  - precedence: ${summary.precedence.join(' < ')}`)
+  }
+
+  if (summary.currentScope) {
+    lines.push(`${indent}  - 当前生效作用域: ${summary.currentScope} scope`)
+  }
+
+  if (summary.composedFiles && summary.composedFiles.length > 0) {
+    lines.push(`${indent}  - 组成文件: ${summary.composedFiles.join(', ')}`)
+  }
+
+  lines.push(...summary.facts.map((fact) => `${indent}  - ${fact.message}`))
+
+  return lines
+}
+
+function renderCurrentListPlatformStats(
+  stats?: CurrentCommandOutput['summary']['platformStats'] | ListCommandOutput['summary']['platformStats'],
+): string[] {
+  if (!stats || stats.length === 0) {
+    return []
+  }
+
+  return [
+    '按平台汇总:',
+    ...stats.flatMap((item) => {
+      const summaryParts = [
+        `profiles=${item.profileCount}`,
+        item.currentProfileId ? `current=${item.currentProfileId}` : null,
+        item.detectedProfileId ? `detected=${item.detectedProfileId}` : null,
+        `managed=${item.managed ? 'yes' : 'no'}`,
+        item.currentScope ? `scope=${item.currentScope}` : null,
+      ].filter(Boolean).join(', ')
+
+      return [
+        `  - ${item.platform}: ${summaryParts}`,
+        ...(item.platformSummary?.facts ?? []).map((fact) => `    - ${fact.message}`),
+      ]
+    }),
+  ]
+}
+
+function renderValidateExportPlatformStats(
+  stats?: ValidateCommandOutput['summary']['platformStats'] | ExportCommandOutput['summary']['platformStats'],
+): string[] {
+  if (!stats || stats.length === 0) {
+    return []
+  }
+
+  return [
+    '按平台汇总:',
+    ...stats.flatMap((item) => [
+      `  - ${item.platform}: profiles=${item.profileCount}, ok=${item.okCount}, warnings=${item.warningCount}, limitations=${item.limitationCount}`,
+      ...(item.platformSummary?.facts ?? []).map((fact) => `    - ${fact.message}`),
+    ]),
+  ]
+}
+
+function renderSinglePlatformStats(
+  stats?: PreviewCommandOutput['summary']['platformStats']
+    | UseCommandOutput['summary']['platformStats']
+    | RollbackCommandOutput['summary']['platformStats']
+    | ImportApplyCommandOutput['summary']['platformStats'],
+): string[] {
+  if (!stats || stats.length === 0) {
+    return []
+  }
+
+  return [
+    '按平台汇总:',
+    ...stats.flatMap((item) => {
+      const summaryParts = [
+        `profiles=${item.profileCount}`,
+        item.profileId ? `profile=${item.profileId}` : null,
+        item.targetScope ? `scope=${item.targetScope}` : null,
+        `warnings=${item.warningCount}`,
+        `limitations=${item.limitationCount}`,
+        item.changedFileCount !== undefined ? `changedFiles=${item.changedFileCount}` : null,
+        item.restoredFileCount !== undefined ? `restoredFiles=${item.restoredFileCount}` : null,
+        item.backupCreated !== undefined ? `backup=${item.backupCreated ? 'yes' : 'no'}` : null,
+        item.noChanges !== undefined ? `noChanges=${item.noChanges ? 'yes' : 'no'}` : null,
+      ].filter(Boolean).join(', ')
+
+      return [
+        `  - ${item.platform}: ${summaryParts}`,
+        ...(item.platformSummary?.facts ?? []).map((fact) => `    - ${fact.message}`),
+      ]
+    }),
+  ]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -601,6 +700,8 @@ function renderCurrent(data: CurrentCommandOutput): string {
     lines.push(`最近切换: ${data.lastSwitch.platform} / ${data.lastSwitch.profileId} / ${data.lastSwitch.status}`)
   }
 
+  lines.push(...renderCurrentListPlatformStats(data.summary.platformStats))
+
   if (data.detections.length > 0) {
     lines.push('检测结果:')
     for (const detection of data.detections) {
@@ -617,6 +718,7 @@ function renderCurrent(data: CurrentCommandOutput): string {
 
 function renderPreview(data: PreviewCommandOutput): string {
   const lines = [
+    ...renderSinglePlatformStats(data.summary.platformStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,
     ...renderValidationIssues('错误', data.validation.errors),
@@ -648,6 +750,7 @@ function renderPreview(data: PreviewCommandOutput): string {
 
 function renderUse(data: UseCommandOutput): string {
   const lines = [
+    ...renderSinglePlatformStats(data.summary.platformStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  备份ID: ${data.backupId ?? '未创建'}`,
     `  无变更: ${data.noChanges ? '是' : '否'}`,
@@ -701,6 +804,7 @@ function renderAdd(data: AddCommandOutput): string {
 
 function renderRollback(data: RollbackCommandOutput): string {
   return [
+    ...renderSinglePlatformStats(data.summary.platformStats),
     `- 备份ID: ${data.backupId}`,
     ...(data.restoredFiles.length > 0 ? ['  已恢复文件:', ...data.restoredFiles.map((item) => `  - ${item}`)] : ['  已恢复文件: 无']),
     ...renderRollbackPlatformSummary(data),
@@ -718,6 +822,7 @@ function renderRollback(data: RollbackCommandOutput): string {
 
 function renderExport(data: ExportCommandOutput): string {
   return [
+    ...renderValidateExportPlatformStats(data.summary.platformStats),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
@@ -838,6 +943,7 @@ function renderImportPreview(data: ImportPreviewCommandOutput): string {
       : []),
     ...data.items.flatMap((item) => [
       `- 配置: ${item.profile.id} (${item.platform})`,
+      ...renderPlatformSummary(item.platformSummary, '  '),
       ...renderImportObservation('导出时观察', item.exportedObservation),
       ...renderImportObservation('当前本地观察', item.localObservation),
       ...(item.fidelity ? [
@@ -863,6 +969,7 @@ function renderImportPreview(data: ImportPreviewCommandOutput): string {
 
 function renderValidate(data: ValidateCommandOutput): string {
   return [
+    ...renderValidateExportPlatformStats(data.summary.platformStats),
     data.items.map((item) => [
       `- ${item.profileId} (${item.platform})`,
       `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
@@ -881,6 +988,7 @@ function renderValidate(data: ValidateCommandOutput): string {
 
 function renderList(data: ListCommandOutput): string {
   return [
+    ...renderCurrentListPlatformStats(data.summary.platformStats),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
@@ -904,43 +1012,14 @@ function renderSchema(data: SchemaCommandOutput): string {
 }
 
 function renderImportApplyPlatformSummary(data: ImportApplyCommandOutput): string[] {
-  const platform = data.importedProfile.platform
-
-  if (platform === 'gemini' && data.appliedScope === 'project') {
-    return [
-      '平台摘要:',
-      '  - Gemini project scope 会覆盖 user 的同名字段。',
-      `  - 当前快照要求 rollback 时必须匹配 ${data.appliedScope} scope。`,
-    ]
-  }
-
-  if (platform === 'codex') {
-    return [
-      '平台摘要:',
-      '  - Codex 当前按双文件事务写入 config.toml 与 auth.json。',
-      '  - config.toml 承载配置字段，auth.json 承载认证字段。',
-    ]
-  }
-
-  if (platform === 'claude' && data.appliedScope === 'local') {
-    return [
-      '平台摘要:',
-      '  - Claude 当前写入目标是 local scope。',
-      '  - local 是当前项目最高优先级层，会直接成为最终生效值。',
-    ]
-  }
-
-  if (platform === 'claude' && data.appliedScope) {
-    return [
-      '平台摘要:',
-      `  - Claude 当前写入目标是 ${data.appliedScope} scope。`,
-    ]
-  }
-
-  return []
+  return renderPlatformSummary(data.platformSummary)
 }
 
 function renderCurrentPlatformSummary(item: CurrentProfileResult): string[] {
+  if (item.platformSummary) {
+    return renderPlatformSummary(item.platformSummary, '  ')
+  }
+
   if (item.platform === 'claude' && item.currentScope === 'local') {
     return [
       '  平台摘要:',
@@ -961,6 +1040,10 @@ function renderCurrentPlatformSummary(item: CurrentProfileResult): string[] {
 }
 
 function renderListPlatformSummary(item: ListCommandOutput['profiles'][number]): string[] {
+  if (item.platformSummary) {
+    return renderPlatformSummary(item.platformSummary, '  ')
+  }
+
   if (item.profile.platform === 'claude') {
     return [
       '  平台摘要:',
@@ -1002,6 +1085,10 @@ function inferPlatformFromPaths(paths: string[]): 'gemini' | 'codex' | 'claude' 
 }
 
 function renderUsePlatformSummary(data: UseCommandOutput): string[] {
+  if (data.platformSummary) {
+    return renderPlatformSummary(data.platformSummary)
+  }
+
   const platform = data.profile.platform
   const targetScope = inferScopeFromTargetFiles(data.preview.targetFiles)
 
@@ -1040,6 +1127,10 @@ function renderUsePlatformSummary(data: UseCommandOutput): string[] {
 }
 
 function renderRollbackPlatformSummary(data: RollbackCommandOutput): string[] {
+  if (data.platformSummary) {
+    return renderPlatformSummary(data.platformSummary)
+  }
+
   const paths = [
     ...data.restoredFiles,
     ...(data.rollback?.managedBoundaries ?? []).flatMap((item) => [
@@ -1182,6 +1273,7 @@ function renderFailurePlatformSummary(result: CommandResult): string[] {
 function renderImportApply(data: ImportApplyCommandOutput): string {
   return [
     `导入文件: ${data.sourceFile}`,
+    ...renderSinglePlatformStats(data.summary.platformStats),
     `导入配置: ${data.importedProfile.id} (${data.importedProfile.platform})`,
     ...(data.appliedScope ? [`应用作用域: ${data.appliedScope} scope`] : []),
     `备份ID: ${data.backupId}`,
