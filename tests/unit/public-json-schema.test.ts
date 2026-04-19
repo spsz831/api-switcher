@@ -4,6 +4,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { PreviewResult, ValidationResult } from '../../src/types/adapter'
 import type { PlatformScopeCapability, ScopeAvailability } from '../../src/types/capabilities'
 import type {
+  AddCommandOutput,
   CurrentCommandOutput,
   CurrentSummary,
   ExportCommandOutput,
@@ -701,6 +702,25 @@ describe('public JSON contract types', () => {
   })
 
   it('用类型断言定义 preview/use/rollback/import apply summary.platformStats 的最小公共 contract', () => {
+    expectTypeOf<AddCommandOutput>().toMatchTypeOf<{
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+          platformSummary?: {
+            kind: 'scope-precedence' | 'multi-file-composition'
+            facts: Array<{ code: string; message: string }>
+          }
+        }>
+      }
+    }>()
+
     expectTypeOf<PreviewCommandOutput>().toMatchTypeOf<{
       summary: {
         platformStats?: Array<{
@@ -783,6 +803,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
     })
+    expect(publicJsonSchema.$defs?.AddSummary?.properties?.platformStats).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
     expect(publicJsonSchema.$defs?.UseSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
@@ -794,6 +818,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportApplySummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.AddCommandOutput?.properties?.summary).toEqual({
+      $ref: '#/$defs/AddSummary',
     })
   })
 

@@ -1845,7 +1845,20 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; warnings: Array<{ code: string; message: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
-      summary: { warnings: string[]; limitations: string[] }
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1864,10 +1877,22 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk?.riskLevel).toBe('low')
     expect(payload.data?.risk?.reasons).toEqual([])
     expect(payload.data?.risk?.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
-    expect(payload.data?.summary).toEqual({
+    expect(payload.data?.summary).toEqual(expect.objectContaining({
       warnings: [],
       limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
-    })
+    }))
+    expect(payload.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        profileId: 'claude-json-low-risk',
+        warningCount: 0,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+      }),
+    ])
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(true)
     expect(payload.data?.preview.noChanges).toBe(false)
@@ -1912,7 +1937,20 @@ describe('cli commands integration', () => {
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
       risk: { allowed: boolean; riskLevel: string; reasons: string[]; limitations: string[] }
-      summary: { warnings: string[]; limitations: string[] }
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1926,6 +1964,18 @@ describe('cli commands integration', () => {
     expect(payload.data?.risk.allowed).toBe(false)
     expect(payload.data?.risk.riskLevel).toBe('medium')
     expect(payload.data?.risk.reasons).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        profileId: 'claude-json-claude-warning',
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+      }),
+    ]))
+    expect(payload.data?.summary.platformStats?.[0]?.warningCount).toBeGreaterThanOrEqual(1)
     expect(payload.data?.summary.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
     expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
@@ -1946,7 +1996,20 @@ describe('cli commands integration', () => {
       profile: Profile
       validation: { ok: boolean; warnings: Array<{ code: string }>; errors: Array<{ code: string }> }
       preview: { riskLevel: string; requiresConfirmation: boolean; backupPlanned: boolean; noChanges?: boolean; diffSummary: Array<{ path: string }> }
-      summary: { warnings: string[]; limitations: string[] }
+      summary: {
+        platformStats?: Array<{
+          platform: string
+          profileCount: number
+          profileId?: string
+          warningCount: number
+          limitationCount: number
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
     }>(result.stdout)
 
     expect(result.stderr).toBe('')
@@ -1966,10 +2029,22 @@ describe('cli commands integration', () => {
     expect(payload.data?.validation.ok).toBe(true)
     expect(payload.data?.validation.errors).toEqual([])
     expect(payload.data?.validation.warnings).toEqual([])
-    expect(payload.data?.summary).toEqual({
+    expect(payload.data?.summary).toEqual(expect.objectContaining({
       warnings: [],
       limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
-    })
+    }))
+    expect(payload.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        profileId: 'claude-json-claude',
+        warningCount: 0,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+      }),
+    ])
     expect(payload.data?.preview.riskLevel).toBe('low')
     expect(payload.data?.preview.requiresConfirmation).toBe(false)
     expect(payload.data?.preview.backupPlanned).toBe(true)

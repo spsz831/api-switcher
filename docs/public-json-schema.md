@@ -1931,7 +1931,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 
 ### add --json
 
-`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。
+`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。
 
 ```ts
 type AddCommandOutput = {
@@ -1939,7 +1939,11 @@ type AddCommandOutput = {
   validation: ValidationResult
   preview: PreviewResult
   risk: PreviewRiskSummary
-  summary: Summary
+  summary: {
+    platformStats?: SinglePlatformStat[]
+    warnings: string[]
+    limitations: string[]
+  }
   scopeCapabilities?: ScopeCapability[]
 }
 ```

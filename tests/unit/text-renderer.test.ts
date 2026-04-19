@@ -1576,6 +1576,29 @@ const addPayload: AddCommandOutput = {
     limitations: [],
   },
   summary: {
+    platformStats: [
+      {
+        platform: 'claude',
+        profileCount: 1,
+        profileId: 'claude-prod',
+        warningCount: 1,
+        limitationCount: 1,
+        changedFileCount: 1,
+        backupCreated: true,
+        noChanges: false,
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['user', 'project', 'local'],
+          currentScope: 'project',
+          facts: [
+            {
+              code: 'CLAUDE_SCOPE_PRECEDENCE',
+              message: 'Claude 支持 user < project < local 三层 precedence。',
+            },
+          ],
+        },
+      },
+    ],
     warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
@@ -1611,6 +1634,7 @@ const addPayloadWithLimitations: AddCommandOutput = {
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
   summary: {
+    platformStats: addPayload.summary.platformStats,
     warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
@@ -3014,6 +3038,9 @@ describe('text renderer', () => {
 
   it('渲染 add 结果时输出配置、摘要、提示与限制说明', () => {
     expect(outputAdd).toContain('[add] 成功')
+    expect(outputAdd).toContain('按平台汇总:')
+    expect(outputAdd).toContain('  - claude: profiles=1, profile=claude-prod, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
+    expect(outputAdd).toContain('    - Claude 支持 user < project < local 三层 precedence。')
     expect(outputAdd).toContain('- 配置: claude-prod (claude)')
     expect(outputAdd).toContain('  名称: Claude 生产')
     expect(outputAdd).toContain('  校验结果: 通过')

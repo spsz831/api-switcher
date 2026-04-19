@@ -387,6 +387,7 @@ export interface ImportApplyCommandOutput {
 }
 
 export interface AddSummary {
+  platformStats?: SinglePlatformStat[]
   warnings: string[]
   limitations: string[]
 }

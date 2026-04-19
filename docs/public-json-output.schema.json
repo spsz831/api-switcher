@@ -189,6 +189,25 @@
       },
       "additionalProperties": false
     },
+    "AddSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
     "SinglePlatformStat": {
       "type": "object",
       "required": ["platform", "profileCount", "warningCount", "limitationCount"],
@@ -1046,7 +1065,7 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
-        "summary": { "$ref": "#/$defs/PreviewSummary" },
+        "summary": { "$ref": "#/$defs/AddSummary" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",

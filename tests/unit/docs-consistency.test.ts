@@ -91,6 +91,18 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain('CODEX_MULTI_FILE_CONFIGURATION')
   })
 
+  it('README / schema 文档对 add summary.platformStats contract 保持一致', () => {
+    expect(readme).toContain('`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`')
+    expect(readme).toContain('`data.summary.platformStats[]` 会提供单平台聚合入口')
+    expect(readme).toContain('"action": "add"')
+    expect(readme).toContain('"platformStats": [')
+    expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
+
+    expect(publicJsonSchemaDoc).toContain('### add --json')
+    expect(publicJsonSchemaDoc).toContain('`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口')
+    expect(publicJsonSchemaDoc).toContain('platformStats?: SinglePlatformStat[]')
+  })
+
   it('schema 文档保留公共 explainable 字段总览，避免四个命令的共享字段语义漂移', () => {
     expect(publicJsonSchemaDoc).toContain('## Common Explainable Fields')
     expect(publicJsonSchemaDoc).toContain('### `platformSummary`')

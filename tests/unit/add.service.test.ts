@@ -134,5 +134,17 @@ describe('add service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(result.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        profileId: 'claude-new-profile',
+        warningCount: 0,
+        limitationCount: 0,
+        changedFileCount: 0,
+        backupCreated: false,
+        noChanges: true,
+      }),
+    ])
   })
 })

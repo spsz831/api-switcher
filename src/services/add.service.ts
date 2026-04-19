@@ -5,6 +5,8 @@ import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
 import type { Profile } from '../types/profile'
 import { DuplicateProfileIdError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
+import { buildPlatformSummary } from './platform-summary'
+import { buildSinglePlatformStats } from './single-platform-summary'
 
 type AddServiceInput = {
   platform: string
@@ -50,6 +52,19 @@ export class AddService {
       }
 
       const summary = {
+        platformStats: buildSinglePlatformStats({
+          platform: profile.platform,
+          profileId: profile.id,
+          warningCount: risk.reasons.length,
+          limitationCount: risk.limitations.length,
+          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+          backupCreated: preview.backupPlanned,
+          noChanges: preview.noChanges,
+          platformSummary: buildPlatformSummary(profile.platform, {
+            composedFiles: preview.targetFiles.map((item) => item.path),
+            listMode: true,
+          }),
+        }),
         warnings: risk.reasons,
         limitations: risk.limitations,
       }

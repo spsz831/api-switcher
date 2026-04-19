@@ -2136,7 +2136,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 - mixed-batch 接入时，推荐先看 `summary.decisionCodeStats` 与 `summary.driftKindStats`，再按需展开 `items[]`。
 - 更完整的字段词典、推荐消费顺序和失败处理建议见 [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)；稳定字段定义见 [`docs/public-json-schema.md`](docs/public-json-schema.md)。
 
-`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`，不是挂在 `preview` 或 `validation` 子对象里：
+`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`，不是挂在 `preview` 或 `validation` 子对象里；同时，`data.summary.platformStats[]` 会提供单平台聚合入口，方便 UI 先读平台级 warning/limitation/变更文件计数，而不必先扫描完整 `preview`：
 
 ```json
 {
@@ -2172,6 +2172,32 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
       "limitations": []
     },
     "summary": {
+      "platformStats": [
+        {
+          "platform": "claude",
+          "profileCount": 1,
+          "profileId": "claude-prod",
+          "warningCount": 0,
+          "limitationCount": 0,
+          "changedFileCount": 0,
+          "backupCreated": true,
+          "noChanges": false,
+          "platformSummary": {
+            "kind": "scope-precedence",
+            "precedence": ["user", "project", "local"],
+            "facts": [
+              {
+                "code": "CLAUDE_SCOPE_PRECEDENCE",
+                "message": "Claude 支持 user < project < local 三层 precedence。"
+              },
+              {
+                "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+                "message": "如果存在 local，同名字段最终以 local 为准。"
+              }
+            ]
+          }
+        }
+      ],
       "warnings": [],
       "limitations": []
     },
