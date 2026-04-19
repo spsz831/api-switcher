@@ -274,6 +274,34 @@ api-switcher schema --json
   "data": {
     "schemaVersion": "2026-04-15.public-json.v1",
     "schemaId": "https://api-switcher.local/schemas/public-json-output.schema.json",
+    "commandCatalog": {
+      "actions": [
+        {
+          "action": "current",
+          "hasPlatformSummary": true,
+          "hasPlatformStats": true,
+          "hasScopeCapabilities": true,
+          "hasScopeAvailability": true,
+          "hasScopePolicy": false
+        },
+        {
+          "action": "preview",
+          "hasPlatformSummary": false,
+          "hasPlatformStats": true,
+          "hasScopeCapabilities": true,
+          "hasScopeAvailability": true,
+          "hasScopePolicy": true
+        },
+        {
+          "action": "schema",
+          "hasPlatformSummary": false,
+          "hasPlatformStats": false,
+          "hasScopeCapabilities": false,
+          "hasScopeAvailability": false,
+          "hasScopePolicy": false
+        }
+      ]
+    },
     "schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://api-switcher.local/schemas/public-json-output.schema.json"
@@ -281,6 +309,8 @@ api-switcher schema --json
   }
 }
 ```
+
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，可以先消费这层，再按需展开整份 schema。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 

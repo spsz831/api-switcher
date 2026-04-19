@@ -333,9 +333,21 @@ type PlatformExplainableSummary = {
 type SchemaCommandOutput = {
   schemaVersion: '2026-04-15.public-json.v1'
   schemaId: 'https://api-switcher.local/schemas/public-json-output.schema.json'
+  commandCatalog?: {
+    actions: Array<{
+      action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
+      hasPlatformSummary: boolean
+      hasPlatformStats: boolean
+      hasScopeCapabilities: boolean
+      hasScopeAvailability: boolean
+      hasScopePolicy: boolean
+    }>
+  }
   schema: Record<string, unknown>
 }
 ```
+
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，再决定是否继续展开整份 machine-readable schema。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 

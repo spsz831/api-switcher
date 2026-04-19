@@ -261,6 +261,8 @@ describe('docs consistency', () => {
     expect(readme).toContain('"action": "schema"')
     expect(readme).toContain(`"schemaVersion": "${PUBLIC_JSON_SCHEMA_VERSION}"`)
     expect(readme).toContain(`"schemaId": "${machineReadableSchema.$id}"`)
+    expect(readme).toContain('"commandCatalog": {')
+    expect(readme).toContain('"hasPlatformStats": true')
     expect(readme).toContain('"$schema": "https://json-schema.org/draft/2020-12/schema"')
     expect(readme).toContain(`"$id": "${machineReadableSchema.$id}"`)
   })

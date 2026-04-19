@@ -225,6 +225,16 @@ describe('cli commands integration', () => {
     const payload = parseJsonResult<{
       schemaVersion: string
       schemaId: string
+      commandCatalog: {
+        actions: Array<{
+          action: string
+          hasPlatformSummary: boolean
+          hasPlatformStats: boolean
+          hasScopeCapabilities: boolean
+          hasScopeAvailability: boolean
+          hasScopePolicy: boolean
+        }>
+      }
       schema: {
         $schema: string
         $id: string
@@ -239,6 +249,32 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('schema')
     expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
+    expect(payload.data?.commandCatalog.actions).toEqual(expect.arrayContaining([
+      {
+        action: 'current',
+        hasPlatformSummary: true,
+        hasPlatformStats: true,
+        hasScopeCapabilities: true,
+        hasScopeAvailability: true,
+        hasScopePolicy: false,
+      },
+      {
+        action: 'preview',
+        hasPlatformSummary: false,
+        hasPlatformStats: true,
+        hasScopeCapabilities: true,
+        hasScopeAvailability: true,
+        hasScopePolicy: true,
+      },
+      {
+        action: 'schema',
+        hasPlatformSummary: false,
+        hasPlatformStats: false,
+        hasScopeCapabilities: false,
+        hasScopeAvailability: false,
+        hasScopePolicy: false,
+      },
+    ]))
     expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')
     expect(payload.data?.schema.$id).toBe(payload.data?.schemaId)
     expect(payload.data?.schema.$defs).toHaveProperty('ScopeCapability')

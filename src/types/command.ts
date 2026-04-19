@@ -158,7 +158,21 @@ export interface ExportSummary {
 export interface SchemaCommandOutput {
   schemaVersion: string
   schemaId?: string
+  commandCatalog?: SchemaCommandCatalog
   schema?: Record<string, unknown>
+}
+
+export interface SchemaActionCapability {
+  action: typeof COMMAND_ACTIONS[number]
+  hasPlatformSummary: boolean
+  hasPlatformStats: boolean
+  hasScopeCapabilities: boolean
+  hasScopeAvailability: boolean
+  hasScopePolicy: boolean
+}
+
+export interface SchemaCommandCatalog {
+  actions: SchemaActionCapability[]
 }
 
 export interface RollbackCommandOutput {

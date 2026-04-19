@@ -347,8 +347,38 @@
           "type": "string",
           "const": "https://api-switcher.local/schemas/public-json-output.schema.json"
         },
+        "commandCatalog": {
+          "$ref": "#/$defs/SchemaCommandCatalog"
+        },
         "schema": {
           "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionCapability": {
+      "type": "object",
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["add", "current", "export", "import", "import-apply", "list", "preview", "rollback", "schema", "use", "validate"]
+        },
+        "hasPlatformSummary": { "type": "boolean" },
+        "hasPlatformStats": { "type": "boolean" },
+        "hasScopeCapabilities": { "type": "boolean" },
+        "hasScopeAvailability": { "type": "boolean" },
+        "hasScopePolicy": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCommandCatalog": {
+      "type": "object",
+      "required": ["actions"],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionCapability" }
         }
       },
       "additionalProperties": false

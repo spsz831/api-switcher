@@ -19,6 +19,7 @@ import type {
   ListSummary,
   PreviewCommandOutput,
   RollbackCommandOutput,
+  SchemaCommandOutput,
   UseCommandOutput,
   ValidateCommandOutput,
 } from '../../src/types/command'
@@ -315,6 +316,21 @@ describe('public JSON contract types', () => {
     }>()
   })
 
+  it('用类型断言定义 schema commandCatalog 的最小公共 contract', () => {
+    expectTypeOf<SchemaCommandOutput>().toMatchTypeOf<{
+      commandCatalog?: {
+        actions: Array<{
+          action: string
+          hasPlatformSummary: boolean
+          hasPlatformStats: boolean
+          hasScopeCapabilities: boolean
+          hasScopeAvailability: boolean
+          hasScopePolicy: boolean
+        }>
+      }
+    }>()
+  })
+
   it('machine-readable schema 覆盖 import-apply action 与 success contract defs', () => {
     expect(publicJsonSchema.properties?.action).toMatchObject({
       type: 'string',
@@ -537,6 +553,24 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.PlatformExplainableSummary?.properties?.kind).toMatchObject({
       enum: expect.arrayContaining(['scope-precedence', 'multi-file-composition']),
     })
+  })
+
+  it('machine-readable schema 覆盖 schema commandCatalog defs', () => {
+    expect(publicJsonSchema.$defs?.SchemaCommandOutput?.properties?.commandCatalog).toEqual({
+      $ref: '#/$defs/SchemaCommandCatalog',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCommandCatalog?.properties?.actions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaActionCapability' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.required).toEqual(expect.arrayContaining([
+      'action',
+      'hasPlatformSummary',
+      'hasPlatformStats',
+      'hasScopeCapabilities',
+      'hasScopeAvailability',
+      'hasScopePolicy',
+    ]))
   })
 
   it('machine-readable schema 覆盖 current/list summary.platformStats def', () => {
