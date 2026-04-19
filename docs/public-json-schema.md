@@ -341,13 +341,14 @@ type SchemaCommandOutput = {
       hasScopeCapabilities: boolean
       hasScopeAvailability: boolean
       hasScopePolicy: boolean
+      primaryFields: string[]
     }>
   }
   schema: Record<string, unknown>
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，再决定是否继续展开整份 machine-readable schema。
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示机器消费优先顺序，用点路径表达 success payload 中推荐先读的字段。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 

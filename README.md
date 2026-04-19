@@ -282,7 +282,14 @@ api-switcher schema --json
           "hasPlatformStats": true,
           "hasScopeCapabilities": true,
           "hasScopeAvailability": true,
-          "hasScopePolicy": false
+          "hasScopePolicy": false,
+          "primaryFields": [
+            "summary.platformStats",
+            "current",
+            "detections",
+            "scopeCapabilities",
+            "scopeAvailability"
+          ]
         },
         {
           "action": "preview",
@@ -290,7 +297,15 @@ api-switcher schema --json
           "hasPlatformStats": true,
           "hasScopeCapabilities": true,
           "hasScopeAvailability": true,
-          "hasScopePolicy": true
+          "hasScopePolicy": true,
+          "primaryFields": [
+            "summary.platformStats",
+            "risk",
+            "preview",
+            "scopePolicy",
+            "scopeCapabilities",
+            "scopeAvailability"
+          ]
         },
         {
           "action": "schema",
@@ -298,7 +313,13 @@ api-switcher schema --json
           "hasPlatformStats": false,
           "hasScopeCapabilities": false,
           "hasScopeAvailability": false,
-          "hasScopePolicy": false
+          "hasScopePolicy": false,
+          "primaryFields": [
+            "commandCatalog",
+            "schemaVersion",
+            "schemaId",
+            "schema"
+          ]
         }
       ]
     },
@@ -310,7 +331,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，可以先消费这层，再按需展开整份 schema。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success payload 字段，可以先消费这层，再按需展开整份 schema。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 

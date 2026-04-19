@@ -358,7 +358,7 @@
     },
     "SchemaActionCapability": {
       "type": "object",
-      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy"],
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields"],
       "properties": {
         "action": {
           "type": "string",
@@ -368,7 +368,11 @@
         "hasPlatformStats": { "type": "boolean" },
         "hasScopeCapabilities": { "type": "boolean" },
         "hasScopeAvailability": { "type": "boolean" },
-        "hasScopePolicy": { "type": "boolean" }
+        "hasScopePolicy": { "type": "boolean" },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       },
       "additionalProperties": false
     },

@@ -326,6 +326,7 @@ describe('public JSON contract types', () => {
           hasScopeCapabilities: boolean
           hasScopeAvailability: boolean
           hasScopePolicy: boolean
+          primaryFields: string[]
         }>
       }
     }>()
@@ -570,7 +571,12 @@ describe('public JSON contract types', () => {
       'hasScopeCapabilities',
       'hasScopeAvailability',
       'hasScopePolicy',
+      'primaryFields',
     ]))
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
   })
 
   it('machine-readable schema 覆盖 current/list summary.platformStats def', () => {

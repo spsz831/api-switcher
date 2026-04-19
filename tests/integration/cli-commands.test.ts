@@ -233,6 +233,7 @@ describe('cli commands integration', () => {
           hasScopeCapabilities: boolean
           hasScopeAvailability: boolean
           hasScopePolicy: boolean
+          primaryFields: string[]
         }>
       }
       schema: {
@@ -257,6 +258,7 @@ describe('cli commands integration', () => {
         hasScopeCapabilities: true,
         hasScopeAvailability: true,
         hasScopePolicy: false,
+        primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
       },
       {
         action: 'preview',
@@ -265,6 +267,7 @@ describe('cli commands integration', () => {
         hasScopeCapabilities: true,
         hasScopeAvailability: true,
         hasScopePolicy: true,
+        primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
       },
       {
         action: 'schema',
@@ -273,6 +276,7 @@ describe('cli commands integration', () => {
         hasScopeCapabilities: false,
         hasScopeAvailability: false,
         hasScopePolicy: false,
+        primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
       },
     ]))
     expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')
