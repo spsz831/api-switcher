@@ -257,6 +257,198 @@ type CurrentProfileResult = {
 }
 ```
 
+完整 JSON 样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "current",
+  "data": {
+    "current": {
+      "claude": "claude-prod",
+      "gemini": "gemini-prod"
+    },
+    "detections": [
+      {
+        "platform": "claude",
+        "managed": true,
+        "matchedProfileId": "claude-prod",
+        "currentScope": "local",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["user", "project", "local"],
+          "currentScope": "local",
+          "facts": [
+            {
+              "code": "CLAUDE_SCOPE_PRECEDENCE",
+              "message": "Claude 支持 user < project < local 三层 precedence。"
+            },
+            {
+              "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+              "message": "如果存在 local，同名字段最终以 local 为准。"
+            }
+          ]
+        },
+        "targetFiles": [
+          {
+            "path": "C:/work/.claude/settings.local.json",
+            "scope": "local"
+          }
+        ],
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "local",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          }
+        ]
+      },
+      {
+        "platform": "gemini",
+        "managed": true,
+        "matchedProfileId": "gemini-prod",
+        "currentScope": "user",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "currentScope": "user",
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
+        "targetFiles": [
+          {
+            "path": "C:/Users/test/.gemini/settings.json",
+            "scope": "user"
+          }
+        ],
+        "scopeCapabilities": [
+          {
+            "scope": "system-defaults",
+            "detect": true,
+            "preview": true,
+            "use": false,
+            "rollback": false,
+            "writable": false,
+            "risk": "normal"
+          },
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "high",
+            "confirmationRequired": true
+          },
+          {
+            "scope": "system-overrides",
+            "detect": true,
+            "preview": true,
+            "use": false,
+            "rollback": false,
+            "writable": false,
+            "risk": "normal"
+          }
+        ],
+        "scopeAvailability": [
+          {
+            "scope": "user",
+            "status": "available",
+            "detected": true,
+            "writable": true,
+            "path": "C:/Users/test/.gemini/settings.json"
+          },
+          {
+            "scope": "project",
+            "status": "available",
+            "detected": true,
+            "writable": true,
+            "path": "C:/work/.gemini/settings.json"
+          }
+        ]
+      },
+      {
+        "platform": "codex",
+        "managed": true,
+        "matchedProfileId": "codex-prod",
+        "platformSummary": {
+          "kind": "multi-file-composition",
+          "composedFiles": [
+            "C:/Users/test/.codex/config.toml",
+            "C:/Users/test/.codex/auth.json"
+          ],
+          "facts": [
+            {
+              "code": "CODEX_MULTI_FILE_CONFIGURATION",
+              "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+            },
+            {
+              "code": "CODEX_CURRENT_REQUIRES_BOTH_FILES",
+              "message": "current 检测不能把单个文件视为完整状态。"
+            }
+          ]
+        },
+        "targetFiles": [
+          {
+            "path": "C:/Users/test/.codex/config.toml",
+            "role": "config"
+          },
+          {
+            "path": "C:/Users/test/.codex/auth.json",
+            "role": "auth"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "warnings": [],
+      "limitations": []
+    }
+  }
+}
+```
+
 ### list --json
 
 `list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。
@@ -275,6 +467,171 @@ type ListCommandItem = {
   platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+}
+```
+
+完整 JSON 样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "list",
+  "data": {
+    "profiles": [
+      {
+        "profile": {
+          "id": "claude-prod",
+          "platform": "claude",
+          "name": "Claude 生产",
+          "source": {
+            "apiKey": "sk-ant-123456"
+          }
+        },
+        "current": false,
+        "healthStatus": "warning",
+        "riskLevel": "medium",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["user", "project", "local"],
+          "currentScope": "local",
+          "facts": [
+            {
+              "code": "CLAUDE_SCOPE_PRECEDENCE",
+              "message": "Claude 支持 user < project < local 三层 precedence。"
+            },
+            {
+              "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+              "message": "如果存在 local，同名字段最终以 local 为准。"
+            }
+          ]
+        },
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "local",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          }
+        ]
+      },
+      {
+        "profile": {
+          "id": "gemini-prod",
+          "platform": "gemini",
+          "name": "Gemini 生产",
+          "source": {
+            "apiKey": "gm-live-123456",
+            "authType": "gemini-api-key"
+          }
+        },
+        "current": true,
+        "healthStatus": "valid",
+        "riskLevel": "low",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "currentScope": "user",
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "high",
+            "confirmationRequired": true
+          }
+        ],
+        "scopeAvailability": [
+          {
+            "scope": "user",
+            "status": "available",
+            "detected": true,
+            "writable": true,
+            "path": "C:/Users/test/.gemini/settings.json"
+          },
+          {
+            "scope": "project",
+            "status": "available",
+            "detected": true,
+            "writable": true,
+            "path": "C:/work/.gemini/settings.json"
+          }
+        ]
+      },
+      {
+        "profile": {
+          "id": "codex-prod",
+          "platform": "codex",
+          "name": "Codex 生产"
+        },
+        "current": false,
+        "healthStatus": "unknown",
+        "riskLevel": "low",
+        "platformSummary": {
+          "kind": "multi-file-composition",
+          "composedFiles": [],
+          "facts": [
+            {
+              "code": "CODEX_MULTI_FILE_CONFIGURATION",
+              "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+            },
+            {
+              "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+              "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+            }
+          ]
+        }
+      }
+    ],
+    "summary": {
+      "warnings": [],
+      "limitations": []
+    }
+  }
 }
 ```
 

@@ -314,6 +314,63 @@ api-switcher schema --schema-version --json
     "profiles": [
       {
         "profile": {
+          "id": "claude-prod",
+          "platform": "claude",
+          "name": "Claude 生产",
+          "source": {
+            "apiKey": "sk-ant-123456"
+          }
+        },
+        "current": false,
+        "healthStatus": "warning",
+        "riskLevel": "medium",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["user", "project", "local"],
+          "currentScope": "local",
+          "facts": [
+            {
+              "code": "CLAUDE_SCOPE_PRECEDENCE",
+              "message": "Claude 支持 user < project < local 三层 precedence。"
+            },
+            {
+              "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+              "message": "如果存在 local，同名字段最终以 local 为准。"
+            }
+          ]
+        },
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "local",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          }
+        ]
+      },
+      {
+        "profile": {
           "id": "gemini-prod",
           "platform": "gemini",
           "name": "Gemini 生产",
@@ -1895,9 +1952,66 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
   "action": "current",
   "data": {
     "current": {
+      "claude": "claude-prod",
       "gemini": "gemini-prod"
     },
     "detections": [
+      {
+        "platform": "claude",
+        "managed": true,
+        "matchedProfileId": "claude-prod",
+        "currentScope": "local",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["user", "project", "local"],
+          "currentScope": "local",
+          "facts": [
+            {
+              "code": "CLAUDE_SCOPE_PRECEDENCE",
+              "message": "Claude 支持 user < project < local 三层 precedence。"
+            },
+            {
+              "code": "CLAUDE_LOCAL_SCOPE_HIGHEST",
+              "message": "如果存在 local，同名字段最终以 local 为准。"
+            }
+          ]
+        },
+        "targetFiles": [
+          {
+            "path": "C:/work/.claude/settings.local.json",
+            "scope": "local"
+          }
+        ],
+        "scopeCapabilities": [
+          {
+            "scope": "user",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "project",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          },
+          {
+            "scope": "local",
+            "detect": true,
+            "preview": true,
+            "use": true,
+            "rollback": true,
+            "writable": true,
+            "risk": "normal"
+          }
+        ]
+      },
       {
         "platform": "gemini",
         "managed": true,

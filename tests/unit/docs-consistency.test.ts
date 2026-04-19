@@ -52,11 +52,16 @@ describe('docs consistency', () => {
   it('README / schema 文档对 current/list platformSummary contract 保持一致', () => {
     expect(readme).toContain('`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`')
     expect(readme).toContain('`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary`')
+    expect(readme).toContain('"action": "current"')
+    expect(readme).toContain('"action": "list"')
+    expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
     expect(readme).toContain('"code": "GEMINI_SCOPE_PRECEDENCE"')
     expect(readme).toContain('"code": "CODEX_LIST_IS_PROFILE_LEVEL"')
     expect(readme).toContain('"code": "CODEX_CURRENT_REQUIRES_BOTH_FILES"')
 
     expect(publicJsonSchemaDoc).toContain('`current/list` 会输出 `platformSummary`')
+    expect(publicJsonSchemaDoc).toContain('"action": "current"')
+    expect(publicJsonSchemaDoc).toContain('"action": "list"')
     expect(publicJsonSchemaDoc).toContain('system-defaults < user < project < system-overrides')
     expect(publicJsonSchemaDoc).toContain('user < project < local')
     expect(publicJsonSchemaDoc).toContain('multi-file-composition')
