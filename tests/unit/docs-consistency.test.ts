@@ -73,6 +73,19 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain('CODEX_MULTI_FILE_CONFIGURATION')
   })
 
+  it('schema 文档保留公共 explainable 字段总览，避免四个命令的共享字段语义漂移', () => {
+    expect(publicJsonSchemaDoc).toContain('## Common Explainable Fields')
+    expect(publicJsonSchemaDoc).toContain('### `platformSummary`')
+    expect(publicJsonSchemaDoc).toContain('### `scopeCapabilities`')
+    expect(publicJsonSchemaDoc).toContain('### `scopeAvailability`')
+    expect(publicJsonSchemaDoc).toContain('### `defaultWriteScope`')
+    expect(publicJsonSchemaDoc).toContain('### `observedAt`')
+    expect(publicJsonSchemaDoc).toContain('### Field Presence Matrix')
+    expect(publicJsonSchemaDoc).toContain('| `platformSummary` | yes | yes | yes | yes |')
+    expect(publicJsonSchemaDoc).toContain('| `scopeAvailability` | yes | yes | no | yes |')
+    expect(publicJsonSchemaDoc).toContain('| `observedAt` | no | no | no | yes |')
+  })
+
   it('README / schema 文档对 validate/export platformSummary contract 保持一致', () => {
     expect(readme).toContain('`validate --json` 与 `export --json` 也是按条目输出 `platformSummary`')
     expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')

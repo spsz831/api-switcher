@@ -204,6 +204,68 @@ type PlatformExplainableSummary = {
 | `CODEX_CURRENT_REQUIRES_BOTH_FILES` | Codex `current` | Codex `current` 检测不能把单个文件视为完整状态。 |
 | `CODEX_LIST_IS_PROFILE_LEVEL` | Codex `list` | Codex `list` 仅展示 profile 级状态，不表示单文件可独立切换。 |
 
+## Common Explainable Fields
+
+下面这组字段是 `current / list / validate / export` 共同复用的 explainable 公共层。它们服务于 UI、脚本和外部调用方，不应被理解成某个 adapter 的临时私有返回。
+
+### `platformSummary`
+
+- 作用：表达平台级 precedence 或多文件组合语义。
+- 稳定性：稳定公共 contract。
+- 出现位置：
+  - `current.detections[]`
+  - `list.profiles[]`
+  - `validate.items[]`
+  - `export.profiles[]`
+- 说明：`current` 可能带 `currentScope`；`list`/`validate`/`export` 更偏 profile 级摘要，不保证存在实时检测态。
+
+### `scopeCapabilities`
+
+- 作用：表达平台支持哪些 scope，以及每个 scope 是否可 `detect / preview / use / rollback / write`，是否高风险、是否需要确认。
+- 稳定性：稳定公共 contract。
+- 出现位置：
+  - `current.detections[]`
+  - `list.profiles[]`
+  - `validate.items[]`
+  - `export.profiles[]`
+- 说明：这是平台能力矩阵，不等同于当前机器是否真的可写入某个 scope；后者由 `scopeAvailability` 表达。
+
+### `scopeAvailability`
+
+- 作用：表达当前运行环境里某个 scope 是否被探测到、是否可写，以及关联路径。
+- 稳定性：环境观察型公共 contract。
+- 出现位置：
+  - `current.detections[]`
+  - `list.profiles[]`
+  - `export.profiles[]`
+- 说明：它是“当前机器观察结果”，不是可迁移真相。`validate` 不做本地环境探测，因此不返回这个字段。
+
+### `defaultWriteScope`
+
+- 作用：表达平台在未显式指定目标 scope 时的默认写入层。
+- 稳定性：稳定公共 contract。
+- 出现位置：
+  - `export.profiles[]`
+- 说明：当前主要用于把导出时的平台写入默认值暴露给迁移工具或外部 UI。
+
+### `observedAt`
+
+- 作用：表达 `scopeAvailability` 是在什么时间点观测到的。
+- 稳定性：环境观察型公共 contract。
+- 出现位置：
+  - `export.profiles[]`
+- 说明：必须与 `scopeAvailability` 一起理解；它只代表导出机当时的观察时间，不代表导入机或未来执行时的可用性真相。
+
+### Field Presence Matrix
+
+| Field | `current` | `list` | `validate` | `export` | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `platformSummary` | yes | yes | yes | yes | 平台 explainable 摘要主入口 |
+| `scopeCapabilities` | yes | yes | yes | yes | 平台能力矩阵 |
+| `scopeAvailability` | yes | yes | no | yes | 当前机器环境观察 |
+| `defaultWriteScope` | no | no | no | yes | 导出时暴露平台默认写入目标 |
+| `observedAt` | no | no | no | yes | 导出时记录 observation 时间 |
+
 ## Command-Specific Contracts
 
 ### schema --json
