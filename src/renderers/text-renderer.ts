@@ -574,6 +574,7 @@ function renderDetection(item: CurrentProfileResult): string[] {
     `  匹配配置: ${item.matchedProfileId ?? '未匹配'}`,
     ...(item.currentScope ? [`  当前作用域: ${item.currentScope}`] : []),
     ...renderCurrentScopeSummary(item),
+    ...renderCurrentPlatformSummary(item),
     ...renderScopeCapabilities(item.scopeCapabilities),
     ...renderScopeAvailability(item.scopeAvailability),
     ...item.targetFiles.map((target) => `  目标文件: ${target.path}`),
@@ -653,6 +654,7 @@ function renderUse(data: UseCommandOutput): string {
     `  风险等级: ${data.risk.riskLevel}`,
     `  计划备份: ${data.preview.backupPlanned ? '是' : '否'}`,
     ...(data.changedFiles.length > 0 ? ['  已变更文件:', ...data.changedFiles.map((item) => `  - ${item}`)] : ['  已变更文件: 无']),
+    ...renderUsePlatformSummary(data),
     ...renderScopeCapabilities(data.scopeCapabilities),
     ...renderScopeAvailability(data.scopeAvailability),
     ...renderFieldCollection('生效字段', data.preview.effectiveFields),
@@ -701,6 +703,7 @@ function renderRollback(data: RollbackCommandOutput): string {
   return [
     `- 备份ID: ${data.backupId}`,
     ...(data.restoredFiles.length > 0 ? ['  已恢复文件:', ...data.restoredFiles.map((item) => `  - ${item}`)] : ['  已恢复文件: 无']),
+    ...renderRollbackPlatformSummary(data),
     ...renderFailureScopePolicy(data.scopePolicy),
     ...renderScopeCapabilities(data.scopeCapabilities),
     ...renderScopeAvailability(data.scopeAvailability),
@@ -884,6 +887,7 @@ function renderList(data: ListCommandOutput): string {
       `  当前生效: ${item.current ? '是' : '否'}`,
       `  健康状态: ${item.healthStatus}`,
       `  风险等级: ${item.riskLevel}`,
+      ...renderListPlatformSummary(item),
       ...renderScopeCapabilities(item.scopeCapabilities),
       ...renderScopeAvailability(item.scopeAvailability),
     ].join('\n')).join('\n'),
@@ -930,6 +934,245 @@ function renderImportApplyPlatformSummary(data: ImportApplyCommandOutput): strin
     return [
       '平台摘要:',
       `  - Claude 当前写入目标是 ${data.appliedScope} scope。`,
+    ]
+  }
+
+  return []
+}
+
+function renderCurrentPlatformSummary(item: CurrentProfileResult): string[] {
+  if (item.platform === 'claude' && item.currentScope === 'local') {
+    return [
+      '  平台摘要:',
+      '  - Claude 当前检测到 local scope 生效。',
+      '  - local 高于 project 与 user，同名字段会以 local 为准。',
+    ]
+  }
+
+  if (item.platform === 'codex') {
+    return [
+      '  平台摘要:',
+      '  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。',
+      '  - current 检测不能把单个文件视为完整状态。',
+    ]
+  }
+
+  return []
+}
+
+function renderListPlatformSummary(item: ListCommandOutput['profiles'][number]): string[] {
+  if (item.profile.platform === 'claude') {
+    return [
+      '  平台摘要:',
+      '  - Claude 支持 user < project < local 三层 precedence。',
+      '  - 如果存在 local，同名字段最终以 local 为准。',
+    ]
+  }
+
+  if (item.profile.platform === 'codex') {
+    return [
+      '  平台摘要:',
+      '  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。',
+      '  - list 仅展示 profile 级状态，不表示单文件可独立切换。',
+    ]
+  }
+
+  return []
+}
+
+function inferScopeFromTargetFiles(targetFiles?: Array<{ scope?: string }>): string | undefined {
+  const scopedTarget = targetFiles?.find((item) => typeof item.scope === 'string' && item.scope.length > 0)
+  return scopedTarget?.scope
+}
+
+function inferPlatformFromPaths(paths: string[]): 'gemini' | 'codex' | 'claude' | undefined {
+  if (paths.some((item) => item.includes('/.gemini/') || item.includes('\\.gemini\\'))) {
+    return 'gemini'
+  }
+
+  if (paths.some((item) => item.includes('/.codex/') || item.includes('\\.codex\\'))) {
+    return 'codex'
+  }
+
+  if (paths.some((item) => item.includes('/.claude/') || item.includes('\\.claude\\'))) {
+    return 'claude'
+  }
+
+  return undefined
+}
+
+function renderUsePlatformSummary(data: UseCommandOutput): string[] {
+  const platform = data.profile.platform
+  const targetScope = inferScopeFromTargetFiles(data.preview.targetFiles)
+
+  if (platform === 'gemini' && targetScope === 'project') {
+    return [
+      '平台摘要:',
+      '  - Gemini project scope 会覆盖 user 的同名字段。',
+      '  - 当前快照要求 rollback 时必须匹配 project scope。',
+    ]
+  }
+
+  if (platform === 'codex') {
+    return [
+      '平台摘要:',
+      '  - Codex 当前按双文件事务写入 config.toml 与 auth.json。',
+      '  - config.toml 承载配置字段，auth.json 承载认证字段。',
+    ]
+  }
+
+  if (platform === 'claude' && targetScope === 'local') {
+    return [
+      '平台摘要:',
+      '  - Claude 当前写入目标是 local scope。',
+      '  - local 是当前项目最高优先级层，会直接成为最终生效值。',
+    ]
+  }
+
+  if (platform === 'claude' && targetScope) {
+    return [
+      '平台摘要:',
+      `  - Claude 当前写入目标是 ${targetScope} scope。`,
+    ]
+  }
+
+  return []
+}
+
+function renderRollbackPlatformSummary(data: RollbackCommandOutput): string[] {
+  const paths = [
+    ...data.restoredFiles,
+    ...(data.rollback?.managedBoundaries ?? []).flatMap((item) => [
+      ...(item.target ? [item.target] : []),
+      ...((Array.isArray(item.targets) ? item.targets : [])),
+    ]),
+  ]
+  const platform = inferPlatformFromPaths(paths)
+  const targetScope = data.scopePolicy?.resolvedScope ?? data.scopePolicy?.requestedScope
+
+  if (platform === 'gemini' && targetScope === 'project') {
+    return [
+      '平台摘要:',
+      '  - 当前正在恢复 Gemini project scope 快照。',
+      '  - project scope 快照只能按同一 scope 恢复。',
+    ]
+  }
+
+  if (platform === 'codex') {
+    return [
+      '平台摘要:',
+      '  - Codex 当前按双文件事务恢复 config.toml 与 auth.json。',
+      '  - config.toml 恢复配置字段，auth.json 恢复认证字段。',
+    ]
+  }
+
+  if (platform === 'claude' && targetScope === 'local') {
+    return [
+      '平台摘要:',
+      '  - Claude 当前恢复的是 local scope 快照。',
+      '  - local 恢复后会重新成为当前项目最高优先级层。',
+    ]
+  }
+
+  if (platform === 'claude' && targetScope) {
+    return [
+      '平台摘要:',
+      `  - Claude 当前恢复的是 ${targetScope} scope 快照。`,
+    ]
+  }
+
+  return []
+}
+
+function extractFailurePaths(details: unknown): string[] {
+  if (!isRecord(details)) {
+    return []
+  }
+
+  const targetFiles = Array.isArray(details.targetFiles)
+    ? details.targetFiles.flatMap((item) => {
+      if (!isRecord(item) || typeof item.path !== 'string') {
+        return []
+      }
+      return [item.path]
+    })
+    : []
+
+  const managedBoundaries = Array.isArray(details.managedBoundaries)
+    ? details.managedBoundaries.flatMap((item) => {
+      if (!isRecord(item)) {
+        return []
+      }
+      return [
+        ...(typeof item.target === 'string' ? [item.target] : []),
+        ...(Array.isArray(item.targets) ? item.targets.filter((value): value is string => typeof value === 'string') : []),
+      ]
+    })
+    : []
+
+  const scopeAvailability = Array.isArray(details.scopeAvailability)
+    ? details.scopeAvailability.flatMap((item) => {
+      if (!isRecord(item) || typeof item.path !== 'string') {
+        return []
+      }
+      return [item.path]
+    })
+    : []
+
+  return [...targetFiles, ...managedBoundaries, ...scopeAvailability]
+}
+
+function renderFailurePlatformSummary(result: CommandResult): string[] {
+  const details = result.error?.details
+  const scopePolicy = parseConfirmationRequiredDetails(details)?.scopePolicy ?? parseScopePolicyDetails(details)?.scopePolicy
+  const targetScope = scopePolicy?.resolvedScope ?? scopePolicy?.requestedScope
+  const platform = inferPlatformFromPaths(extractFailurePaths(details))
+
+  if (result.action === 'use' && platform === 'gemini' && targetScope === 'project') {
+    return [
+      '平台摘要:',
+      '  - Gemini project scope 会覆盖 user 的同名字段。',
+      '  - 当前操作要求先确认高风险 project scope 写入。',
+    ]
+  }
+
+  if (result.action === 'use' && platform === 'codex') {
+    return [
+      '平台摘要:',
+      '  - Codex 当前会成组写入 config.toml 与 auth.json。',
+      '  - 任一文件失败都不应被理解为单文件独立成功。',
+    ]
+  }
+
+  if (result.action === 'rollback' && platform === 'claude' && targetScope === 'local') {
+    return [
+      '平台摘要:',
+      '  - Claude 当前恢复目标是 local scope。',
+      '  - local 恢复失败后，当前项目不会获得这层预期覆盖。',
+    ]
+  }
+
+  if (result.action === 'import-apply' && platform === 'gemini' && targetScope === 'project') {
+    return [
+      '平台摘要:',
+      '  - Gemini project scope 会覆盖 user 的同名字段。',
+      '  - 当前导入应用要求先确认高风险 project scope 写入。',
+    ]
+  }
+
+  if (result.action === 'import-apply' && platform === 'codex') {
+    return [
+      '平台摘要:',
+      '  - Codex 当前会成组写入 config.toml 与 auth.json。',
+      '  - 任一文件失败都不应被理解为单文件独立成功。',
+    ]
+  }
+
+  if (result.action === 'import-apply' && platform === 'claude' && targetScope === 'local') {
+    return [
+      '平台摘要:',
+      '  - Claude 当前写入目标是 local scope。',
+      '  - local scope 不可用时，本次导入不会获得这层预期覆盖。',
     ]
   }
 
@@ -995,6 +1238,7 @@ function renderFailure(result: CommandResult): string {
   return [
     result.error?.message ?? '未知错误',
     ...(confirmationDetails ? renderRiskSummary(confirmationDetails.risk) : []),
+    ...renderFailurePlatformSummary(result),
     ...renderFailureScopePolicy(confirmationDetails?.scopePolicy ?? scopePolicyDetails?.scopePolicy),
     ...renderScopeCapabilities(
       confirmationDetails?.scopeCapabilities ?? scopeCapabilityDetails?.scopeCapabilities,

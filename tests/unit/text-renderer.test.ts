@@ -209,6 +209,7 @@ const claudeScopeCapabilities = [
 const currentPayload: CurrentCommandOutput = {
   current: {
     claude: 'claude-prod',
+    codex: 'codex-prod',
     gemini: 'gemini-prod',
   },
   lastSwitch: {
@@ -308,6 +309,161 @@ const currentPayload: CurrentCommandOutput = {
           code: 'env-first-limitation',
           level: 'limitation',
           message: 'GEMINI_API_KEY 仍需通过环境变量生效。',
+        },
+      ],
+    },
+    {
+      platform: 'claude',
+      managed: true,
+      matchedProfileId: 'claude-prod',
+      targetFiles: [
+        {
+          path: 'C:/Users/test/.claude/settings.json',
+          format: 'json',
+          exists: true,
+          managedScope: 'partial-fields',
+          scope: 'project',
+        },
+        {
+          path: 'C:/Users/test/.claude/settings.local.json',
+          format: 'json',
+          exists: true,
+          managedScope: 'partial-fields',
+          scope: 'local',
+        },
+      ],
+      currentScope: 'local',
+      scopeCapabilities: claudeScopeCapabilities,
+      scopeAvailability: [
+        {
+          scope: 'user',
+          status: 'available',
+          detected: true,
+          writable: true,
+          path: 'C:/Users/test/.claude/settings.json',
+        },
+        {
+          scope: 'project',
+          status: 'available',
+          detected: true,
+          writable: true,
+          path: 'E:/repo/.claude/settings.json',
+        },
+        {
+          scope: 'local',
+          status: 'available',
+          detected: true,
+          writable: true,
+          path: 'C:/Users/test/.claude/settings.local.json',
+        },
+      ],
+      effectiveConfig: {
+        stored: [
+          {
+            key: 'ANTHROPIC_AUTH_TOKEN',
+            value: 'sk-local-123',
+            maskedValue: 'sk-l***23',
+            source: 'stored',
+            scope: 'local',
+            secret: true,
+          },
+        ],
+        effective: [
+          {
+            key: 'ANTHROPIC_AUTH_TOKEN',
+            value: 'sk-local-123',
+            maskedValue: 'sk-l***23',
+            source: 'scope-local',
+            scope: 'local',
+            secret: true,
+          },
+        ],
+        overrides: [],
+        shadowedKeys: [],
+      },
+      managedBoundaries: [
+        {
+          target: 'C:/Users/test/.claude/settings.local.json',
+          type: 'scope-aware',
+          managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+          notes: ['当前生效来源为 Claude local scope。'],
+        },
+      ],
+    },
+    {
+      platform: 'codex',
+      managed: true,
+      matchedProfileId: 'codex-prod',
+      targetFiles: [
+        {
+          path: 'C:/Users/test/.codex/config.toml',
+          format: 'toml',
+          exists: true,
+          managedScope: 'multi-file',
+          role: 'config',
+          managedKeys: ['base_url'],
+        },
+        {
+          path: 'C:/Users/test/.codex/auth.json',
+          format: 'json',
+          exists: true,
+          managedScope: 'multi-file',
+          role: 'auth',
+          managedKeys: ['OPENAI_API_KEY'],
+        },
+      ],
+      effectiveConfig: {
+        stored: [
+          {
+            key: 'base_url',
+            value: 'https://api.openai.com/v1',
+            maskedValue: 'https://api.openai.com/v1',
+            source: 'stored',
+            secret: false,
+          },
+        ],
+        effective: [
+          {
+            key: 'base_url',
+            value: 'https://api.openai.com/v1',
+            maskedValue: 'https://api.openai.com/v1',
+            source: 'stored',
+            secret: false,
+          },
+          {
+            key: 'OPENAI_API_KEY',
+            value: '<SECRET>',
+            maskedValue: 'sk-o***99',
+            source: 'stored',
+            secret: true,
+          },
+        ],
+        overrides: [],
+        shadowedKeys: [],
+      },
+      managedBoundaries: [
+        {
+          target: 'C:/Users/test/.codex/config.toml',
+          type: 'managed-fields',
+          managedKeys: ['base_url'],
+        },
+        {
+          target: 'C:/Users/test/.codex/auth.json',
+          type: 'managed-fields',
+          managedKeys: ['OPENAI_API_KEY'],
+        },
+        {
+          type: 'multi-file-transaction',
+          managedKeys: [],
+          notes: ['Codex current 检测需要同时结合 config.toml 与 auth.json。'],
+        },
+      ],
+      secretReferences: [
+        {
+          key: 'OPENAI_API_KEY',
+          source: 'inline',
+          present: true,
+          maskedValue: 'sk-o***99',
         },
       ],
     },
@@ -584,6 +740,83 @@ const noChangesUsePayload: UseCommandOutput = {
     ...previewPayload.preview,
     noChanges: true,
   },
+}
+
+const geminiProjectUsePayload: UseCommandOutput = {
+  ...usePayload,
+  backupId: 'snapshot-gemini-project-001',
+  preview: {
+    ...usePayload.preview,
+    targetFiles: [
+      {
+        path: 'E:/repo/.gemini/settings.json',
+        format: 'json',
+        exists: true,
+        managedScope: 'partial-fields',
+        scope: 'project',
+      },
+    ],
+    effectiveConfig: {
+      stored: [
+        {
+          key: 'enforcedAuthType',
+          value: 'oauth-personal',
+          maskedValue: 'oauth-personal',
+          source: 'stored',
+          scope: 'project',
+          secret: false,
+        },
+      ],
+      effective: [
+        {
+          key: 'enforcedAuthType',
+          value: 'gemini-api-key',
+          maskedValue: 'gemini-api-key',
+          source: 'effective',
+          scope: 'project',
+          secret: false,
+        },
+        {
+          key: 'GEMINI_API_KEY',
+          value: 'gm-live-123456',
+          maskedValue: 'gm-l***56',
+          source: 'effective',
+          scope: 'project',
+          secret: true,
+        },
+      ],
+      overrides: [
+        {
+          key: 'GEMINI_API_KEY',
+          kind: 'env',
+          source: 'env',
+          message: '最终生效的 API key 取决于环境变量，而不是 settings.json。',
+        },
+      ],
+      shadowedKeys: [],
+    },
+    managedBoundaries: [
+      {
+        target: 'E:/repo/.gemini/settings.json',
+        type: 'managed-fields',
+        managedKeys: ['enforcedAuthType'],
+        preservedKeys: ['ui'],
+        notes: ['当前写入目标为 Gemini project 级配置文件。'],
+      },
+    ],
+    diffSummary: [
+      {
+        path: 'E:/repo/.gemini/settings.json',
+        changedKeys: ['enforcedAuthType'],
+        hasChanges: true,
+      },
+    ],
+  },
+  summary: {
+    warnings: ['Gemini project scope 会覆盖 user 同名字段。'],
+    limitations: ['project scope 快照只能按同一 scope 回滚。'],
+  },
+  changedFiles: ['E:/repo/.gemini/settings.json'],
 }
 
 const rollbackPayload: RollbackCommandOutput = {
@@ -1208,9 +1441,21 @@ const listPayload: ListCommandOutput = {
       scopeCapabilities: geminiScopeCapabilities,
       scopeAvailability: geminiScopeAvailability,
     },
+    {
+      profile: {
+        id: 'codex-prod',
+        name: 'Codex 生产',
+        platform: 'codex',
+        source: {},
+        apply: {},
+      },
+      current: false,
+      healthStatus: 'valid',
+      riskLevel: 'medium',
+    },
   ],
   summary: {
-    warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
+    warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。', 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
 }
@@ -1431,6 +1676,118 @@ const claudeImportApplyPayload: ImportApplyCommandOutput = {
   },
 }
 
+const codexUsePayload: UseCommandOutput = {
+  profile: codexImportApplyPayload.importedProfile,
+  backupId: 'snapshot-codex-use-001',
+  preview: codexImportApplyPayload.preview,
+  risk: codexImportApplyPayload.risk,
+  summary: codexImportApplyPayload.summary,
+  changedFiles: codexImportApplyPayload.changedFiles,
+  noChanges: false,
+}
+
+const claudeUsePayload: UseCommandOutput = {
+  profile: claudeImportApplyPayload.importedProfile,
+  backupId: 'snapshot-claude-use-001',
+  preview: claudeImportApplyPayload.preview,
+  risk: claudeImportApplyPayload.risk,
+  summary: claudeImportApplyPayload.summary,
+  changedFiles: claudeImportApplyPayload.changedFiles,
+  noChanges: false,
+  scopeCapabilities: claudeImportApplyPayload.scopeCapabilities,
+}
+
+const codexRollbackPayload: RollbackCommandOutput = {
+  backupId: 'snapshot-codex-001',
+  restoredFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+  rollback: {
+    ok: true,
+    backupId: 'snapshot-codex-001',
+    restoredFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+    managedBoundaries: [
+      {
+        type: 'managed-fields',
+        target: 'C:/Users/test/.codex/config.toml',
+        managedKeys: ['base_url'],
+      },
+      {
+        type: 'managed-fields',
+        target: 'C:/Users/test/.codex/auth.json',
+        managedKeys: ['OPENAI_API_KEY'],
+      },
+      {
+        type: 'multi-file-transaction',
+        targets: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+        managedKeys: [],
+        notes: ['Codex 回滚会同时恢复 config.toml 与 auth.json。'],
+      },
+    ],
+    warnings: [
+      {
+        code: 'rollback-warning',
+        level: 'warning',
+        message: '已按快照同时恢复 Codex 双文件。',
+      },
+    ],
+    limitations: [
+      {
+        code: 'rollback-limitation',
+        level: 'limitation',
+        message: '回滚仅恢复快照覆盖的双文件。',
+      },
+    ],
+  },
+  summary: {
+    warnings: ['已按快照同时恢复 Codex 双文件。'],
+    limitations: ['回滚仅恢复快照覆盖的双文件。'],
+  },
+}
+
+const claudeRollbackPayload: RollbackCommandOutput = {
+  backupId: 'snapshot-claude-001',
+  restoredFiles: ['C:/Users/test/.claude/settings.local.json'],
+  scopePolicy: {
+    requestedScope: 'local',
+    resolvedScope: 'local',
+    defaultScope: 'project',
+    explicitScope: true,
+    highRisk: false,
+    rollbackScopeMatchRequired: false,
+  },
+  rollback: {
+    ok: true,
+    backupId: 'snapshot-claude-001',
+    restoredFiles: ['C:/Users/test/.claude/settings.local.json'],
+    managedBoundaries: [
+      {
+        type: 'scope-aware',
+        target: 'C:/Users/test/.claude/settings.local.json',
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        notes: ['当前恢复目标为 Claude 本地级配置文件。'],
+      },
+    ],
+    warnings: [
+      {
+        code: 'rollback-warning',
+        level: 'warning',
+        message: '已恢复 Claude local scope 快照。',
+      },
+    ],
+    limitations: [
+      {
+        code: 'rollback-limitation',
+        level: 'limitation',
+        message: '回滚仅恢复该 scope 下的托管字段。',
+      },
+    ],
+  },
+  summary: {
+    warnings: ['已恢复 Claude local scope 快照。'],
+    limitations: ['回滚仅恢复该 scope 下的托管字段。'],
+  },
+  scopeCapabilities: claudeScopeCapabilities,
+}
+
 const genericSuccessResult: CommandResult<{ foo: string }> = {
   ok: true,
   action: 'other',
@@ -1472,6 +1829,25 @@ const confirmationFailureResult: CommandResult = {
     },
   },
 }
+const codexConfirmationFailureResult: CommandResult = {
+  ok: false,
+  action: 'use',
+  warnings: ['Codex 将以双文件事务方式同时更新 config.toml 与 auth.json。'],
+  limitations: ['当前失败后不会只保留单文件部分写入。'],
+  error: {
+    code: 'CONFIRMATION_REQUIRED',
+    message: 'Codex 切换需要确认。将同时写入 config.toml 与 auth.json。',
+    details: {
+      risk: {
+        allowed: false,
+        riskLevel: 'medium',
+        reasons: ['Codex 当前会成组写入 config.toml 与 auth.json。'],
+        limitations: ['当前失败后不会只保留单文件部分写入。'],
+      },
+      targetFiles: codexImportApplyPayload.preview.targetFiles,
+    },
+  },
+}
 const useValidationFailureResult: CommandResult = {
   ok: false,
   action: 'use',
@@ -1491,6 +1867,34 @@ const validateFailureWithDataResult: CommandResult<ValidateCommandOutput> = {
   ok: false,
   action: 'validate',
   data: validatePayload,
+}
+const claudeRollbackFailureResult: CommandResult = {
+  ok: false,
+  action: 'rollback',
+  warnings: ['Claude local scope 恢复失败后，当前项目仍可能继续沿用原有更高优先级配置。'],
+  limitations: ['请先确认本地级配置文件可写后再重试。'],
+  error: {
+    code: 'ROLLBACK_FAILED',
+    message: 'Claude local scope 快照恢复失败。',
+    details: {
+      scopePolicy: {
+        requestedScope: 'local',
+        resolvedScope: 'local',
+        defaultScope: 'project',
+        explicitScope: true,
+        highRisk: false,
+        rollbackScopeMatchRequired: false,
+      },
+      scopeCapabilities: claudeScopeCapabilities,
+      managedBoundaries: [
+        {
+          type: 'scope-aware',
+          target: 'C:/Users/test/.claude/settings.local.json',
+          managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        },
+      ],
+    },
+  },
 }
 const malformedConfirmationFailureResult: CommandResult = {
   ok: false,
@@ -1704,6 +2108,57 @@ const importApplyConfirmationFailureResult: CommandResult = {
     },
   },
 }
+const codexImportApplyConfirmationFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['Codex 导入应用会以双文件事务同时写入 config.toml 与 auth.json。'],
+  limitations: ['需要把这两个文件视为同一组变更。'],
+  error: {
+    code: 'CONFIRMATION_REQUIRED',
+    message: 'Codex 导入应用需要确认。',
+    details: {
+      risk: {
+        allowed: false,
+        riskLevel: 'medium',
+        reasons: ['Codex 导入应用会成组写入 config.toml 与 auth.json。'],
+        limitations: ['需要把这两个文件视为同一组变更。'],
+      },
+      targetFiles: codexImportApplyPayload.preview.targetFiles,
+    },
+  },
+}
+const claudeImportApplyScopeUnavailableFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['当前本地 observation 显示目标 local scope 不可写。'],
+  limitations: ['请先修复 local 配置文件路径或权限后再重试。'],
+  error: {
+    code: 'IMPORT_SCOPE_UNAVAILABLE',
+    message: 'Claude local scope 不可用：目标配置文件不可写。',
+    details: {
+      scopePolicy: {
+        requestedScope: 'local',
+        resolvedScope: 'local',
+        defaultScope: 'project',
+        explicitScope: true,
+        highRisk: false,
+        rollbackScopeMatchRequired: false,
+      },
+      scopeCapabilities: claudeScopeCapabilities,
+      scopeAvailability: [
+        {
+          scope: 'local',
+          status: 'unavailable',
+          detected: true,
+          writable: false,
+          path: 'C:/Users/test/.claude/settings.local.json',
+          reasonCode: 'TARGET_NOT_WRITABLE',
+          reason: 'Claude local scope 不可用：目标配置文件不可写。',
+        },
+      ],
+    },
+  },
+}
 
 const outputCurrent = renderText(createCurrentResult(currentPayload))
 const outputEmptyCurrent = renderText(createCurrentResult(emptyCurrentPayload))
@@ -1714,8 +2169,13 @@ const outputPreviewValidationError = renderText(createPreviewResult(emptyValidat
 const outputPreviewValidationLimitations = renderText(createPreviewResult(validationPreviewPayloadWithLimitations))
 const outputUse = renderText(createUseResult(usePayload))
 const outputUseNoChanges = renderText(createUseResult(noChangesUsePayload))
+const outputGeminiProjectUse = renderText(createUseResult(geminiProjectUsePayload))
+const outputCodexUse = renderText(createUseResult(codexUsePayload))
+const outputClaudeUse = renderText(createUseResult(claudeUsePayload))
 const outputRollback = renderText(createRollbackResult(rollbackPayload))
 const outputRollbackEmpty = renderText(createRollbackResult(emptyRollbackPayload))
+const outputCodexRollback = renderText(createRollbackResult(codexRollbackPayload))
+const outputClaudeRollback = renderText(createRollbackResult(claudeRollbackPayload))
 const outputValidate = renderText(createValidateResult(validatePayload))
 const outputValidateItemLimitations = renderText(createValidateResult(validatePayloadWithIssueLimitations))
 const outputEmptyValidate = renderText(createValidateResult(emptyValidatePayload))
@@ -1733,12 +2193,16 @@ const outputGenericSuccess = renderText(genericSuccessResult)
 const outputGenericSuccessWithoutData = renderText(genericSuccessWithoutData)
 const outputGenericFailure = renderText(genericFailureResult)
 const outputConfirmationFailure = renderText(confirmationFailureResult)
+const outputCodexConfirmationFailure = renderText(codexConfirmationFailureResult)
 const outputUseValidationFailure = renderText(useValidationFailureResult)
 const outputPreviewFailureWithData = renderText(previewFailureWithDataResult)
 const outputValidateFailureWithData = renderText(validateFailureWithDataResult)
+const outputClaudeRollbackFailure = renderText(claudeRollbackFailureResult)
 const outputImportApplyNotReadyFailure = renderText(importApplyNotReadyFailureResult)
 const outputImportApplyScopeUnavailableFailure = renderText(importApplyScopeUnavailableFailureResult)
 const outputImportApplyConfirmationFailure = renderText(importApplyConfirmationFailureResult)
+const outputCodexImportApplyConfirmationFailure = renderText(codexImportApplyConfirmationFailureResult)
+const outputClaudeImportApplyScopeUnavailableFailure = renderText(claudeImportApplyScopeUnavailableFailureResult)
 const outputMalformedConfirmationFailure = renderText(malformedConfirmationFailureResult)
 const outputMalformedImportApplyNotReadyFailure = renderText(malformedImportApplyNotReadyFailureResult)
 const outputMalformedImportApplyScopeUnavailableFailure = renderText(malformedImportApplyScopeUnavailableFailureResult)
@@ -1748,6 +2212,7 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('[current] 成功')
     expect(outputCurrent).toContain('当前 state:')
     expect(outputCurrent).toContain('- claude: claude-prod')
+    expect(outputCurrent).toContain('- codex: codex-prod')
     expect(outputCurrent).toContain('- gemini: gemini-prod')
     expect(outputCurrent).toContain('最近切换: gemini / gemini-prod / success')
     expect(outputCurrent).toContain('检测结果:')
@@ -1784,6 +2249,17 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('    托管字段: enforcedAuthType')
     expect(outputCurrent).toContain('    保留字段: ui.theme')
     expect(outputCurrent).toContain('    说明: Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。')
+    expect(outputCurrent).toContain('- 平台: claude')
+    expect(outputCurrent).toContain('  当前作用域: local')
+    expect(outputCurrent).toContain('  - 生效优先级: user < project < local')
+    expect(outputCurrent).toContain('  - Claude 当前检测到 local scope 生效。')
+    expect(outputCurrent).toContain('  - local 高于 project 与 user，同名字段会以 local 为准。')
+    expect(outputCurrent).toContain('- 平台: codex')
+    expect(outputCurrent).toContain('  - 类型: multi-file-transaction')
+    expect(outputCurrent).toContain('    说明: Codex current 检测需要同时结合 config.toml 与 auth.json。')
+    expect(outputCurrent).toContain('  - OPENAI_API_KEY: sk-o***99 (source=inline, present=yes)')
+    expect(outputCurrent).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
+    expect(outputCurrent).toContain('  - current 检测不能把单个文件视为完整状态。')
     expect(outputCurrent).toContain('附加提示:')
     expect(outputCurrent).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputCurrent).toContain('限制说明:')
@@ -1894,6 +2370,30 @@ describe('text renderer', () => {
     expect(outputUse).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
+  it('渲染 use 结果时会为 Gemini success 输出 project 覆盖与回滚约束摘要', () => {
+    expect(outputGeminiProjectUse).toContain('[use] 成功')
+    expect(outputGeminiProjectUse).toContain('- 配置: gemini-prod (gemini)')
+    expect(outputGeminiProjectUse).toContain('平台摘要:')
+    expect(outputGeminiProjectUse).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
+    expect(outputGeminiProjectUse).toContain('  - 当前快照要求 rollback 时必须匹配 project scope。')
+  })
+
+  it('渲染 use 结果时会为 Codex success 输出双文件事务摘要', () => {
+    expect(outputCodexUse).toContain('[use] 成功')
+    expect(outputCodexUse).toContain('- 配置: codex-prod (codex)')
+    expect(outputCodexUse).toContain('平台摘要:')
+    expect(outputCodexUse).toContain('  - Codex 当前按双文件事务写入 config.toml 与 auth.json。')
+    expect(outputCodexUse).toContain('  - config.toml 承载配置字段，auth.json 承载认证字段。')
+  })
+
+  it('渲染 use 结果时会为 Claude local success 输出最高优先级作用域摘要', () => {
+    expect(outputClaudeUse).toContain('[use] 成功')
+    expect(outputClaudeUse).toContain('- 配置: claude-prod (claude)')
+    expect(outputClaudeUse).toContain('平台摘要:')
+    expect(outputClaudeUse).toContain('  - Claude 当前写入目标是 local scope。')
+    expect(outputClaudeUse).toContain('  - local 是当前项目最高优先级层，会直接成为最终生效值。')
+  })
+
   it('use 无变化时显示未创建备份与无变更文件', () => {
     expect(outputUseNoChanges).toContain('  备份ID: 未创建')
     expect(outputUseNoChanges).toContain('  无变更: 是')
@@ -1934,6 +2434,28 @@ describe('text renderer', () => {
     expect(outputRollback).toContain('  - 已恢复快照中的托管文件')
     expect(outputRollback).toContain('限制说明:')
     expect(outputRollback).toContain('  - 回滚仅恢复快照覆盖的托管文件。')
+  })
+
+  it('渲染 rollback 结果时会为 Gemini project success 输出 scope 匹配约束摘要', () => {
+    expect(outputRollback).toContain('平台摘要:')
+    expect(outputRollback).toContain('  - 当前正在恢复 Gemini project scope 快照。')
+    expect(outputRollback).toContain('  - project scope 快照只能按同一 scope 恢复。')
+  })
+
+  it('渲染 rollback 结果时会为 Codex success 输出双文件恢复摘要', () => {
+    expect(outputCodexRollback).toContain('[rollback] 成功')
+    expect(outputCodexRollback).toContain('- 备份ID: snapshot-codex-001')
+    expect(outputCodexRollback).toContain('平台摘要:')
+    expect(outputCodexRollback).toContain('  - Codex 当前按双文件事务恢复 config.toml 与 auth.json。')
+    expect(outputCodexRollback).toContain('  - config.toml 恢复配置字段，auth.json 恢复认证字段。')
+  })
+
+  it('渲染 rollback 结果时会为 Claude local success 输出 local 恢复语义摘要', () => {
+    expect(outputClaudeRollback).toContain('[rollback] 成功')
+    expect(outputClaudeRollback).toContain('- 备份ID: snapshot-claude-001')
+    expect(outputClaudeRollback).toContain('平台摘要:')
+    expect(outputClaudeRollback).toContain('  - Claude 当前恢复的是 local scope 快照。')
+    expect(outputClaudeRollback).toContain('  - local 恢复后会重新成为当前项目最高优先级层。')
   })
 
   it('rollback 无恢复文件时输出无', () => {
@@ -2160,8 +2682,15 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - project: detect/current=yes, preview/effective=yes, use/write=yes, rollback=yes, risk=high, requires --force')
     expect(outputList).toContain('  作用域可用性:')
     expect(outputList).toContain('  - project: status=unresolved, detected=no, writable=no')
+    expect(outputList).toContain('  - Claude 支持 user < project < local 三层 precedence。')
+    expect(outputList).toContain('  - 如果存在 local，同名字段最终以 local 为准。')
+    expect(outputList).toContain('- codex-prod (codex)')
+    expect(outputList).toContain('  名称: Codex 生产')
+    expect(outputList).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
+    expect(outputList).toContain('  - list 仅展示 profile 级状态，不表示单文件可独立切换。')
     expect(outputList).toContain('附加提示:')
     expect(outputList).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(outputList).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
     expect(outputList).toContain('限制说明:')
     expect(outputList).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
@@ -2205,6 +2734,28 @@ describe('text renderer', () => {
     expect(outputConfirmationFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
   })
 
+  it('use confirmation 失败会为 Gemini project 输出平台风险摘要', () => {
+    expect(outputConfirmationFailure).toContain('平台摘要:')
+    expect(outputConfirmationFailure).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
+    expect(outputConfirmationFailure).toContain('  - 当前操作要求先确认高风险 project scope 写入。')
+  })
+
+  it('use confirmation 失败会为 Codex 输出双文件事务失败摘要', () => {
+    expect(outputCodexConfirmationFailure).toContain('[use] 失败')
+    expect(outputCodexConfirmationFailure).toContain('Codex 切换需要确认。将同时写入 config.toml 与 auth.json。')
+    expect(outputCodexConfirmationFailure).toContain('平台摘要:')
+    expect(outputCodexConfirmationFailure).toContain('  - Codex 当前会成组写入 config.toml 与 auth.json。')
+    expect(outputCodexConfirmationFailure).toContain('  - 任一文件失败都不应被理解为单文件独立成功。')
+  })
+
+  it('rollback 失败会为 Claude local 输出恢复语义摘要', () => {
+    expect(outputClaudeRollbackFailure).toContain('[rollback] 失败')
+    expect(outputClaudeRollbackFailure).toContain('Claude local scope 快照恢复失败。')
+    expect(outputClaudeRollbackFailure).toContain('平台摘要:')
+    expect(outputClaudeRollbackFailure).toContain('  - Claude 当前恢复目标是 local scope。')
+    expect(outputClaudeRollbackFailure).toContain('  - local 恢复失败后，当前项目不会获得这层预期覆盖。')
+  })
+
   it('import apply not ready 失败会输出 previewDecision 与本地 observation 语境', () => {
     expect(outputImportApplyNotReadyFailure).toContain('[import-apply] 失败')
     expect(outputImportApplyNotReadyFailure).toContain('当前 import preview 结果不允许进入 apply。')
@@ -2240,6 +2791,29 @@ describe('text renderer', () => {
     expect(outputImportApplyScopeUnavailableFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
     expect(outputImportApplyScopeUnavailableFailure).toContain('    原因代码: PROJECT_ROOT_UNRESOLVED')
     expect(outputImportApplyScopeUnavailableFailure).not.toContain('--force')
+  })
+
+  it('import apply Gemini confirmation 失败会输出 project 风险平台摘要', () => {
+    expect(outputImportApplyConfirmationFailure).toContain('[import-apply] 失败')
+    expect(outputImportApplyConfirmationFailure).toContain('平台摘要:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 当前导入应用要求先确认高风险 project scope 写入。')
+  })
+
+  it('import apply Codex confirmation 失败会输出双文件事务平台摘要', () => {
+    expect(outputCodexImportApplyConfirmationFailure).toContain('[import-apply] 失败')
+    expect(outputCodexImportApplyConfirmationFailure).toContain('Codex 导入应用需要确认。')
+    expect(outputCodexImportApplyConfirmationFailure).toContain('平台摘要:')
+    expect(outputCodexImportApplyConfirmationFailure).toContain('  - Codex 当前会成组写入 config.toml 与 auth.json。')
+    expect(outputCodexImportApplyConfirmationFailure).toContain('  - 任一文件失败都不应被理解为单文件独立成功。')
+  })
+
+  it('import apply Claude scope unavailable 失败会输出目标作用域平台摘要', () => {
+    expect(outputClaudeImportApplyScopeUnavailableFailure).toContain('[import-apply] 失败')
+    expect(outputClaudeImportApplyScopeUnavailableFailure).toContain('Claude local scope 不可用：目标配置文件不可写。')
+    expect(outputClaudeImportApplyScopeUnavailableFailure).toContain('平台摘要:')
+    expect(outputClaudeImportApplyScopeUnavailableFailure).toContain('  - Claude 当前写入目标是 local scope。')
+    expect(outputClaudeImportApplyScopeUnavailableFailure).toContain('  - local scope 不可用时，本次导入不会获得这层预期覆盖。')
   })
 
   it('import apply confirmation required 失败会输出 risk 与作用域细节', () => {
