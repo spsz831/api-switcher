@@ -899,11 +899,48 @@ function renderSchema(data: SchemaCommandOutput): string {
   ].join('\n')
 }
 
+function renderImportApplyPlatformSummary(data: ImportApplyCommandOutput): string[] {
+  const platform = data.importedProfile.platform
+
+  if (platform === 'gemini' && data.appliedScope === 'project') {
+    return [
+      '平台摘要:',
+      '  - Gemini project scope 会覆盖 user 的同名字段。',
+      `  - 当前快照要求 rollback 时必须匹配 ${data.appliedScope} scope。`,
+    ]
+  }
+
+  if (platform === 'codex') {
+    return [
+      '平台摘要:',
+      '  - Codex 当前按双文件事务写入 config.toml 与 auth.json。',
+      '  - config.toml 承载配置字段，auth.json 承载认证字段。',
+    ]
+  }
+
+  if (platform === 'claude' && data.appliedScope === 'local') {
+    return [
+      '平台摘要:',
+      '  - Claude 当前写入目标是 local scope。',
+      '  - local 是当前项目最高优先级层，会直接成为最终生效值。',
+    ]
+  }
+
+  if (platform === 'claude' && data.appliedScope) {
+    return [
+      '平台摘要:',
+      `  - Claude 当前写入目标是 ${data.appliedScope} scope。`,
+    ]
+  }
+
+  return []
+}
+
 function renderImportApply(data: ImportApplyCommandOutput): string {
   return [
     `导入文件: ${data.sourceFile}`,
     `导入配置: ${data.importedProfile.id} (${data.importedProfile.platform})`,
-    `应用作用域: ${data.appliedScope} scope`,
+    ...(data.appliedScope ? [`应用作用域: ${data.appliedScope} scope`] : []),
     `备份ID: ${data.backupId}`,
     ...renderFailureScopePolicy(data.scopePolicy),
     ...renderScopeCapabilities(data.scopeCapabilities),
@@ -923,6 +960,7 @@ function renderImportApply(data: ImportApplyCommandOutput): string {
     ...renderSecretReferences(data.preview.secretReferences),
     ...renderDiffSummary(data.preview.diffSummary),
     ...(data.changedFiles.length > 0 ? ['  已变更文件:', ...data.changedFiles.map((item) => `  - ${item}`)] : ['  已变更文件: 无']),
+    ...renderImportApplyPlatformSummary(data),
     ...renderValidationIssues('预览警告', data.preview.warnings),
     ...renderValidationIssues('预览限制', data.preview.limitations),
     ...renderWarnings('附加提示:', data.summary.warnings),

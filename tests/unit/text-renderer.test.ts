@@ -1258,6 +1258,179 @@ const importApplyPayload: ImportApplyCommandOutput = {
   },
 }
 
+const codexImportApplyPayload: ImportApplyCommandOutput = {
+  sourceFile: 'E:/tmp/codex-export.json',
+  importedProfile: {
+    id: 'codex-prod',
+    name: 'Codex 生产',
+    platform: 'codex',
+    source: {},
+    apply: {},
+  },
+  scopePolicy: {
+    explicitScope: false,
+    highRisk: false,
+    rollbackScopeMatchRequired: false,
+  },
+  scopeCapabilities: [],
+  validation: {
+    ok: true,
+    errors: [],
+    warnings: [],
+    limitations: [{ code: 'CODEX_MULTI_FILE_MANAGED', message: '当前会同时托管 Codex 的 config.toml 与 auth.json。' }],
+    managedBoundaries: [
+      {
+        type: 'managed-fields',
+        target: 'C:/Users/test/.codex/config.toml',
+        managedKeys: ['base_url'],
+      },
+      {
+        type: 'managed-fields',
+        target: 'C:/Users/test/.codex/auth.json',
+        managedKeys: ['OPENAI_API_KEY'],
+      },
+      {
+        type: 'multi-file-transaction',
+        targets: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+        notes: ['Codex 导入应用会同时更新 config.toml 与 auth.json。'],
+      },
+    ],
+  },
+  preview: {
+    platform: 'codex',
+    profileId: 'codex-prod',
+    targetFiles: [
+      {
+        path: 'C:/Users/test/.codex/config.toml',
+        format: 'toml',
+        exists: true,
+        managedScope: 'multi-file',
+        role: 'config',
+        managedKeys: ['base_url'],
+      },
+      {
+        path: 'C:/Users/test/.codex/auth.json',
+        format: 'json',
+        exists: true,
+        managedScope: 'multi-file',
+        role: 'auth',
+        managedKeys: ['OPENAI_API_KEY'],
+      },
+    ],
+    effectiveFields: [],
+    storedOnlyFields: [],
+    diffSummary: [
+      {
+        path: 'C:/Users/test/.codex/config.toml',
+        changedKeys: ['base_url'],
+        hasChanges: true,
+      },
+      {
+        path: 'C:/Users/test/.codex/auth.json',
+        changedKeys: ['OPENAI_API_KEY'],
+        hasChanges: true,
+      },
+    ],
+    warnings: [],
+    limitations: [],
+    riskLevel: 'low',
+    requiresConfirmation: false,
+    backupPlanned: true,
+    noChanges: false,
+  },
+  risk: {
+    allowed: true,
+    riskLevel: 'low',
+    reasons: [],
+    limitations: [],
+  },
+  backupId: 'snapshot-codex-001',
+  changedFiles: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+  noChanges: false,
+  summary: {
+    warnings: [],
+    limitations: ['当前会同时托管 Codex 的 config.toml 与 auth.json。'],
+  },
+}
+
+const claudeImportApplyPayload: ImportApplyCommandOutput = {
+  sourceFile: 'E:/tmp/claude-export.json',
+  importedProfile: {
+    id: 'claude-prod',
+    name: 'Claude 生产',
+    platform: 'claude',
+    source: {},
+    apply: {},
+  },
+  appliedScope: 'local',
+  scopePolicy: {
+    requestedScope: 'local',
+    resolvedScope: 'local',
+    defaultScope: 'project',
+    explicitScope: true,
+    highRisk: true,
+    rollbackScopeMatchRequired: false,
+  },
+  scopeCapabilities: claudeScopeCapabilities,
+  validation: {
+    ok: true,
+    errors: [],
+    warnings: [],
+    limitations: [{ code: 'CLAUDE_MANAGED_FIELDS_ONLY', message: '当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。' }],
+    managedBoundaries: [
+      {
+        type: 'scope-aware',
+        target: 'C:/Users/test/.claude/settings.local.json',
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        notes: ['当前写入目标为 Claude 本地级配置文件。'],
+      },
+    ],
+  },
+  preview: {
+    platform: 'claude',
+    profileId: 'claude-prod',
+    targetFiles: [
+      {
+        path: 'C:/Users/test/.claude/settings.local.json',
+        format: 'json',
+        exists: true,
+        managedScope: 'partial-fields',
+        scope: 'local',
+        role: 'settings',
+        managedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+      },
+    ],
+    effectiveFields: [],
+    storedOnlyFields: [],
+    diffSummary: [
+      {
+        path: 'C:/Users/test/.claude/settings.local.json',
+        changedKeys: ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'],
+        hasChanges: true,
+      },
+    ],
+    warnings: [],
+    limitations: [],
+    riskLevel: 'high',
+    requiresConfirmation: true,
+    backupPlanned: true,
+    noChanges: false,
+  },
+  risk: {
+    allowed: true,
+    riskLevel: 'high',
+    reasons: [],
+    limitations: [],
+  },
+  backupId: 'snapshot-claude-001',
+  changedFiles: ['C:/Users/test/.claude/settings.local.json'],
+  noChanges: false,
+  summary: {
+    warnings: [],
+    limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
+  },
+}
+
 const genericSuccessResult: CommandResult<{ foo: string }> = {
   ok: true,
   action: 'other',
@@ -1549,6 +1722,8 @@ const outputEmptyValidate = renderText(createValidateResult(emptyValidatePayload
 const outputExport = renderText(createExportResult(exportPayload))
 const outputImportPreview = renderText(createImportPreviewResult(importPreviewPayload))
 const outputImportApply = renderText(createImportApplyResult(importApplyPayload))
+const outputCodexImportApply = renderText(createImportApplyResult(codexImportApplyPayload))
+const outputClaudeImportApply = renderText(createImportApplyResult(claudeImportApplyPayload))
 const outputEmptyExport = renderText(createExportResult(emptyExportPayload))
 const outputAdd = renderText(createAddResult(addPayload))
 const outputAddWithLimitations = renderText(createAddResult(addPayloadWithLimitations))
@@ -1896,6 +2071,30 @@ describe('text renderer', () => {
     expect(outputImportApply).toContain('  - 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
     expect(outputImportApply).toContain('限制说明:')
     expect(outputImportApply).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('渲染 import apply 结果时会为 Gemini success 输出 project 回滚约束与目标作用域语义', () => {
+    expect(outputImportApply).toContain('平台摘要:')
+    expect(outputImportApply).toContain('  - Gemini project scope 会覆盖 user 的同名字段。')
+    expect(outputImportApply).toContain('  - 当前快照要求 rollback 时必须匹配 project scope。')
+  })
+
+  it('渲染 import apply 结果时会为 Codex success 输出双文件事务摘要', () => {
+    expect(outputCodexImportApply).toContain('[import-apply] 成功')
+    expect(outputCodexImportApply).toContain('导入配置: codex-prod (codex)')
+    expect(outputCodexImportApply).not.toContain('应用作用域:')
+    expect(outputCodexImportApply).toContain('平台摘要:')
+    expect(outputCodexImportApply).toContain('  - Codex 当前按双文件事务写入 config.toml 与 auth.json。')
+    expect(outputCodexImportApply).toContain('  - config.toml 承载配置字段，auth.json 承载认证字段。')
+  })
+
+  it('渲染 import apply 结果时会为 Claude local success 输出最高优先级作用域摘要', () => {
+    expect(outputClaudeImportApply).toContain('[import-apply] 成功')
+    expect(outputClaudeImportApply).toContain('导入配置: claude-prod (claude)')
+    expect(outputClaudeImportApply).toContain('应用作用域: local scope')
+    expect(outputClaudeImportApply).toContain('平台摘要:')
+    expect(outputClaudeImportApply).toContain('  - Claude 当前写入目标是 local scope。')
+    expect(outputClaudeImportApply).toContain('  - local 是当前项目最高优先级层，会直接成为最终生效值。')
   })
 
   it('空 export 结果返回空正文', () => {
