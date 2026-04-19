@@ -515,6 +515,338 @@ api-switcher import preview exported.json --json
 - rollback provenance：成功 apply 的快照会记录 `origin=import-apply`、`sourceFile`、`importedProfileId`，回滚绑定这组来源信息。
 - machine-readable schema 仅对 `import-apply` 做 action-specific envelope 校验：成功态约束 `data`，失败态只约束稳定 `error.details` 联合，避免过度冻结 adapter 私有字段。
 
+下面是一份 Gemini `import apply --json` 成功样例，展示显式写入 `project scope` 的完整返回：
+
+```bash
+api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --scope project --force --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "import-apply",
+  "data": {
+    "sourceFile": "E:/tmp/exported-gemini.json",
+    "importedProfile": {
+      "id": "gemini-prod",
+      "name": "gemini-prod",
+      "platform": "gemini",
+      "source": {
+        "apiKey": "gm-l***56",
+        "authType": "gemini-api-key"
+      },
+      "apply": {
+        "GEMINI_API_KEY": "gm-l***56",
+        "enforcedAuthType": "gemini-api-key"
+      }
+    },
+    "appliedScope": "project",
+    "scopePolicy": {
+      "requestedScope": "project",
+      "resolvedScope": "project",
+      "defaultScope": "user",
+      "explicitScope": true,
+      "highRisk": true,
+      "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
+      "rollbackScopeMatchRequired": true
+    },
+    "scopeCapabilities": [
+      {
+        "scope": "user",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true
+      },
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ],
+    "scopeAvailability": [
+      {
+        "scope": "user",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/Users/test/.gemini/settings.json"
+      },
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "E:/repo/.gemini/settings.json"
+      }
+    ],
+    "validation": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "limitations": [
+        {
+          "code": "GEMINI_API_KEY_ENV_REQUIRED",
+          "message": "GEMINI_API_KEY 仍需通过环境变量生效。"
+        }
+      ],
+      "managedBoundaries": [
+        {
+          "type": "scope-aware",
+          "target": "E:/repo/.gemini/settings.json",
+          "managedKeys": [
+            "enforcedAuthType"
+          ],
+          "notes": [
+            "Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。"
+          ]
+        }
+      ],
+      "secretReferences": [
+        {
+          "key": "GEMINI_API_KEY",
+          "source": "env",
+          "present": true,
+          "maskedValue": "gm-l***56"
+        }
+      ]
+    },
+    "preview": {
+      "platform": "gemini",
+      "profileId": "gemini-prod",
+      "targetFiles": [
+        {
+          "path": "E:/repo/.gemini/settings.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "partial-fields",
+          "scope": "project",
+          "role": "settings",
+          "managedKeys": [
+            "enforcedAuthType"
+          ]
+        }
+      ],
+      "effectiveFields": [],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "E:/repo/.gemini/settings.json",
+          "changedKeys": [
+            "enforcedAuthType"
+          ],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [
+        {
+          "code": "GEMINI_API_KEY_ENV_REQUIRED",
+          "message": "Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。"
+        }
+      ],
+      "limitations": [],
+      "riskLevel": "high",
+      "requiresConfirmation": true,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "high",
+      "reasons": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "backupId": "snapshot-gemini-20260419120000-abcdef",
+    "changedFiles": [
+      "E:/repo/.gemini/settings.json"
+    ],
+    "noChanges": false,
+    "summary": {
+      "warnings": [
+        "Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    }
+  },
+  "warnings": [
+    "Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。"
+  ],
+  "limitations": [
+    "GEMINI_API_KEY 仍需通过环境变量生效。"
+  ]
+}
+```
+
+这个样例对应的是 Gemini `project scope` 的标准成功路径。它和 `user scope` 的差异有两点：一是 `appliedScope` 会显式返回 `project`；二是 `scopePolicy.rollbackScopeMatchRequired = true`，后续回滚时必须带同一 scope，不能按 `user` 去恢复 `project` 快照。
+
+下面是一份 Codex `import apply --json` 成功样例，展示无 scope 平台的双文件写入返回：
+
+```bash
+api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --force --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "import-apply",
+  "data": {
+    "sourceFile": "E:/tmp/exported-codex.json",
+    "importedProfile": {
+      "id": "codex-prod",
+      "name": "codex-prod",
+      "platform": "codex",
+      "source": {
+        "apiKey": "sk-c***56",
+        "baseURL": "https://gateway.example.com/openai/v1"
+      },
+      "apply": {
+        "OPENAI_API_KEY": "sk-c***56",
+        "base_url": "https://gateway.example.com/openai/v1"
+      }
+    },
+    "scopePolicy": {
+      "explicitScope": false,
+      "highRisk": false,
+      "rollbackScopeMatchRequired": false
+    },
+    "scopeCapabilities": [],
+    "validation": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "limitations": [
+        {
+          "code": "CODEX_MULTI_FILE_MANAGED",
+          "message": "当前会同时托管 Codex 的 config.toml 与 auth.json。"
+        }
+      ],
+      "managedBoundaries": [
+        {
+          "type": "managed-fields",
+          "target": "C:/Users/test/.codex/config.toml",
+          "managedKeys": [
+            "base_url"
+          ]
+        },
+        {
+          "type": "managed-fields",
+          "target": "C:/Users/test/.codex/auth.json",
+          "managedKeys": [
+            "OPENAI_API_KEY"
+          ]
+        },
+        {
+          "type": "multi-file-transaction",
+          "targets": [
+            "C:/Users/test/.codex/config.toml",
+            "C:/Users/test/.codex/auth.json"
+          ],
+          "notes": [
+            "Codex 导入应用会同时更新 config.toml 与 auth.json。"
+          ]
+        }
+      ],
+      "secretReferences": [
+        {
+          "key": "OPENAI_API_KEY",
+          "source": "config",
+          "present": true,
+          "maskedValue": "sk-c***56"
+        }
+      ]
+    },
+    "preview": {
+      "platform": "codex",
+      "profileId": "codex-prod",
+      "targetFiles": [
+        {
+          "path": "C:/Users/test/.codex/config.toml",
+          "format": "toml",
+          "exists": true,
+          "managedScope": "multi-file",
+          "role": "config",
+          "managedKeys": [
+            "base_url"
+          ]
+        },
+        {
+          "path": "C:/Users/test/.codex/auth.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "multi-file",
+          "role": "auth",
+          "managedKeys": [
+            "OPENAI_API_KEY"
+          ]
+        }
+      ],
+      "effectiveFields": [],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "C:/Users/test/.codex/config.toml",
+          "changedKeys": [
+            "base_url"
+          ],
+          "hasChanges": true
+        },
+        {
+          "path": "C:/Users/test/.codex/auth.json",
+          "changedKeys": [
+            "OPENAI_API_KEY"
+          ],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": [],
+      "riskLevel": "low",
+      "requiresConfirmation": false,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "low",
+      "reasons": [],
+      "limitations": []
+    },
+    "backupId": "snapshot-codex-20260419120000-abcdef",
+    "changedFiles": [
+      "C:/Users/test/.codex/config.toml",
+      "C:/Users/test/.codex/auth.json"
+    ],
+    "noChanges": false,
+    "summary": {
+      "warnings": [],
+      "limitations": [
+        "当前会同时托管 Codex 的 config.toml 与 auth.json。"
+      ]
+    }
+  },
+  "warnings": [],
+  "limitations": [
+    "当前会同时托管 Codex 的 config.toml 与 auth.json。"
+  ]
+}
+```
+
+这个样例对应的是 Codex 的标准成功路径。因为 Codex 当前没有 scoped target，返回里可以没有 `appliedScope`；外部调用方不应把这个缺省误解为失败。
+
 下面是一份 Claude `import apply --json` 成功样例，展示显式写入 `local scope` 的完整返回：
 
 ```bash
