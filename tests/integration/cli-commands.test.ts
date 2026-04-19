@@ -2765,6 +2765,173 @@ describe('cli commands integration', () => {
     })
   })
 
+  it('import --json 在跨平台 mixed batch 下准确聚合 claude/codex/gemini 状态', async () => {
+    const importFile = path.join(runtimeDir, 'import-source-cross-platform-mixed.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-match',
+          name: 'gemini-match',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+        scopeAvailability: [
+          { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+          { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+        ],
+      },
+      {
+        profile: {
+          id: 'claude-mismatch',
+          name: 'claude-mismatch',
+          platform: 'claude',
+          source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'local', detect: true, preview: true, use: true, rollback: true, writable: true },
+        ],
+      },
+      {
+        profile: {
+          id: 'codex-partial',
+          name: 'codex-partial',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [],
+      },
+      {
+        profile: {
+          id: 'gemini-insufficient',
+          name: 'gemini-insufficient',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+      },
+    ])
+
+    const result = await runCli(['import', importFile, '--json'])
+    const payload = parseJsonResult<{
+      items: Array<{
+        profile: { id: string }
+        platform: string
+        fidelity?: { status: string }
+        previewDecision: { reasonCodes: string[] }
+      }>
+      summary: {
+        totalItems: number
+        matchCount: number
+        mismatchCount: number
+        partialCount: number
+        insufficientDataCount: number
+        decisionCodeStats: Array<{
+          code: string
+          totalCount: number
+          blockingCount: number
+          nonBlockingCount: number
+        }>
+        driftKindStats: Array<{
+          driftKind: string
+          totalCount: number
+          blockingCount: number
+          warningCount: number
+          infoCount: number
+        }>
+        platformStats: Array<{
+          platform: string
+          totalItems: number
+          matchCount: number
+          mismatchCount: number
+          partialCount: number
+          insufficientDataCount: number
+        }>
+        warnings: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.items.map((item) => [item.profile.id, item.platform, item.fidelity?.status, item.previewDecision.reasonCodes])).toEqual([
+      ['gemini-match', 'gemini', 'match', ['READY_USING_LOCAL_OBSERVATION']],
+      ['claude-mismatch', 'claude', 'mismatch', ['BLOCKED_BY_FIDELITY_MISMATCH']],
+      ['codex-partial', 'codex', 'partial', ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION']],
+      ['gemini-insufficient', 'gemini', 'insufficient-data', ['BLOCKED_BY_INSUFFICIENT_OBSERVATION']],
+    ])
+    expect(payload.data?.summary).toEqual({
+      totalItems: 4,
+      matchCount: 1,
+      mismatchCount: 1,
+      partialCount: 1,
+      insufficientDataCount: 1,
+      decisionCodeStats: [
+        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+        { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+        { code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      ],
+      driftKindStats: [
+        { driftKind: 'default-scope-drift', totalCount: 1, blockingCount: 0, warningCount: 1, infoCount: 0 },
+        { driftKind: 'availability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+        { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+      ],
+      platformStats: [
+        {
+          platform: 'claude',
+          totalItems: 1,
+          matchCount: 0,
+          mismatchCount: 1,
+          partialCount: 0,
+          insufficientDataCount: 0,
+        },
+        {
+          platform: 'codex',
+          totalItems: 1,
+          matchCount: 0,
+          mismatchCount: 0,
+          partialCount: 1,
+          insufficientDataCount: 0,
+        },
+        {
+          platform: 'gemini',
+          totalItems: 2,
+          matchCount: 1,
+          mismatchCount: 0,
+          partialCount: 0,
+          insufficientDataCount: 1,
+        },
+      ],
+      warnings: ['默认写入作用域不一致：导出时为 user，当前本地为 project。'],
+      limitations: [
+        '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',
+        '导出文件缺少足够 observation，当前无法建立完整 fidelity 结论。',
+      ],
+    })
+  })
+
   it('import 文本输出会展示混合批次的整批 explainable 聚合', async () => {
     const importFile = path.join(runtimeDir, 'import-source-mixed-text.json')
     await fs.writeFile(importFile, JSON.stringify({
@@ -3042,6 +3209,91 @@ describe('cli commands integration', () => {
     expect(codexConfig).toContain('default_provider = "openai"')
     expect(codexAuth.OPENAI_API_KEY).toBe('sk-codex-live-123456')
     expect(codexAuth.user_id).toBe('u-1')
+  })
+
+  it('import apply --json 在 mixed source 下按 --profile 精确命中目标平台，不受同批其他 profile 干扰', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-cross-platform-mixed.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-blocked',
+          name: 'gemini-blocked',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'project',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      },
+      {
+        profile: {
+          id: 'claude-sidecar',
+          name: 'claude-sidecar',
+          platform: 'claude',
+          source: { token: 'sk-live-654321', baseURL: 'https://claude-sidecar.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-654321',
+            ANTHROPIC_BASE_URL: 'https://claude-sidecar.example.com/api',
+          },
+        },
+      },
+    ])
+
+    const originalGeminiSettings = await fs.readFile(geminiSettingsPath, 'utf8')
+    const originalGeminiProjectSettings = await fs.readFile(geminiProjectSettingsPath, 'utf8')
+    const originalClaudeProjectSettings = await fs.readFile(claudeProjectSettingsPath, 'utf8')
+    const originalClaudeLocalExists = await fs.access(claudeLocalSettingsPath).then(() => true).catch(() => false)
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--force', '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      importedProfile: { id: string; platform: string }
+      appliedScope?: string
+      backupId: string
+      changedFiles: string[]
+      noChanges: boolean
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.sourceFile).toBe(importFile)
+    expect(payload.data?.importedProfile).toEqual(expect.objectContaining({
+      id: 'codex-prod',
+      platform: 'codex',
+    }))
+    expect(payload.data?.appliedScope).toBeUndefined()
+    expect(payload.data?.backupId).toMatch(/^snapshot-codex-/)
+    expect(payload.data?.changedFiles).toEqual([codexConfigPath, codexAuthPath])
+    expect(payload.data?.noChanges).toBe(false)
+
+    const codexConfig = await fs.readFile(codexConfigPath, 'utf8')
+    const codexAuth = JSON.parse(await fs.readFile(codexAuthPath, 'utf8')) as Record<string, unknown>
+    expect(codexConfig).toContain('base_url = "https://gateway.example.com/openai/v1"')
+    expect(codexAuth.OPENAI_API_KEY).toBe('sk-codex-live-123456')
+
+    expect(await fs.readFile(geminiSettingsPath, 'utf8')).toBe(originalGeminiSettings)
+    expect(await fs.readFile(geminiProjectSettingsPath, 'utf8')).toBe(originalGeminiProjectSettings)
+    expect(await fs.readFile(claudeProjectSettingsPath, 'utf8')).toBe(originalClaudeProjectSettings)
+    const localAfter = await fs.access(claudeLocalSettingsPath).then(() => true).catch(() => false)
+    expect(localAfter).toBe(originalClaudeLocalExists)
   })
 
   it('import apply 缺少 --profile 时保持 Commander 用法失败', async () => {
