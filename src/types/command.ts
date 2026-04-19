@@ -170,6 +170,7 @@ export interface SchemaActionCapability {
   hasScopeAvailability: boolean
   hasScopePolicy: boolean
   primaryFields: string[]
+  primaryErrorFields: string[]
 }
 
 export interface SchemaCommandCatalog {

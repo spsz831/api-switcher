@@ -327,6 +327,7 @@ describe('public JSON contract types', () => {
           hasScopeAvailability: boolean
           hasScopePolicy: boolean
           primaryFields: string[]
+          primaryErrorFields: string[]
         }>
       }
     }>()
@@ -572,8 +573,13 @@ describe('public JSON contract types', () => {
       'hasScopeAvailability',
       'hasScopePolicy',
       'primaryFields',
+      'primaryErrorFields',
     ]))
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFields).toEqual({
       type: 'array',
       items: { type: 'string' },
     })

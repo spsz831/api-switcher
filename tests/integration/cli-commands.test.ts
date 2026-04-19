@@ -234,6 +234,7 @@ describe('cli commands integration', () => {
           hasScopeAvailability: boolean
           hasScopePolicy: boolean
           primaryFields: string[]
+          primaryErrorFields: string[]
         }>
       }
       schema: {
@@ -259,6 +260,7 @@ describe('cli commands integration', () => {
         hasScopeAvailability: true,
         hasScopePolicy: false,
         primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
+        primaryErrorFields: ['error.code', 'error.message'],
       },
       {
         action: 'preview',
@@ -268,6 +270,7 @@ describe('cli commands integration', () => {
         hasScopeAvailability: true,
         hasScopePolicy: true,
         primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+        primaryErrorFields: ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
       },
       {
         action: 'schema',
@@ -277,6 +280,7 @@ describe('cli commands integration', () => {
         hasScopeAvailability: false,
         hasScopePolicy: false,
         primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
+        primaryErrorFields: ['error.code', 'error.message'],
       },
     ]))
     expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')

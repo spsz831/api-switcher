@@ -10,6 +10,7 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   hasScopeAvailability: ['current', 'preview', 'use', 'rollback', 'import', 'import-apply'].includes(action),
   hasScopePolicy: ['preview', 'use', 'rollback', 'import-apply'].includes(action),
   primaryFields: getPrimaryFields(action),
+  primaryErrorFields: getPrimaryErrorFields(action),
 }))
 
 function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
@@ -38,6 +39,23 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
       return ['summary.platformStats', 'items']
     default:
       return []
+  }
+}
+
+function getPrimaryErrorFields(action: typeof COMMAND_ACTIONS[number]): string[] {
+  switch (action) {
+    case 'preview':
+      return ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability']
+    case 'use':
+      return ['error.code', 'error.message', 'error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
+    case 'rollback':
+      return ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
+    case 'import':
+      return ['error.code', 'error.message']
+    case 'import-apply':
+      return ['error.code', 'error.message', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
+    default:
+      return ['error.code', 'error.message']
   }
 }
 

@@ -289,6 +289,10 @@ api-switcher schema --json
             "detections",
             "scopeCapabilities",
             "scopeAvailability"
+          ],
+          "primaryErrorFields": [
+            "error.code",
+            "error.message"
           ]
         },
         {
@@ -305,6 +309,12 @@ api-switcher schema --json
             "scopePolicy",
             "scopeCapabilities",
             "scopeAvailability"
+          ],
+          "primaryErrorFields": [
+            "error.code",
+            "error.message",
+            "error.details.scopePolicy",
+            "error.details.scopeAvailability"
           ]
         },
         {
@@ -319,6 +329,10 @@ api-switcher schema --json
             "schemaVersion",
             "schemaId",
             "schema"
+          ],
+          "primaryErrorFields": [
+            "error.code",
+            "error.message"
           ]
         }
       ]
@@ -331,7 +345,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success payload 字段，可以先消费这层，再按需展开整份 schema。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 
