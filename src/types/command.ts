@@ -171,10 +171,17 @@ export interface SchemaActionCapability {
   hasScopePolicy: boolean
   primaryFields: string[]
   primaryErrorFields: string[]
+  primaryFieldSemantics: SchemaFieldSemanticBinding[]
+  primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
 }
 
 export interface SchemaCommandCatalog {
   actions: SchemaActionCapability[]
+}
+
+export interface SchemaFieldSemanticBinding {
+  path: string
+  semantic: string
 }
 
 export interface RollbackCommandOutput {

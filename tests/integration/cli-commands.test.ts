@@ -235,6 +235,8 @@ describe('cli commands integration', () => {
           hasScopePolicy: boolean
           primaryFields: string[]
           primaryErrorFields: string[]
+          primaryFieldSemantics: Array<{ path: string; semantic: string }>
+          primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
         }>
       }
       schema: {
@@ -261,6 +263,17 @@ describe('cli commands integration', () => {
         hasScopePolicy: false,
         primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
         primaryErrorFields: ['error.code', 'error.message'],
+        primaryFieldSemantics: [
+          { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+          { path: 'current', semantic: 'result-core' },
+          { path: 'detections', semantic: 'item-collection' },
+          { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+          { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        ],
+        primaryErrorFieldSemantics: [
+          { path: 'error.code', semantic: 'error-core' },
+          { path: 'error.message', semantic: 'error-core' },
+        ],
       },
       {
         action: 'preview',
@@ -271,6 +284,20 @@ describe('cli commands integration', () => {
         hasScopePolicy: true,
         primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
         primaryErrorFields: ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
+        primaryFieldSemantics: [
+          { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+          { path: 'risk', semantic: 'risk' },
+          { path: 'preview', semantic: 'result-core' },
+          { path: 'scopePolicy', semantic: 'scope-resolution' },
+          { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+          { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        ],
+        primaryErrorFieldSemantics: [
+          { path: 'error.code', semantic: 'error-core' },
+          { path: 'error.message', semantic: 'error-core' },
+          { path: 'error.details.scopePolicy', semantic: 'error-details' },
+          { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+        ],
       },
       {
         action: 'schema',
@@ -281,6 +308,16 @@ describe('cli commands integration', () => {
         hasScopePolicy: false,
         primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
         primaryErrorFields: ['error.code', 'error.message'],
+        primaryFieldSemantics: [
+          { path: 'commandCatalog', semantic: 'schema-catalog' },
+          { path: 'schemaVersion', semantic: 'schema-metadata' },
+          { path: 'schemaId', semantic: 'schema-metadata' },
+          { path: 'schema', semantic: 'schema-document' },
+        ],
+        primaryErrorFieldSemantics: [
+          { path: 'error.code', semantic: 'error-core' },
+          { path: 'error.message', semantic: 'error-core' },
+        ],
       },
     ]))
     expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')

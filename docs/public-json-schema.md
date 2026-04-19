@@ -343,13 +343,15 @@ type SchemaCommandOutput = {
       hasScopePolicy: boolean
       primaryFields: string[]
       primaryErrorFields: string[]
+      primaryFieldSemantics: Array<{ path: string; semantic: string }>
+      primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
     }>
   }
   schema: Record<string, unknown>
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达。
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 

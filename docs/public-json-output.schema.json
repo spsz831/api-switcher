@@ -358,7 +358,7 @@
     },
     "SchemaActionCapability": {
       "type": "object",
-      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields"],
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
       "properties": {
         "action": {
           "type": "string",
@@ -376,7 +376,24 @@
         "primaryErrorFields": {
           "type": "array",
           "items": { "type": "string" }
+        },
+        "primaryFieldSemantics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
+        },
+        "primaryErrorFieldSemantics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
         }
+      },
+      "additionalProperties": false
+    },
+    "SchemaFieldSemanticBinding": {
+      "type": "object",
+      "required": ["path", "semantic"],
+      "properties": {
+        "path": { "type": "string" },
+        "semantic": { "type": "string" }
       },
       "additionalProperties": false
     },

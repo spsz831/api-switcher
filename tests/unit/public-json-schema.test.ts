@@ -328,6 +328,8 @@ describe('public JSON contract types', () => {
           hasScopePolicy: boolean
           primaryFields: string[]
           primaryErrorFields: string[]
+          primaryFieldSemantics: Array<{ path: string; semantic: string }>
+          primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
         }>
       }
     }>()
@@ -574,6 +576,8 @@ describe('public JSON contract types', () => {
       'hasScopePolicy',
       'primaryFields',
       'primaryErrorFields',
+      'primaryFieldSemantics',
+      'primaryErrorFieldSemantics',
     ]))
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFields).toEqual({
       type: 'array',
@@ -582,6 +586,14 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFields).toEqual({
       type: 'array',
       items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFieldSemantics).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaFieldSemanticBinding' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFieldSemantics).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaFieldSemanticBinding' },
     })
   })
 

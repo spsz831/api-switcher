@@ -293,6 +293,17 @@ api-switcher schema --json
           "primaryErrorFields": [
             "error.code",
             "error.message"
+          ],
+          "primaryFieldSemantics": [
+            { "path": "summary.platformStats", "semantic": "platform-aggregate" },
+            { "path": "current", "semantic": "result-core" },
+            { "path": "detections", "semantic": "item-collection" },
+            { "path": "scopeCapabilities", "semantic": "scope-resolution" },
+            { "path": "scopeAvailability", "semantic": "scope-resolution" }
+          ],
+          "primaryErrorFieldSemantics": [
+            { "path": "error.code", "semantic": "error-core" },
+            { "path": "error.message", "semantic": "error-core" }
           ]
         },
         {
@@ -315,6 +326,20 @@ api-switcher schema --json
             "error.message",
             "error.details.scopePolicy",
             "error.details.scopeAvailability"
+          ],
+          "primaryFieldSemantics": [
+            { "path": "summary.platformStats", "semantic": "platform-aggregate" },
+            { "path": "risk", "semantic": "risk" },
+            { "path": "preview", "semantic": "result-core" },
+            { "path": "scopePolicy", "semantic": "scope-resolution" },
+            { "path": "scopeCapabilities", "semantic": "scope-resolution" },
+            { "path": "scopeAvailability", "semantic": "scope-resolution" }
+          ],
+          "primaryErrorFieldSemantics": [
+            { "path": "error.code", "semantic": "error-core" },
+            { "path": "error.message", "semantic": "error-core" },
+            { "path": "error.details.scopePolicy", "semantic": "error-details" },
+            { "path": "error.details.scopeAvailability", "semantic": "error-details" }
           ]
         },
         {
@@ -333,6 +358,16 @@ api-switcher schema --json
           "primaryErrorFields": [
             "error.code",
             "error.message"
+          ],
+          "primaryFieldSemantics": [
+            { "path": "commandCatalog", "semantic": "schema-catalog" },
+            { "path": "schemaVersion", "semantic": "schema-metadata" },
+            { "path": "schemaId", "semantic": "schema-metadata" },
+            { "path": "schema", "semantic": "schema-document" }
+          ],
+          "primaryErrorFieldSemantics": [
+            { "path": "error.code", "semantic": "error-core" },
+            { "path": "error.message", "semantic": "error-core" }
           ]
         }
       ]
@@ -345,7 +380,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则补了一层字段语义标签，便于把点路径归类到 `platform-aggregate`、`scope-resolution`、`artifacts`、`error-core`、`error-details` 等稳定语义桶。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 

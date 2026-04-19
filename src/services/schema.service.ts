@@ -1,6 +1,12 @@
 import publicJsonSchema from '../../docs/public-json-output.schema.json'
 import { PUBLIC_JSON_SCHEMA_VERSION } from '../constants/public-json-schema'
-import { COMMAND_ACTIONS, type CommandResult, type SchemaActionCapability, type SchemaCommandOutput } from '../types/command'
+import {
+  COMMAND_ACTIONS,
+  type CommandResult,
+  type SchemaActionCapability,
+  type SchemaCommandOutput,
+  type SchemaFieldSemanticBinding,
+} from '../types/command'
 
 const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map((action) => ({
   action,
@@ -11,6 +17,8 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   hasScopePolicy: ['preview', 'use', 'rollback', 'import-apply'].includes(action),
   primaryFields: getPrimaryFields(action),
   primaryErrorFields: getPrimaryErrorFields(action),
+  primaryFieldSemantics: getPrimaryFieldSemantics(action),
+  primaryErrorFieldSemantics: getPrimaryErrorFieldSemantics(action),
 }))
 
 function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
@@ -56,6 +64,141 @@ function getPrimaryErrorFields(action: typeof COMMAND_ACTIONS[number]): string[]
       return ['error.code', 'error.message', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
     default:
       return ['error.code', 'error.message']
+  }
+}
+
+function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): SchemaFieldSemanticBinding[] {
+  switch (action) {
+    case 'add':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'risk', semantic: 'risk' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+      ]
+    case 'current':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'current', semantic: 'result-core' },
+        { path: 'detections', semantic: 'item-collection' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+      ]
+    case 'export':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'profiles', semantic: 'item-collection' },
+      ]
+    case 'import':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'items', semantic: 'item-collection' },
+        { path: 'sourceCompatibility', semantic: 'source-compatibility' },
+      ]
+    case 'import-apply':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'platformSummary', semantic: 'platform-explainable' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopePolicy', semantic: 'scope-resolution' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        { path: 'changedFiles', semantic: 'artifacts' },
+        { path: 'backupId', semantic: 'artifacts' },
+      ]
+    case 'list':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'profiles', semantic: 'item-collection' },
+      ]
+    case 'preview':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'risk', semantic: 'risk' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopePolicy', semantic: 'scope-resolution' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+      ]
+    case 'rollback':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'platformSummary', semantic: 'platform-explainable' },
+        { path: 'rollback', semantic: 'result-core' },
+        { path: 'scopePolicy', semantic: 'scope-resolution' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        { path: 'restoredFiles', semantic: 'artifacts' },
+        { path: 'backupId', semantic: 'artifacts' },
+      ]
+    case 'schema':
+      return [
+        { path: 'commandCatalog', semantic: 'schema-catalog' },
+        { path: 'schemaVersion', semantic: 'schema-metadata' },
+        { path: 'schemaId', semantic: 'schema-metadata' },
+        { path: 'schema', semantic: 'schema-document' },
+      ]
+    case 'use':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'platformSummary', semantic: 'platform-explainable' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopePolicy', semantic: 'scope-resolution' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        { path: 'changedFiles', semantic: 'artifacts' },
+        { path: 'backupId', semantic: 'artifacts' },
+      ]
+    case 'validate':
+      return [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'items', semantic: 'item-collection' },
+      ]
+    default:
+      return []
+  }
+}
+
+function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): SchemaFieldSemanticBinding[] {
+  switch (action) {
+    case 'preview':
+      return [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.scopePolicy', semantic: 'error-details' },
+        { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ]
+    case 'use':
+      return [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.risk', semantic: 'error-details' },
+        { path: 'error.details.scopePolicy', semantic: 'error-details' },
+        { path: 'error.details.scopeCapabilities', semantic: 'error-details' },
+        { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ]
+    case 'rollback':
+      return [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.scopePolicy', semantic: 'error-details' },
+        { path: 'error.details.scopeCapabilities', semantic: 'error-details' },
+        { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ]
+    case 'import-apply':
+      return [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.previewDecision', semantic: 'error-details' },
+        { path: 'error.details.scopePolicy', semantic: 'error-details' },
+        { path: 'error.details.scopeCapabilities', semantic: 'error-details' },
+        { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ]
+    default:
+      return [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ]
   }
 }
 
