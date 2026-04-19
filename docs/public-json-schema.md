@@ -226,6 +226,13 @@ type SchemaVersionCommandOutput = {
 }
 ```
 
+### JSON 示例导航
+
+- [`current --json`](#current---json): 当前环境检测结果，强调 `currentScope`、`platformSummary`、`scopeCapabilities`、`scopeAvailability`
+- [`list --json`](#list---json): profile 列表结果，强调 profile 级 `platformSummary` 与 Gemini `scopeAvailability`
+- [`validate --json`](#validate---json): 校验结果列表，强调每个 item 的 `platformSummary` 与 `scopeCapabilities`
+- [`export --json`](#export---json): 导出结果列表，强调 `platformSummary`、`defaultWriteScope`、`observedAt` 与 Gemini `scopeAvailability`
+
 ### current --json
 
 `current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
@@ -236,6 +243,7 @@ type SchemaVersionCommandOutput = {
 - 对 Claude 来说，`platformSummary.precedence` 固定为 `user < project < local`。
 - 对 Codex 来说，`platformSummary.kind` 为 `multi-file-composition`，`composedFiles` 表示当前检测到的 `config.toml` / `auth.json` 组成文件。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `current --json` 示例。
+- 相关示例：[`list --json`](#list---json)、[`validate --json`](#validate---json)、[`export --json`](#export---json)
 
 ```ts
 type CurrentCommandOutput = {
@@ -453,6 +461,8 @@ type CurrentProfileResult = {
 
 `list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。
 
+相关示例：[`current --json`](#current---json)、[`validate --json`](#validate---json)、[`export --json`](#export---json)
+
 ```ts
 type ListCommandOutput = {
   profiles: ListCommandItem[]
@@ -639,6 +649,8 @@ type ListCommandItem = {
 
 `validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。
 
+相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`export --json`](#export---json)
+
 ```ts
 type ValidateCommandOutput = {
   items: ValidateCommandItem[]
@@ -657,6 +669,8 @@ type ValidateCommandItem = {
 ### export --json
 
 `export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。
+
+相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`validate --json`](#validate---json)
 
 ```ts
 type ExportCommandOutput = {

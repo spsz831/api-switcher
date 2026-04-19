@@ -62,6 +62,9 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain('`current/list` 会输出 `platformSummary`')
     expect(publicJsonSchemaDoc).toContain('"action": "current"')
     expect(publicJsonSchemaDoc).toContain('"action": "list"')
+    expect(publicJsonSchemaDoc).toContain('### JSON 示例导航')
+    expect(publicJsonSchemaDoc).toContain('[`current --json`](#current---json)')
+    expect(publicJsonSchemaDoc).toContain('[`list --json`](#list---json)')
     expect(publicJsonSchemaDoc).toContain('system-defaults < user < project < system-overrides')
     expect(publicJsonSchemaDoc).toContain('user < project < local')
     expect(publicJsonSchemaDoc).toContain('multi-file-composition')
@@ -76,6 +79,8 @@ describe('docs consistency', () => {
 
     expect(publicJsonSchemaDoc).toContain('`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary`')
     expect(publicJsonSchemaDoc).toContain('`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary`')
+    expect(publicJsonSchemaDoc).toContain('[`validate --json`](#validate---json)')
+    expect(publicJsonSchemaDoc).toContain('[`export --json`](#export---json)')
     expect(publicJsonSchemaDoc).toContain('platformSummary?: PlatformExplainableSummary')
   })
 
