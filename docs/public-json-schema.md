@@ -266,6 +266,63 @@ type PlatformExplainableSummary = {
 | `defaultWriteScope` | no | no | no | yes | 导出时暴露平台默认写入目标 |
 | `observedAt` | no | no | no | yes | 导出时记录 observation 时间 |
 
+## Cross-Command Alignment
+
+这组对齐规则用于约束 `current / list / validate / export / import preview / import apply` 之间的公共 contract 边界，避免后续新功能继续把稳定字段和 adapter 私有字段混在一起。
+
+### Stable Shared Fields
+
+以下字段已经形成跨命令的稳定公共 contract。新增命令如果复用这些语义，应优先沿用同名字段，而不是重新发明近义字段：
+
+| Field | 当前命令面 | 语义 |
+| --- | --- | --- |
+| `platformSummary` | `current` / `list` / `validate` / `export` | 平台级 precedence 或多文件组合摘要 |
+| `scopeCapabilities` | `current` / `list` / `validate` / `export` / `import preview` / `import apply` | 平台理论能力矩阵 |
+| `scopeAvailability` | `current` / `list` / `export` / `import preview` / `import apply` | 当前环境或 observation 中的 scope 可用性 |
+| `defaultWriteScope` | `export` / `import preview` | 默认写入目标 |
+| `observedAt` | `export` / `import preview` | 观测时间戳，必须按 observation 语义理解 |
+
+### Stable Import-Only Fields
+
+以下字段当前是 `import preview / import apply` 这一条产品线上的稳定公共 contract。它们不是四个只读命令的公共字段，但在 import 线内应保持命名和语义一致：
+
+| Field | 当前命令面 | 语义 |
+| --- | --- | --- |
+| `exportedObservation` | `import preview` / `import apply` failure details | 导出文件里的历史观察 |
+| `localObservation` | `import preview` / `import apply` failure details | 当前本地重新解析后的实时观察 |
+| `fidelity` | `import preview` / `import apply` failure details | 导出观察与本地观察的结构化对比 |
+| `previewDecision` | `import preview` / `import apply` failure details | 是否允许继续进入 apply 设计，以及原因码 |
+| `sourceCompatibility` | `import preview` | 导入源是否为严格 schema 模式 |
+
+### Action-Specific Stable Fields
+
+以下字段属于动作专属 contract，可以稳定消费，但不应被误解成所有命令都该统一复用：
+
+| Field | 当前命令面 | 语义 |
+| --- | --- | --- |
+| `currentScope` | `current`，部分 `list` / `platformSummary` | 当前检测到的生效 scope |
+| `scopePolicy` | `preview` / `use` / `rollback` / `import apply` | 目标 scope 的请求值、解析值、风险和回滚约束 |
+| `preview` | `add` / `use` / `import apply` | 本次写入前预估结果 |
+| `risk` | `add` / `use` / `import apply` | 当前动作风险结论 |
+| `backupId` | `use` / `rollback` / `import apply` | 快照或恢复链路标识 |
+
+### Adapter-Private Or Expandable Fields
+
+以下字段当前允许按 adapter 或动作扩展，不应在外部接入里被当成统一 contract 主入口：
+
+- `details`
+- `effectiveConfig`
+- `managedBoundaries`
+- `targetFiles`
+- `changedFiles`
+- 文本摘要、highlight、message 类字段之外未在本文件明确列为稳定 code/enum 的自由扩展内容
+
+约束：
+
+- 机器消费方应优先读取本节和前文已列明的稳定字段，不应先依赖 adapter 私有 `details` 推断主语义。
+- 如果顶层 `error.code` 仍保留 action 级通用失败码，应继续读取稳定的 `error.details.scopeAvailability`、`previewDecision`、`fidelity` 等结构化字段判定真实失败原因。
+- 后续若有新命令复用“导出观察 vs 本地观察”的语义，应继续沿用 `exportedObservation` / `localObservation` / `fidelity`，不要再引入新的近义命名。
+
 ## Command-Specific Contracts
 
 ### schema --json

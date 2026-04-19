@@ -86,6 +86,19 @@ describe('docs consistency', () => {
     expect(publicJsonSchemaDoc).toContain('| `observedAt` | no | no | no | yes |')
   })
 
+  it('schema 文档保留跨命令字段对齐边界，避免 import 线与只读命令线继续长出近义 contract', () => {
+    expect(publicJsonSchemaDoc).toContain('## Cross-Command Alignment')
+    expect(publicJsonSchemaDoc).toContain('### Stable Shared Fields')
+    expect(publicJsonSchemaDoc).toContain('### Stable Import-Only Fields')
+    expect(publicJsonSchemaDoc).toContain('### Action-Specific Stable Fields')
+    expect(publicJsonSchemaDoc).toContain('### Adapter-Private Or Expandable Fields')
+    expect(publicJsonSchemaDoc).toContain('| `platformSummary` | `current` / `list` / `validate` / `export` |')
+    expect(publicJsonSchemaDoc).toContain('| `exportedObservation` | `import preview` / `import apply` failure details |')
+    expect(publicJsonSchemaDoc).toContain('| `scopePolicy` | `preview` / `use` / `rollback` / `import apply` |')
+    expect(publicJsonSchemaDoc).toContain('- `effectiveConfig`')
+    expect(publicJsonSchemaDoc).toContain('应继续沿用 `exportedObservation` / `localObservation` / `fidelity`')
+  })
+
   it('README / schema 文档对 validate/export platformSummary contract 保持一致', () => {
     expect(readme).toContain('`validate --json` 与 `export --json` 也是按条目输出 `platformSummary`')
     expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
