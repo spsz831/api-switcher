@@ -1522,7 +1522,7 @@ const codexImportApplyPayload: ImportApplyCommandOutput = {
     ok: true,
     errors: [],
     warnings: [],
-    limitations: [{ code: 'CODEX_MULTI_FILE_MANAGED', message: '当前会同时托管 Codex 的 config.toml 与 auth.json。' }],
+    limitations: [{ code: 'CODEX_MULTI_FILE_MANAGED', level: 'limitation', message: '当前会同时托管 Codex 的 config.toml 与 auth.json。' }],
     managedBoundaries: [
       {
         type: 'managed-fields',
@@ -1537,6 +1537,7 @@ const codexImportApplyPayload: ImportApplyCommandOutput = {
       {
         type: 'multi-file-transaction',
         targets: ['C:/Users/test/.codex/config.toml', 'C:/Users/test/.codex/auth.json'],
+        managedKeys: [],
         notes: ['Codex 导入应用会同时更新 config.toml 与 auth.json。'],
       },
     ],
@@ -1621,7 +1622,7 @@ const claudeImportApplyPayload: ImportApplyCommandOutput = {
     ok: true,
     errors: [],
     warnings: [],
-    limitations: [{ code: 'CLAUDE_MANAGED_FIELDS_ONLY', message: '当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。' }],
+    limitations: [{ code: 'CLAUDE_MANAGED_FIELDS_ONLY', level: 'limitation', message: '当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。' }],
     managedBoundaries: [
       {
         type: 'scope-aware',

@@ -303,7 +303,7 @@ api-switcher schema --schema-version --json
 
 ### JSON 输出示例
 
-`list --json` 会在每个 profile 条目上带出所属平台的 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`：
+`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`：
 
 ```json
 {
@@ -325,6 +325,21 @@ api-switcher schema --schema-version --json
         "current": true,
         "healthStatus": "valid",
         "riskLevel": "low",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "currentScope": "user",
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
         "scopeCapabilities": [
           {
             "scope": "user",
@@ -362,6 +377,30 @@ api-switcher schema --schema-version --json
             "path": "C:/work/.gemini/settings.json"
           }
         ]
+      },
+      {
+        "profile": {
+          "id": "codex-prod",
+          "platform": "codex",
+          "name": "Codex 生产"
+        },
+        "current": false,
+        "healthStatus": "unknown",
+        "riskLevel": "low",
+        "platformSummary": {
+          "kind": "multi-file-composition",
+          "composedFiles": [],
+          "facts": [
+            {
+              "code": "CODEX_MULTI_FILE_CONFIGURATION",
+              "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+            },
+            {
+              "code": "CODEX_LIST_IS_PROFILE_LEVEL",
+              "message": "list 仅展示 profile 级状态，不表示单文件可独立切换。"
+            }
+          ]
+        }
       }
     ],
     "summary": {
@@ -1744,7 +1783,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
-`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
+`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
 
 ```json
 {
@@ -1761,6 +1800,21 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
         "managed": true,
         "matchedProfileId": "gemini-prod",
         "currentScope": "user",
+        "platformSummary": {
+          "kind": "scope-precedence",
+          "precedence": ["system-defaults", "user", "project", "system-overrides"],
+          "currentScope": "user",
+          "facts": [
+            {
+              "code": "GEMINI_SCOPE_PRECEDENCE",
+              "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+            },
+            {
+              "code": "GEMINI_PROJECT_OVERRIDES_USER",
+              "message": "project scope 会覆盖 user 中的同名字段。"
+            }
+          ]
+        },
         "targetFiles": [
           {
             "path": "C:/Users/test/.gemini/settings.json",
@@ -1820,6 +1874,38 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
             "detected": true,
             "writable": true,
             "path": "C:/work/.gemini/settings.json"
+          }
+        ]
+      },
+      {
+        "platform": "codex",
+        "managed": true,
+        "matchedProfileId": "codex-prod",
+        "platformSummary": {
+          "kind": "multi-file-composition",
+          "composedFiles": [
+            "C:/Users/test/.codex/config.toml",
+            "C:/Users/test/.codex/auth.json"
+          ],
+          "facts": [
+            {
+              "code": "CODEX_MULTI_FILE_CONFIGURATION",
+              "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+            },
+            {
+              "code": "CODEX_CURRENT_REQUIRES_BOTH_FILES",
+              "message": "current 检测不能把单个文件视为完整状态。"
+            }
+          ]
+        },
+        "targetFiles": [
+          {
+            "path": "C:/Users/test/.codex/config.toml",
+            "role": "config"
+          },
+          {
+            "path": "C:/Users/test/.codex/auth.json",
+            "role": "auth"
           }
         ]
       }

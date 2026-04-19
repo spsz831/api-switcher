@@ -248,6 +248,7 @@
         },
         "details": {},
         "currentScope": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -300,6 +301,7 @@
         "current": { "type": "boolean" },
         "healthStatus": { "type": "string" },
         "riskLevel": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -310,6 +312,39 @@
         }
       },
       "additionalProperties": true
+    },
+    "PlatformExplainableSummary": {
+      "type": "object",
+      "required": ["kind", "facts"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["scope-precedence", "multi-file-composition"]
+        },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PlatformExplainableFact" }
+        },
+        "precedence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "currentScope": { "type": "string" },
+        "composedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlatformExplainableFact": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "ValidateCommandOutput": {
       "type": "object",

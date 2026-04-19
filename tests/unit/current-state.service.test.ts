@@ -164,12 +164,30 @@ describe('current state service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(result.data?.detections.find((item) => item.platform === 'claude')?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      currentScope: undefined,
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
     expect(result.data?.detections.find((item) => item.platform === 'gemini')?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
       expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
     ]))
+    expect(result.data?.detections.find((item) => item.platform === 'gemini')?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      currentScope: undefined,
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
     expect(result.data?.summary).toEqual({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
@@ -374,6 +392,23 @@ describe('current state service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(result.data?.profiles[1]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      currentScope: undefined,
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
+    expect(result.data?.profiles[2]?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
     expect(result.data?.summary).toEqual({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],

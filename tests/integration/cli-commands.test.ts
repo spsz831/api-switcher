@@ -309,6 +309,13 @@ describe('cli commands integration', () => {
         platform: string
         managed: boolean
         matchedProfileId?: string
+        platformSummary?: {
+          kind: string
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+          facts: Array<{ code: string; message: string }>
+        }
         targetFiles: Array<{ path: string; scope?: string }>
         managedBoundaries?: Array<{ type: string; managedKeys: string[]; preservedKeys?: string[]; notes?: string[] }>
         secretReferences?: Array<{ key: string; source: string; present: boolean; maskedValue: string }>
@@ -391,6 +398,15 @@ describe('cli commands integration', () => {
         path: geminiProjectSettingsPath,
       }),
     ]))
+    expect(geminiDetection?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      currentScope: 'user',
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
     expect(geminiDetection?.managedBoundaries?.[0]?.type).toBe('scope-aware')
     expect(geminiDetection?.managedBoundaries?.[0]?.managedKeys).toContain('enforcedAuthType')
     expect(geminiDetection?.managedBoundaries?.[1]?.type).toBe('managed-fields')
@@ -466,6 +482,13 @@ describe('cli commands integration', () => {
         current: boolean
         healthStatus: string
         riskLevel: string
+        platformSummary?: {
+          kind: string
+          precedence?: string[]
+          currentScope?: string
+          composedFiles?: string[]
+          facts: Array<{ code: string; message: string }>
+        }
         scopeCapabilities?: ScopeCapabilityContract[]
         scopeAvailability?: ScopeAvailabilityContract[]
       }>
@@ -509,6 +532,25 @@ describe('cli commands integration', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(claudeProfile?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      currentScope: 'project',
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
+
+    const codexProfile = payload.data?.profiles.find((item) => item.profile.id === 'codex-prod')
+    expect(codexProfile?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: expect.any(Array),
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
   })
 
   it('validate --json 成功时返回带 explainable 元数据的结构化 items', async () => {

@@ -8,7 +8,7 @@ import type { HealthStatus, PlatformName, RiskLevel } from './platform'
 import type { Profile } from './profile'
 import type { LastSwitchRecord } from './state'
 import type { SnapshotScopePolicy } from './snapshot'
-import type { PlatformScopeCapability, ScopeAvailability } from './capabilities'
+import type { PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from './capabilities'
 
 export const COMMAND_ACTIONS = [
   'add',
@@ -364,6 +364,7 @@ export interface ListCommandItem {
   current: boolean
   healthStatus: HealthStatus
   riskLevel: RiskLevel
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }

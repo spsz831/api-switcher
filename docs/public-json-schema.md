@@ -165,6 +165,33 @@ type SnapshotScopePolicy = {
 - `riskWarning`: 高风险或切换写入目标时的解释。
 - `rollbackScopeMatchRequired`: 回滚时是否必须匹配快照记录的 scope。
 
+## PlatformExplainableSummary
+
+`current/list` 会输出 `platformSummary`，用于给机器消费者提供与文本摘要等价的结构化平台语义。它不是 adapter 私有详情，而是稳定公共 contract。
+
+```ts
+type PlatformExplainableSummary = {
+  kind: 'scope-precedence' | 'multi-file-composition'
+  facts: Array<{
+    code: string
+    message: string
+  }>
+  precedence?: string[]
+  currentScope?: string
+  composedFiles?: string[]
+}
+```
+
+字段语义：
+
+- `kind='scope-precedence'`: 平台存在 scope precedence，消费者应按 `precedence` 理解同名字段覆盖关系。
+- `kind='multi-file-composition'`: 平台有效配置由多个文件共同组成，消费者不应把单个文件当完整状态。
+- `facts[].code`: 稳定机器码，适合 UI 映射本地化文案或聚合统计。
+- `facts[].message`: 面向人的默认说明。
+- `precedence`: 从低到高的生效优先级。
+- `currentScope`: 当前检测到的生效 scope；如果该命令没有本地检测结果，则可能不存在。
+- `composedFiles`: 多文件平台当前观测到的组成文件；在 `list` 中如果没有对应 detection，可能为空数组。
+
 ## Command-Specific Contracts
 
 ### schema --json
@@ -189,11 +216,13 @@ type SchemaVersionCommandOutput = {
 
 ### current --json
 
-`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵与当前环境里的 scope 可用性。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/scopeCapabilities/scopeAvailability`。
+`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
 
 语义补充：
 
 - 对 Gemini 来说，`currentScope` 是在 `system-defaults < user < project < system-overrides` 四层 precedence 推导后的当前生效来源。
+- 对 Claude 来说，`platformSummary.precedence` 固定为 `user < project < local`。
+- 对 Codex 来说，`platformSummary.kind` 为 `multi-file-composition`，`composedFiles` 表示当前检测到的 `config.toml` / `auth.json` 组成文件。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `current --json` 示例。
 
 ```ts
@@ -210,6 +239,7 @@ type CurrentProfileResult = {
   managed: boolean
   targetFiles: unknown[]
   currentScope?: string
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }
@@ -217,7 +247,7 @@ type CurrentProfileResult = {
 
 ### list --json
 
-`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。
+`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。
 
 ```ts
 type ListCommandOutput = {
@@ -230,6 +260,7 @@ type ListCommandItem = {
   current: boolean
   healthStatus: string
   riskLevel: string
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }

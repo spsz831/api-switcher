@@ -1,4 +1,4 @@
-import type { PlatformCapabilities, PlatformScopeCapability, ScopeAvailability } from './capabilities'
+import type { PlatformCapabilities, PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from './capabilities'
 import type { PlatformName, RiskLevel } from './platform'
 import type { Profile } from './profile'
 
@@ -56,6 +56,7 @@ export interface OverrideExplanation {
 
 export interface ManagedBoundary {
   target?: string
+  targets?: string[]
   type: 'managed-fields' | 'retained-zone' | 'multi-file-transaction' | 'scope-aware'
   managedKeys: string[]
   preservedKeys?: string[]
@@ -136,6 +137,7 @@ export interface CurrentProfileResult {
   targetFiles: TargetFileInfo[]
   details?: Record<string, unknown>
   currentScope?: string
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   storedConfig?: ConfigFieldView[]

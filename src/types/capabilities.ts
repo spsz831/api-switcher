@@ -15,6 +15,19 @@ export interface PlatformScopeExplainable {
   }
 }
 
+export interface PlatformExplainableFact {
+  code: string
+  message: string
+}
+
+export interface PlatformExplainableSummary {
+  kind: 'scope-precedence' | 'multi-file-composition'
+  facts: PlatformExplainableFact[]
+  precedence?: string[]
+  currentScope?: string
+  composedFiles?: string[]
+}
+
 export type PlatformScopeRisk = 'normal' | 'high'
 export type ScopeAvailabilityStatus = 'available' | 'unresolved' | 'blocked'
 
