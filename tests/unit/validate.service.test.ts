@@ -184,7 +184,7 @@ describe('validate service', () => {
         platform: 'gemini',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 0,
         platformSummary: {
           kind: 'scope-precedence',
@@ -195,6 +195,64 @@ describe('validate service', () => {
           ],
         },
       },
+    ])
+  })
+
+  it('会把 profile 中的明文 secret 暴露为非阻断 warning', async () => {
+    const profile = {
+      id: 'codex-prod',
+      name: 'codex-prod',
+      platform: 'codex',
+      source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+      apply: {
+        OPENAI_API_KEY: 'sk-codex-live-123456',
+        base_url: 'https://gateway.example.com/openai/v1',
+      },
+    }
+
+    const result = await new ValidateService(
+      {
+        list: async () => [profile],
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    ).validate('codex-prod')
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.items[0]?.validation.ok).toBe(true)
+    expect(result.data?.items[0]?.validation.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'INLINE_SECRET_IN_PROFILE',
+        level: 'warning',
+        field: 'source.apiKey',
+        source: 'profile',
+      }),
+      expect.objectContaining({
+        code: 'INLINE_SECRET_IN_PROFILE',
+        level: 'warning',
+        field: 'apply.OPENAI_API_KEY',
+        source: 'profile',
+      }),
+    ]))
+    expect(result.data?.summary.warnings).toEqual(expect.arrayContaining([
+      'profile.source.apiKey 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
+      'profile.apply.OPENAI_API_KEY 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
+    ]))
+    expect(result.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'codex',
+        okCount: 1,
+        warningCount: 2,
+      }),
     ])
   })
 })

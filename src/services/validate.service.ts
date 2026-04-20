@@ -1,4 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
+import { withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
@@ -15,13 +16,20 @@ export class ValidateService {
   async validate(selector?: string): Promise<CommandResult<ValidateCommandOutput>> {
     try {
       const profiles = selector ? [await this.profileService.resolve(selector)] : await this.profileService.list()
-      const items = await Promise.all(profiles.map(async (profile) => ({
-        profileId: profile.id,
-        platform: profile.platform,
-        validation: await this.registry.get(profile.platform).validate(profile),
-        platformSummary: buildPlatformSummary(profile.platform, { listMode: true }),
-        scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
-      })))
+      const items = await Promise.all(profiles.map(async (profile) => {
+        const validation = withProfileSecretWarnings(
+          await this.registry.get(profile.platform).validate(profile),
+          profile,
+        )
+
+        return {
+          profileId: profile.id,
+          platform: profile.platform,
+          validation,
+          platformSummary: buildPlatformSummary(profile.platform, { listMode: true }),
+          scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+        }
+      }))
       const summary = this.buildValidateSummary(items)
 
       return {

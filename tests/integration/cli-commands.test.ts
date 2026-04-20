@@ -1160,7 +1160,7 @@ describe('cli commands integration', () => {
         platform: 'gemini',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 3,
         platformSummary: expect.objectContaining({
           kind: 'scope-precedence',
@@ -1169,12 +1169,17 @@ describe('cli commands integration', () => {
       }),
     ]))
     expect(payload.data?.summary.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
+    expect(payload.data?.summary.warnings).toContain('profile.source.apiKey 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
+    expect(payload.data?.summary.warnings).toContain('profile.apply.GEMINI_API_KEY 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
     expect(payload.data?.summary.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(payload.limitations).toContain('GEMINI_API_KEY 仍需通过环境变量生效。')
     expect(payload.data?.items[0]?.validation.ok).toBe(true)
     expect(payload.data?.items[0]?.validation.errors).toEqual([])
-    expect(payload.data?.items[0]?.validation.warnings).toEqual([])
+    expect(payload.data?.items[0]?.validation.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'INLINE_SECRET_IN_PROFILE', field: 'source.apiKey' }),
+      expect.objectContaining({ code: 'INLINE_SECRET_IN_PROFILE', field: 'apply.GEMINI_API_KEY' }),
+    ]))
     expect(payload.data?.items[0]?.validation.effectiveConfig?.stored?.[0]).toMatchObject({
       key: 'enforcedAuthType',
       maskedValue: 'gemini-api-key',
@@ -1472,7 +1477,10 @@ describe('cli commands integration', () => {
     })
     expect(claudeProfile?.validation?.ok).toBe(true)
     expect(claudeProfile?.validation?.errors).toEqual([])
-    expect(claudeProfile?.validation?.warnings).toEqual([])
+    expect(claudeProfile?.validation?.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'INLINE_SECRET_IN_PROFILE', field: 'source.token' }),
+      expect.objectContaining({ code: 'INLINE_SECRET_IN_PROFILE', field: 'apply.ANTHROPIC_AUTH_TOKEN' }),
+    ]))
     expect(claudeProfile?.validation?.limitations.map((item) => item.message)).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(claudeProfile?.validation?.effectiveConfig?.stored?.[0]).toMatchObject({
       key: 'ANTHROPIC_AUTH_TOKEN',
@@ -1523,7 +1531,7 @@ describe('cli commands integration', () => {
         platform: 'claude',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 1,
         platformSummary: expect.objectContaining({
           kind: 'scope-precedence',
@@ -1534,7 +1542,7 @@ describe('cli commands integration', () => {
         platform: 'codex',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 1,
         platformSummary: expect.objectContaining({
           kind: 'multi-file-composition',
@@ -1544,7 +1552,7 @@ describe('cli commands integration', () => {
         platform: 'gemini',
         profileCount: 2,
         okCount: 1,
-        warningCount: 1,
+        warningCount: 3,
         limitationCount: 6,
         platformSummary: expect.objectContaining({
           kind: 'scope-precedence',

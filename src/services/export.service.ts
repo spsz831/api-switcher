@@ -1,4 +1,5 @@
 import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
+import { withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
@@ -28,7 +29,7 @@ export class ExportService {
       const exportedProfiles = await Promise.all(profiles.map(async (profile) => {
         const adapter = this.registry.get(profile.platform)
         const validation = withFallbackSecretReferences(
-          await adapter.validate(profile),
+          withProfileSecretWarnings(await adapter.validate(profile), profile),
           profile.apply,
         )
         const scopeAvailability = profile.platform === 'gemini'

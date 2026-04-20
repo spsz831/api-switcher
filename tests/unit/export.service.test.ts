@@ -211,7 +211,7 @@ describe('export service', () => {
         platform: 'claude',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 0,
         platformSummary: {
           kind: 'scope-precedence',
@@ -226,7 +226,7 @@ describe('export service', () => {
         platform: 'gemini',
         profileCount: 1,
         okCount: 1,
-        warningCount: 0,
+        warningCount: 2,
         limitationCount: 0,
         platformSummary: {
           kind: 'scope-precedence',
@@ -240,5 +240,63 @@ describe('export service', () => {
     ])
     expect(new Date(result.data?.profiles[1]?.observedAt ?? '').toString()).not.toBe('Invalid Date')
     expect(result.data?.profiles[0]?.observedAt).toBeUndefined()
+  })
+
+  it('导出时聚合 profile 明文 secret warning 但不阻断 export', async () => {
+    const profiles = [
+      {
+        id: 'claude-prod',
+        name: 'claude-prod',
+        platform: 'claude',
+        source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+        apply: {
+          ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+          ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+        },
+      },
+    ]
+
+    const result = await new ExportService(
+      {
+        list: async () => profiles,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          detectCurrent: async () => null,
+        }),
+      } as any,
+    ).export()
+
+    expect(result.ok).toBe(true)
+    const exportedProfile = result.data?.profiles?.[0]
+    expect(exportedProfile).toBeDefined()
+    const validationWarnings = exportedProfile?.validation?.warnings ?? []
+    expect(validationWarnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'INLINE_SECRET_IN_PROFILE',
+        field: 'source.token',
+      }),
+      expect.objectContaining({
+        code: 'INLINE_SECRET_IN_PROFILE',
+        field: 'apply.ANTHROPIC_AUTH_TOKEN',
+      }),
+    ]))
+    expect(result.data?.summary.warnings).toEqual(expect.arrayContaining([
+      'profile.source.token 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
+      'profile.apply.ANTHROPIC_AUTH_TOKEN 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
+    ]))
+    expect(result.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'claude',
+        okCount: 1,
+        warningCount: 2,
+      }),
+    ])
   })
 })
