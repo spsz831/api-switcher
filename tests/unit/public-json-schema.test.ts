@@ -32,161 +32,21 @@ import {
   listCommandOutputFixture,
   validateCommandOutputFixture,
 } from '../fixtures/public-json-schema.fixtures'
-
-type JsonSchema = {
-  properties?: Record<string, unknown>
-  required?: string[]
-  $defs?: Record<string, JsonSchema>
-  allOf?: JsonSchema[]
-  oneOf?: JsonSchema[]
-  anyOf?: JsonSchema[]
-  if?: JsonSchema
-  then?: JsonSchema
-  else?: JsonSchema
-  const?: unknown
-  enum?: unknown[]
-  type?: string
-  items?: JsonSchema
-  additionalProperties?: boolean
-  $ref?: string
-}
+import {
+  loadPublicJsonSchema,
+  type JsonSchema,
+  validatePublicJsonSchema,
+  validatePublicJsonSchemaDef,
+  validateSchema,
+} from '../helpers/public-json-schema'
 
 type RequiredKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 }[keyof T]
 
-const schemaPath = path.resolve(__dirname, '../../docs/public-json-output.schema.json')
-const publicJsonSchema = JSON.parse(fs.readFileSync(schemaPath, 'utf8')) as JsonSchema
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function resolveRef(root: JsonSchema, ref: string): JsonSchema {
-  if (!ref.startsWith('#/')) {
-    throw new Error(`unsupported ref: ${ref}`)
-  }
-
-  const parts = ref.slice(2).split('/')
-  let cursor: unknown = root
-  for (const part of parts) {
-    if (!isRecord(cursor) || !(part in cursor)) {
-      throw new Error(`invalid ref path: ${ref}`)
-    }
-    cursor = cursor[part]
-  }
-
-  if (!isRecord(cursor)) {
-    throw new Error(`ref target is not schema object: ${ref}`)
-  }
-
-  return cursor as JsonSchema
-}
-
-function validateSchema(schema: JsonSchema, value: unknown, root: JsonSchema): boolean {
-  if (schema.$ref) {
-    return validateSchema(resolveRef(root, schema.$ref), value, root)
-  }
-
-  if (schema.allOf && !schema.allOf.every((branch) => validateSchema(branch, value, root))) {
-    return false
-  }
-
-  if (schema.oneOf) {
-    const matchCount = schema.oneOf.filter((branch) => validateSchema(branch, value, root)).length
-    if (matchCount !== 1) {
-      return false
-    }
-  }
-
-  if (schema.anyOf && !schema.anyOf.some((branch) => validateSchema(branch, value, root))) {
-    return false
-  }
-
-  if (schema.if) {
-    const conditionMatched = validateSchema(schema.if, value, root)
-    if (conditionMatched && schema.then && !validateSchema(schema.then, value, root)) {
-      return false
-    }
-    if (!conditionMatched && schema.else && !validateSchema(schema.else, value, root)) {
-      return false
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(schema, 'const') && value !== schema.const) {
-    return false
-  }
-
-  if (schema.enum && !schema.enum.some((item) => item === value)) {
-    return false
-  }
-
-  if (schema.type) {
-    if (schema.type === 'object' && !isRecord(value)) {
-      return false
-    }
-    if (schema.type === 'array' && !Array.isArray(value)) {
-      return false
-    }
-    if (schema.type === 'string' && typeof value !== 'string') {
-      return false
-    }
-    if (schema.type === 'boolean' && typeof value !== 'boolean') {
-      return false
-    }
-    if (schema.type === 'integer' && (!Number.isInteger(value) || typeof value !== 'number')) {
-      return false
-    }
-  }
-
-  if (isRecord(value)) {
-    if (schema.required && !schema.required.every((key) => Object.prototype.hasOwnProperty.call(value, key))) {
-      return false
-    }
-
-    if (schema.properties) {
-      for (const [key, childSchema] of Object.entries(schema.properties)) {
-        if (!Object.prototype.hasOwnProperty.call(value, key)) {
-          continue
-        }
-        if (!isRecord(childSchema)) {
-          continue
-        }
-        if (!validateSchema(childSchema as JsonSchema, value[key], root)) {
-          return false
-        }
-      }
-    }
-
-    if (schema.additionalProperties === false && schema.properties) {
-      const allowed = new Set(Object.keys(schema.properties))
-      for (const key of Object.keys(value)) {
-        if (!allowed.has(key)) {
-          return false
-        }
-      }
-    }
-  }
-
-  if (Array.isArray(value) && schema.items && !value.every((item) => validateSchema(schema.items as JsonSchema, item, root))) {
-    return false
-  }
-
-  return true
-}
-
-function validatePublicSchema(value: unknown): boolean {
-  return validateSchema(publicJsonSchema, value, publicJsonSchema)
-}
-
-function validatePublicSchemaDef(defName: string, value: unknown): boolean {
-  const def = publicJsonSchema.$defs?.[defName]
-  if (!def) {
-    throw new Error(`missing schema def: ${defName}`)
-  }
-
-  return validateSchema(def, value, publicJsonSchema)
-}
+const publicJsonSchema = loadPublicJsonSchema()
+const validatePublicSchema = validatePublicJsonSchema
+const validatePublicSchemaDef = validatePublicJsonSchemaDef
 
 describe('public JSON contract types', () => {
   it('公开 action 列表包含 import-apply', () => {
@@ -208,7 +68,7 @@ describe('public JSON contract types', () => {
         currentScope?: string
         composedFiles?: string[]
       }
-      scopePolicy: SnapshotScopePolicy
+      scopePolicy?: SnapshotScopePolicy
       scopeCapabilities: PlatformScopeCapability[]
       scopeAvailability?: ScopeAvailability[]
       validation: ValidationResult
@@ -217,14 +77,14 @@ describe('public JSON contract types', () => {
     }>()
 
     expectTypeOf<Extract<
-      'sourceFile' | 'importedProfile' | 'scopePolicy' | 'backupId',
+      'sourceFile' | 'importedProfile' | 'backupId',
       RequiredKeys<ImportApplyCommandOutput>
-    >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'scopePolicy' | 'backupId'>()
+    >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'backupId'>()
   })
 
   it('用类型断言定义 import apply 成功态共享字段矩阵', () => {
     expectTypeOf<ImportApplyCommandOutput>().toMatchTypeOf<{
-      scopePolicy: SnapshotScopePolicy
+      scopePolicy?: SnapshotScopePolicy
       scopeCapabilities: PlatformScopeCapability[]
       scopeAvailability?: ScopeAvailability[]
       preview: PreviewResult
@@ -395,7 +255,6 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.required).toEqual(expect.arrayContaining([
       'sourceFile',
       'importedProfile',
-      'scopePolicy',
       'scopeCapabilities',
       'validation',
       'preview',

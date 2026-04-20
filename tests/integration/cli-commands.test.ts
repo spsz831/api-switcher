@@ -9,6 +9,7 @@ import { StateStore } from '../../src/stores/state.store'
 import { PUBLIC_JSON_SCHEMA_VERSION } from '../../src/constants/public-json-schema'
 import type { CommandResult } from '../../src/types/command'
 import type { Profile } from '../../src/types/profile'
+import { validateSchema, type JsonSchema } from '../helpers/public-json-schema'
 
 const execFileAsync = promisify(execFile)
 const repoRoot = path.resolve(__dirname, '../..')
@@ -196,6 +197,10 @@ function parseJsonResult<T = unknown>(stdout: string): CommandResult<T> {
   return payload
 }
 
+function validatePayloadAgainstPublicSchema(schema: JsonSchema, payload: unknown): boolean {
+  return validateSchema(schema, payload, schema)
+}
+
 async function writeImportSourceFile(
   filePath: string,
   profiles: Array<Record<string, unknown>>,
@@ -215,6 +220,209 @@ async function writeImportSourceFile(
 }
 
 describe('cli commands integration', () => {
+  it('核心命令 --json 成功输出可被 public JSON schema 校验', async () => {
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
+    await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
+    await fs.writeFile(geminiSettingsPath, JSON.stringify({ ui: { theme: 'dark' }, enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+
+    const schemaResult = await runCli(['schema', '--json'])
+    const currentResult = await runCli(['current', '--json'])
+    const listResult = await runCli(['list', '--json'])
+    const previewResult = await runCli(['preview', 'gemini-prod', '--scope', 'project', '--json'])
+    const useResult = await runCli(['use', 'codex-prod', '--force', '--json'])
+
+    expect(schemaResult.exitCode).toBe(0)
+    expect(currentResult.exitCode).toBe(0)
+    expect(listResult.exitCode).toBe(0)
+    expect(previewResult.exitCode).toBe(0)
+    expect(useResult.exitCode).toBe(0)
+
+    const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
+    expect(usePayload.data?.backupId).toBeTruthy()
+
+    await fs.writeFile(codexConfigPath, 'default_provider = "other"\n', 'utf8')
+    await fs.writeFile(codexAuthPath, JSON.stringify({ OPENAI_API_KEY: 'sk-other' }, null, 2), 'utf8')
+
+    const rollbackResult = await runCli(['rollback', usePayload.data!.backupId!, '--json'])
+    expect(rollbackResult.exitCode).toBe(0)
+
+    const payloads = [
+      parseJsonResult(schemaResult.stdout),
+      parseJsonResult(currentResult.stdout),
+      parseJsonResult(listResult.stdout),
+      parseJsonResult(previewResult.stdout),
+      usePayload,
+      parseJsonResult(rollbackResult.stdout),
+    ]
+
+    for (const payload of payloads) {
+      expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
+    }
+  })
+
+  it('第二批命令 --json 成功输出可被 public JSON schema 校验', async () => {
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
+    const importFile = path.join(runtimeDir, 'schema-validation-import-source.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      },
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+        scopeAvailability: [
+          { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+          { scope: 'project', status: 'available', detected: true, writable: true, path: geminiProjectSettingsPath },
+        ],
+      },
+    ])
+
+    const validateResult = await runCli(['validate', 'gemini-prod', '--json'])
+    const exportResult = await runCli(['export', '--json'])
+    const importPreviewResult = await runCli(['import', importFile, '--json'])
+    const importApplyResult = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--force', '--json'])
+
+    expect(validateResult.exitCode).toBe(0)
+    expect(exportResult.exitCode).toBe(0)
+    expect(importPreviewResult.exitCode).toBe(0)
+    expect(importApplyResult.exitCode).toBe(0)
+
+    const payloads = [
+      { name: 'validate', payload: parseJsonResult(validateResult.stdout) },
+      { name: 'export', payload: parseJsonResult(exportResult.stdout) },
+      { name: 'import-preview', payload: parseJsonResult(importPreviewResult.stdout) },
+      { name: 'import-apply', payload: parseJsonResult(importApplyResult.stdout) },
+    ]
+
+    for (const item of payloads) {
+      expect(validatePayloadAgainstPublicSchema(staticSchema, item.payload), item.name).toBe(true)
+    }
+  })
+
+  it('统一失败 envelope --json 输出可被 public JSON schema 校验', async () => {
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
+    const missingImportFile = path.join(runtimeDir, 'missing-import-for-schema-check.json')
+
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const exportFailureResult = await runCli(['export', '--json'])
+
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'claude-prod',
+          name: 'claude-prod',
+          platform: 'claude',
+          source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
+          apply: {
+            ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+        {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+        {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: {
+            GEMINI_API_KEY: 'gm-live-123456',
+            enforcedAuthType: 'gemini-api-key',
+          },
+        },
+        {
+          id: 'gemini-invalid',
+          name: 'gemini-invalid',
+          platform: 'gemini',
+          source: { authType: 'oauth-personal' },
+          apply: {
+            enforcedAuthType: 'oauth-personal',
+          },
+        },
+      ],
+    })
+
+    const validateFailureResult = await runCli(['validate', 'missing-profile', '--json'])
+    const importFailureResult = await runCli(['import', missingImportFile, '--json'])
+    const importApplyFailureFile = path.join(runtimeDir, 'import-apply-failure-source.json')
+    await writeImportSourceFile(importApplyFailureFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+    const importApplyFailureResult = await runCli(['import', 'apply', importApplyFailureFile, '--profile', 'gemini-prod', '--json'])
+
+    expect(exportFailureResult.exitCode).toBe(1)
+    expect(validateFailureResult.exitCode).toBe(1)
+    expect(importFailureResult.exitCode).toBe(1)
+    expect(importApplyFailureResult.exitCode).toBe(1)
+
+    const payloads = [
+      parseJsonResult(exportFailureResult.stdout),
+      parseJsonResult(validateFailureResult.stdout),
+      parseJsonResult(importFailureResult.stdout),
+      parseJsonResult(importApplyFailureResult.stdout),
+    ]
+
+    for (const payload of payloads) {
+      expect(payload.ok).toBe(false)
+      expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
+    }
+  })
+
   it('schema --json 输出当前 public JSON schema 与版本', async () => {
     const result = await runCli(['schema', '--json'])
     const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as {

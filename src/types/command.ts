@@ -458,7 +458,7 @@ export interface ImportApplyCommandOutput {
   importedProfile: Profile
   appliedScope?: string
   platformSummary?: PlatformExplainableSummary
-  scopePolicy: SnapshotScopePolicy
+  scopePolicy?: SnapshotScopePolicy
   scopeCapabilities: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   validation: ValidationResult

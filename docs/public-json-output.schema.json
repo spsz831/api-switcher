@@ -1115,7 +1115,6 @@
       "required": [
         "sourceFile",
         "importedProfile",
-        "scopePolicy",
         "scopeCapabilities",
         "validation",
         "preview",
