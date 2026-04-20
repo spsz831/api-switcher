@@ -1,5 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
-import { withProfileSecretWarnings } from '../domain/secret-inspection'
+import { withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
@@ -17,8 +17,11 @@ export class ValidateService {
     try {
       const profiles = selector ? [await this.profileService.resolve(selector)] : await this.profileService.list()
       const items = await Promise.all(profiles.map(async (profile) => {
-        const validation = withProfileSecretWarnings(
-          await this.registry.get(profile.platform).validate(profile),
+        const validation = withProfileSecretReferenceContract(
+          withProfileSecretWarnings(
+            await this.registry.get(profile.platform).validate(profile),
+            profile,
+          ),
           profile,
         )
 

@@ -299,4 +299,55 @@ describe('export service', () => {
       }),
     ])
   })
+
+  it('导出时保留 secret_ref 契约并聚合未支持写入的 limitation', async () => {
+    const profiles = [
+      {
+        id: 'codex-ref',
+        name: 'codex-ref',
+        platform: 'codex',
+        source: { secret_ref: 'vault://codex/prod', baseURL: 'https://gateway.example.com/openai/v1' },
+        apply: {
+          auth_reference: 'vault://codex/prod',
+          base_url: 'https://gateway.example.com/openai/v1',
+        },
+      },
+    ]
+
+    const result = await new ExportService(
+      {
+        list: async () => profiles,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+            secretReferences: [
+              {
+                key: 'auth_reference',
+                source: 'auth_reference',
+                reference: 'vault://codex/prod',
+                present: true,
+                maskedValue: 'vault://codex/prod',
+              },
+            ],
+          }),
+          detectCurrent: async () => null,
+        }),
+      } as any,
+    ).export()
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.profiles?.[0]?.validation?.warnings).toEqual([])
+    expect(result.data?.profiles?.[0]?.validation?.limitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+        level: 'limitation',
+      }),
+    ]))
+    expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+  })
 })

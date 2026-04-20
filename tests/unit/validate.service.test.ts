@@ -255,4 +255,110 @@ describe('validate service', () => {
       }),
     ])
   })
+
+  it('secret_ref/auth_reference profile 在 validate 层可被识别，但会提示写入链路尚未消费引用', async () => {
+    const profile = {
+      id: 'claude-ref',
+      name: 'claude-ref',
+      platform: 'claude',
+      source: {
+        auth_reference: 'vault://claude/prod',
+        baseURL: 'https://gateway.example.com/api',
+      },
+      apply: {
+        auth_reference: 'vault://claude/prod',
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+      },
+    }
+
+    const result = await new ValidateService(
+      {
+        list: async () => [profile],
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async (inputProfile: typeof profile) => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+            effectiveConfig: {
+              stored: [],
+              effective: [],
+              overrides: [],
+            },
+            managedBoundaries: [],
+            secretReferences: [
+              {
+                key: 'auth_reference',
+                source: 'auth_reference',
+                reference: inputProfile.apply.auth_reference,
+                present: true,
+                maskedValue: inputProfile.apply.auth_reference,
+              },
+            ],
+            preservedFields: [],
+            retainedZones: [],
+          }),
+        }),
+      } as any,
+    ).validate('claude-ref')
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.items[0]?.validation.errors).toEqual([])
+    expect(result.data?.items[0]?.validation.warnings).toEqual([])
+    expect(result.data?.items[0]?.validation.limitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+        level: 'limitation',
+      }),
+    ]))
+    expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(result.data?.summary.warnings).not.toContain('profile.source.auth_reference 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
+  })
+
+  it('空 secret_ref/auth_reference 会返回结构化校验错误', async () => {
+    const profile = {
+      id: 'gemini-empty-ref',
+      name: 'gemini-empty-ref',
+      platform: 'gemini',
+      source: { secret_ref: '' },
+      apply: {
+        auth_reference: '   ',
+        enforcedAuthType: 'gemini-api-key',
+      },
+    }
+
+    const result = await new ValidateService(
+      {
+        list: async () => [profile],
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    ).validate('gemini-empty-ref')
+
+    expect(result.ok).toBe(false)
+    expect(result.data?.items[0]?.validation.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_MISSING',
+        level: 'error',
+        field: 'source.secret_ref',
+      }),
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_MISSING',
+        level: 'error',
+        field: 'apply.auth_reference',
+      }),
+    ]))
+  })
 })

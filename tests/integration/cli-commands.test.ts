@@ -1225,6 +1225,44 @@ describe('cli commands integration', () => {
     expect(payload.data?.items[0]?.validation.limitations.map((item) => item.message)).toContain('当前仅稳定托管 settings.json 中已确认字段 enforcedAuthType。')
   })
 
+  it('validate --json 支持 secret_ref/auth_reference profile 契约并提示写入链路未支持', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'claude-ref',
+          name: 'claude-ref',
+          platform: 'claude',
+          source: {
+            auth_reference: 'vault://claude/prod',
+            baseURL: 'https://gateway.example.com/api',
+          },
+          apply: {
+            auth_reference: 'vault://claude/prod',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['validate', 'claude-ref', '--json'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.items[0]?.validation.errors).toEqual([])
+    expect(payload.data?.items[0]?.validation.warnings).toEqual([])
+    expect(payload.data?.items[0]?.validation.limitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+        level: 'limitation',
+      }),
+    ]))
+    expect(payload.data?.summary.warnings).toEqual([])
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+  })
+
 
   it('list 文本输出配置列表与 explainable 摘要', async () => {
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
@@ -1590,6 +1628,52 @@ describe('cli commands integration', () => {
         maskedValue: 'gm-l***56',
       },
     ])
+  })
+
+  it('export --json 保留 secret_ref/auth_reference profile 契约并聚合 limitation', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'codex-ref',
+          name: 'codex-ref',
+          platform: 'codex',
+          source: {
+            secret_ref: 'vault://codex/prod',
+            baseURL: 'https://gateway.example.com/openai/v1',
+          },
+          apply: {
+            auth_reference: 'vault://codex/prod',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['export', '--json'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.summary.warnings).toEqual([])
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'codex',
+        okCount: 1,
+        warningCount: 0,
+        limitationCount: 2,
+      }),
+    ]))
+    expect(payload.data?.profiles?.[0]?.validation?.warnings).toEqual([])
+    expect(payload.data?.profiles?.[0]?.validation?.errors).toEqual([])
+    expect(payload.data?.profiles?.[0]?.validation?.limitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+        level: 'limitation',
+      }),
+    ]))
   })
 
   it('preview --json 输出 Codex 结构化预览结果与 warnings', async () => {
