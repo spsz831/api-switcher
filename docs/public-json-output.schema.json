@@ -358,7 +358,7 @@
     },
     "SchemaActionCapability": {
       "type": "object",
-      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "failureCodes", "fieldPresence", "fieldSources", "fieldStability", "readOrderGroups", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
       "properties": {
         "action": {
           "type": "string",
@@ -377,6 +377,25 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "failureCodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFailureCode" }
+        },
+        "fieldPresence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldPresence" }
+        },
+        "fieldSources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldSource" }
+        },
+        "fieldStability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldStability" }
+        },
+        "readOrderGroups": {
+          "$ref": "#/$defs/SchemaReadOrderGroups"
+        },
         "primaryFieldSemantics": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
@@ -385,6 +404,134 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
         }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFailureCode": {
+      "type": "object",
+      "required": ["code", "priority", "category", "recommendedHandling"],
+      "properties": {
+        "code": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "category": {
+          "type": "string",
+          "enum": ["input", "state", "scope", "confirmation", "platform", "runtime", "source"]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldPresence": {
+      "type": "object",
+      "required": ["path", "channel", "presence"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "presence": {
+          "type": "string",
+          "enum": ["always", "conditional"]
+        },
+        "conditionCode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldSource": {
+      "type": "object",
+      "required": ["path", "channel", "source"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "command-service",
+            "platform-adapter",
+            "schema-service",
+            "write-pipeline",
+            "import-analysis",
+            "error-envelope"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldStability": {
+      "type": "object",
+      "required": ["path", "channel", "stabilityTier"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "stabilityTier": {
+          "type": "string",
+          "enum": ["stable", "bounded", "expandable"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaReadOrderGroups": {
+      "type": "object",
+      "required": ["success", "failure"],
+      "properties": {
+        "success": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaSuccessReadOrderGroup" }
+        },
+        "failure": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFailureReadOrderGroup" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSuccessReadOrderGroup": {
+      "type": "object",
+      "required": ["stage", "fields"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["summary", "selection", "items", "detail", "artifacts"]
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaFailureReadOrderGroup": {
+      "type": "object",
+      "required": ["stage", "fields"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["error-core", "error-details", "error-recovery"]
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
       },
       "additionalProperties": false
     },

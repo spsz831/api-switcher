@@ -343,6 +343,53 @@ type SchemaCommandOutput = {
       hasScopePolicy: boolean
       primaryFields: string[]
       primaryErrorFields: string[]
+      failureCodes: Array<{
+        code: string
+        priority: number
+        category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
+        recommendedHandling:
+          | 'fix-input-and-retry'
+          | 'select-existing-resource'
+          | 'resolve-scope-before-retry'
+          | 'confirm-before-write'
+          | 'check-platform-support'
+          | 'inspect-runtime-details'
+          | 'check-import-source'
+      }>
+      fieldPresence: Array<{
+        path: string
+        channel: 'success' | 'failure'
+        presence: 'always' | 'conditional'
+        conditionCode?: string
+      }>
+      fieldSources: Array<{
+        path: string
+        channel: 'success' | 'failure'
+        source:
+          | 'command-service'
+          | 'platform-adapter'
+          | 'schema-service'
+          | 'write-pipeline'
+          | 'import-analysis'
+          | 'error-envelope'
+      }>
+      fieldStability: Array<{
+        path: string
+        channel: 'success' | 'failure'
+        stabilityTier: 'stable' | 'bounded' | 'expandable'
+      }>
+      readOrderGroups: {
+        success: Array<{
+          stage: 'summary' | 'selection' | 'items' | 'detail' | 'artifacts'
+          fields: string[]
+          purpose?: string
+        }>
+        failure: Array<{
+          stage: 'error-core' | 'error-details' | 'error-recovery'
+          fields: string[]
+          purpose?: string
+        }>
+      }
       primaryFieldSemantics: Array<{ path: string; semantic: string }>
       primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
     }>
@@ -351,7 +398,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取；`readOrderGroups` 则把 success / failure 两侧的推荐阅读阶段结构化。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 

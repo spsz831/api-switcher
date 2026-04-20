@@ -4,7 +4,12 @@ import {
   COMMAND_ACTIONS,
   type CommandResult,
   type SchemaActionCapability,
+  type SchemaActionFailureCode,
+  type SchemaActionFieldPresence,
+  type SchemaActionFieldSource,
+  type SchemaActionFieldStability,
   type SchemaCommandOutput,
+  type SchemaReadOrderGroups,
   type SchemaFieldSemanticBinding,
 } from '../types/command'
 
@@ -17,6 +22,11 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   hasScopePolicy: ['preview', 'use', 'rollback', 'import-apply'].includes(action),
   primaryFields: getPrimaryFields(action),
   primaryErrorFields: getPrimaryErrorFields(action),
+  failureCodes: getFailureCodes(action),
+  fieldPresence: getFieldPresence(action),
+  fieldSources: getFieldSources(action),
+  fieldStability: getFieldStability(action),
+  readOrderGroups: getReadOrderGroups(action),
   primaryFieldSemantics: getPrimaryFieldSemantics(action),
   primaryErrorFieldSemantics: getPrimaryErrorFieldSemantics(action),
 }))
@@ -64,6 +74,549 @@ function getPrimaryErrorFields(action: typeof COMMAND_ACTIONS[number]): string[]
       return ['error.code', 'error.message', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
     default:
       return ['error.code', 'error.message']
+  }
+}
+
+function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFailureCode[] {
+  switch (action) {
+    case 'add':
+      return [
+        { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'GEMINI_URL_UNSUPPORTED', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'DUPLICATE_PROFILE_ID', priority: 3, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 4, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ADD_FAILED', priority: 5, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'current':
+      return [
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'CURRENT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'export':
+      return [
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'EXPORT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'import':
+      return [
+        { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'IMPORT_SOURCE_INVALID', priority: 2, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 4, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'IMPORT_PREVIEW_FAILED', priority: 5, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'import-apply':
+      return [
+        { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'IMPORT_SOURCE_INVALID', priority: 2, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'IMPORT_PROFILE_NOT_FOUND', priority: 4, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'INVALID_SCOPE', priority: 5, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'IMPORT_SCOPE_UNAVAILABLE', priority: 6, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
+        { code: 'IMPORT_APPLY_NOT_READY', priority: 7, category: 'state', recommendedHandling: 'resolve-scope-before-retry' },
+        { code: 'VALIDATION_FAILED', priority: 8, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'CONFIRMATION_REQUIRED', priority: 9, category: 'confirmation', recommendedHandling: 'confirm-before-write' },
+        { code: 'IMPORT_PLATFORM_NOT_SUPPORTED', priority: 10, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 11, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'IMPORT_APPLY_FAILED', priority: 12, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'list':
+      return [
+        { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'LIST_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'preview':
+      return [
+        { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 3, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'PREVIEW_FAILED', priority: 4, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'rollback':
+      return [
+        { code: 'BACKUP_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'INVALID_BACKUP_ID', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'INVALID_SCOPE', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ROLLBACK_SCOPE_MISMATCH', priority: 4, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ROLLBACK_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'schema':
+      return []
+    case 'use':
+      return [
+        { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'VALIDATION_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'CONFIRMATION_REQUIRED', priority: 4, category: 'confirmation', recommendedHandling: 'confirm-before-write' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'APPLY_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'USE_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    case 'validate':
+      return [
+        { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'VALIDATE_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ]
+    default:
+      return []
+  }
+}
+
+function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionFieldPresence[] {
+  switch (action) {
+    case 'add':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'risk', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'always' },
+      ]
+    case 'current':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'current', channel: 'success', presence: 'always' },
+        { path: 'detections', channel: 'success', presence: 'always' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY' },
+      ]
+    case 'export':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'profiles', channel: 'success', presence: 'always' },
+      ]
+    case 'import':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'items', channel: 'success', presence: 'always' },
+        { path: 'sourceCompatibility', channel: 'success', presence: 'always' },
+        { path: 'error.code', channel: 'failure', presence: 'always' },
+        { path: 'error.message', channel: 'failure', presence: 'always' },
+      ]
+    case 'import-apply':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'platformSummary', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopePolicy', channel: 'success', presence: 'always' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'always' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'changedFiles', channel: 'success', presence: 'always' },
+        { path: 'backupId', channel: 'success', presence: 'always' },
+        { path: 'error.details.previewDecision', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_IMPORT_APPLY_FAILURE_PROVIDES_PREVIEW_DECISION' },
+        { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS' },
+      ]
+    case 'list':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'profiles', channel: 'success', presence: 'always' },
+      ]
+    case 'preview':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'risk', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS' },
+      ]
+    case 'rollback':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'platformSummary', channel: 'success', presence: 'always' },
+        { path: 'rollback', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ROLLBACK_RESULT_IS_AVAILABLE' },
+        { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'restoredFiles', channel: 'success', presence: 'always' },
+        { path: 'backupId', channel: 'success', presence: 'always' },
+        { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS' },
+      ]
+    case 'schema':
+      return [
+        { path: 'schemaVersion', channel: 'success', presence: 'always' },
+        { path: 'commandCatalog', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+        { path: 'schemaId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+        { path: 'schema', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+      ]
+    case 'use':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'platformSummary', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'changedFiles', channel: 'success', presence: 'always' },
+        { path: 'backupId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_BACKUP_IS_CREATED' },
+        { path: 'error.details.risk', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_CONFIRMATION_OR_VALIDATION_FAILURE_PROVIDES_RISK' },
+        { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS' },
+      ]
+    case 'validate':
+      return [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'items', channel: 'success', presence: 'always' },
+      ]
+    default:
+      return []
+  }
+}
+
+function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFieldSource[] {
+  switch (action) {
+    case 'add':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'risk', channel: 'success', source: 'command-service' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+      ]
+    case 'current':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'current', channel: 'success', source: 'command-service' },
+        { path: 'detections', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+      ]
+    case 'export':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'profiles', channel: 'success', source: 'command-service' },
+      ]
+    case 'import':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'import-analysis' },
+        { path: 'items', channel: 'success', source: 'import-analysis' },
+        { path: 'sourceCompatibility', channel: 'success', source: 'import-analysis' },
+        { path: 'error.code', channel: 'failure', source: 'error-envelope' },
+        { path: 'error.message', channel: 'failure', source: 'error-envelope' },
+      ]
+    case 'import-apply':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopePolicy', channel: 'success', source: 'command-service' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
+        { path: 'backupId', channel: 'success', source: 'write-pipeline' },
+        { path: 'error.details.previewDecision', channel: 'failure', source: 'import-analysis' },
+        { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', source: 'platform-adapter' },
+      ]
+    case 'list':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'profiles', channel: 'success', source: 'command-service' },
+      ]
+    case 'preview':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'risk', channel: 'success', source: 'command-service' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopePolicy', channel: 'success', source: 'command-service' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', source: 'platform-adapter' },
+      ]
+    case 'rollback':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
+        { path: 'rollback', channel: 'success', source: 'write-pipeline' },
+        { path: 'scopePolicy', channel: 'success', source: 'command-service' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'restoredFiles', channel: 'success', source: 'write-pipeline' },
+        { path: 'backupId', channel: 'success', source: 'write-pipeline' },
+        { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', source: 'platform-adapter' },
+      ]
+    case 'schema':
+      return [
+        { path: 'schemaVersion', channel: 'success', source: 'schema-service' },
+        { path: 'commandCatalog', channel: 'success', source: 'schema-service' },
+        { path: 'schemaId', channel: 'success', source: 'schema-service' },
+        { path: 'schema', channel: 'success', source: 'schema-service' },
+      ]
+    case 'use':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopePolicy', channel: 'success', source: 'command-service' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
+        { path: 'backupId', channel: 'success', source: 'write-pipeline' },
+        { path: 'error.details.risk', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', source: 'platform-adapter' },
+      ]
+    case 'validate':
+      return [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'items', channel: 'success', source: 'command-service' },
+      ]
+    default:
+      return []
+  }
+}
+
+function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaActionFieldStability[] {
+  switch (action) {
+    case 'add':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'risk', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+      ]
+    case 'current':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'current', channel: 'success', stabilityTier: 'stable' },
+        { path: 'detections', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+      ]
+    case 'export':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+      ]
+    case 'import':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'items', channel: 'success', stabilityTier: 'stable' },
+        { path: 'sourceCompatibility', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.code', channel: 'failure', stabilityTier: 'stable' },
+        { path: 'error.message', channel: 'failure', stabilityTier: 'stable' },
+      ]
+    case 'import-apply':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.details.previewDecision', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', stabilityTier: 'bounded' },
+      ]
+    case 'list':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+      ]
+    case 'preview':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'risk', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', stabilityTier: 'bounded' },
+      ]
+    case 'rollback':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
+        { path: 'rollback', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'restoredFiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', stabilityTier: 'bounded' },
+      ]
+    case 'schema':
+      return [
+        { path: 'schemaVersion', channel: 'success', stabilityTier: 'stable' },
+        { path: 'commandCatalog', channel: 'success', stabilityTier: 'stable' },
+        { path: 'schemaId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'schema', channel: 'success', stabilityTier: 'stable' },
+      ]
+    case 'use':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.details.risk', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', stabilityTier: 'bounded' },
+      ]
+    case 'validate':
+      return [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'items', channel: 'success', stabilityTier: 'stable' },
+      ]
+    default:
+      return []
+  }
+}
+
+function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadOrderGroups {
+  switch (action) {
+    case 'add':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看单平台聚合和风险计数。' },
+          { stage: 'detail', fields: ['risk', 'preview', 'scopeCapabilities'], purpose: '再展开新增结果、风险和 scope 能力。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      }
+    case 'current':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级聚合。' },
+          { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
+          { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
+          { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      }
+    case 'export':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级导出聚合。' },
+          { stage: 'items', fields: ['profiles'], purpose: '再读导出 profile 列表。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      }
+    case 'import':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看 mixed-batch 平台聚合。' },
+          { stage: 'items', fields: ['items'], purpose: '再处理每个 imported item。' },
+          { stage: 'detail', fields: ['sourceCompatibility'], purpose: '最后看来源兼容性。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定顶层失败类型。' },
+          { stage: 'error-recovery', fields: ['error.code'], purpose: '再根据 failureCodes 选择导入源修复动作。' },
+        ],
+      }
+    case 'import-apply':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看 apply 的平台级聚合。' },
+          { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义和 scope 决策。' },
+          { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费落盘产物。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
+          { stage: 'error-details', fields: ['error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看导入决策和 scope 上下文。' },
+          { stage: 'error-recovery', fields: ['error.code'], purpose: '最后按 recommendedHandling 选择修复动作。' },
+        ],
+      }
+    case 'list':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先按平台分组。' },
+          { stage: 'items', fields: ['profiles'], purpose: '再读 profile 列表。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      }
+    case 'preview':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看目标 scope 的平台级聚合。' },
+          { stage: 'detail', fields: ['risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开预览、风险和 scope 元信息。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
+          { stage: 'error-details', fields: ['error.details.scopePolicy', 'error.details.scopeAvailability'], purpose: '再看 scope 相关上下文。' },
+        ],
+      }
+    case 'rollback':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看恢复的单平台聚合。' },
+          { stage: 'detail', fields: ['platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开恢复结果和 scope 上下文。' },
+          { stage: 'artifacts', fields: ['restoredFiles', 'backupId'], purpose: '最后消费恢复产物。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
+          { stage: 'error-details', fields: ['error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看 scope 不匹配或不可用上下文。' },
+          { stage: 'error-recovery', fields: ['error.code'], purpose: '最后按 recommendedHandling 选择恢复动作。' },
+        ],
+      }
+    case 'schema':
+      return {
+        success: [
+          { stage: 'selection', fields: ['commandCatalog'], purpose: '先读取命令级能力索引。' },
+          { stage: 'detail', fields: ['schemaVersion', 'schemaId', 'schema'], purpose: '再按需展开 schema 元信息和完整文档。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '保留统一失败入口。' },
+        ],
+      }
+    case 'use':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看写入平台的聚合结果。' },
+          { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义、预览和 scope 上下文。' },
+          { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费备份和落盘产物。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
+          { stage: 'error-details', fields: ['error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看风险和 scope 上下文。' },
+          { stage: 'error-recovery', fields: ['error.code'], purpose: '最后按 recommendedHandling 选择修复动作。' },
+        ],
+      }
+    case 'validate':
+      return {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级通过/限制聚合。' },
+          { stage: 'items', fields: ['items'], purpose: '再展开各 profile 校验结果。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      }
+    default:
+      return {
+        success: [],
+        failure: [],
+      }
   }
 }
 

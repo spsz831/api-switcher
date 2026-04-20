@@ -235,6 +235,38 @@ describe('cli commands integration', () => {
           hasScopePolicy: boolean
           primaryFields: string[]
           primaryErrorFields: string[]
+          failureCodes: Array<{
+            code: string
+            priority: number
+            category: string
+            recommendedHandling: string
+          }>
+          fieldPresence: Array<{
+            path: string
+            channel: string
+            presence: string
+            conditionCode?: string
+          }>
+          fieldSources: Array<{
+            path: string
+            channel: string
+            source: string
+          }>
+          fieldStability: Array<{
+            path: string
+            channel: string
+            stabilityTier: string
+          }>
+          readOrderGroups: {
+            success: Array<{
+              stage: string
+              fields: string[]
+            }>
+            failure: Array<{
+              stage: string
+              fields: string[]
+            }>
+          }
           primaryFieldSemantics: Array<{ path: string; semantic: string }>
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
         }>
@@ -253,73 +285,188 @@ describe('cli commands integration', () => {
     expect(payload.action).toBe('schema')
     expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
-    expect(payload.data?.commandCatalog.actions).toEqual(expect.arrayContaining([
-      {
-        action: 'current',
-        hasPlatformSummary: true,
-        hasPlatformStats: true,
-        hasScopeCapabilities: true,
-        hasScopeAvailability: true,
-        hasScopePolicy: false,
-        primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
-        primaryErrorFields: ['error.code', 'error.message'],
-        primaryFieldSemantics: [
-          { path: 'summary.platformStats', semantic: 'platform-aggregate' },
-          { path: 'current', semantic: 'result-core' },
-          { path: 'detections', semantic: 'item-collection' },
-          { path: 'scopeCapabilities', semantic: 'scope-resolution' },
-          { path: 'scopeAvailability', semantic: 'scope-resolution' },
+    const actions = payload.data?.commandCatalog.actions ?? []
+    const currentAction = actions.find((action) => action.action === 'current')
+    const previewAction = actions.find((action) => action.action === 'preview')
+    const schemaAction = actions.find((action) => action.action === 'schema')
+
+    expect(currentAction).toEqual({
+      action: 'current',
+      hasPlatformSummary: true,
+      hasPlatformStats: true,
+      hasScopeCapabilities: true,
+      hasScopeAvailability: true,
+      hasScopePolicy: false,
+      primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'CURRENT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'current', channel: 'success', presence: 'always' },
+        { path: 'detections', channel: 'success', presence: 'always' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'current', channel: 'success', source: 'command-service' },
+        { path: 'detections', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'current', channel: 'success', stabilityTier: 'stable' },
+        { path: 'detections', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级聚合。' },
+          { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
+          { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
+          { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
         ],
-        primaryErrorFieldSemantics: [
-          { path: 'error.code', semantic: 'error-core' },
-          { path: 'error.message', semantic: 'error-core' },
-        ],
-      },
-      {
-        action: 'preview',
-        hasPlatformSummary: false,
-        hasPlatformStats: true,
-        hasScopeCapabilities: true,
-        hasScopeAvailability: true,
-        hasScopePolicy: true,
-        primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
-        primaryErrorFields: ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
-        primaryFieldSemantics: [
-          { path: 'summary.platformStats', semantic: 'platform-aggregate' },
-          { path: 'risk', semantic: 'risk' },
-          { path: 'preview', semantic: 'result-core' },
-          { path: 'scopePolicy', semantic: 'scope-resolution' },
-          { path: 'scopeCapabilities', semantic: 'scope-resolution' },
-          { path: 'scopeAvailability', semantic: 'scope-resolution' },
-        ],
-        primaryErrorFieldSemantics: [
-          { path: 'error.code', semantic: 'error-core' },
-          { path: 'error.message', semantic: 'error-core' },
-          { path: 'error.details.scopePolicy', semantic: 'error-details' },
-          { path: 'error.details.scopeAvailability', semantic: 'error-details' },
-        ],
-      },
-      {
-        action: 'schema',
-        hasPlatformSummary: false,
-        hasPlatformStats: false,
-        hasScopeCapabilities: false,
-        hasScopeAvailability: false,
-        hasScopePolicy: false,
-        primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
-        primaryErrorFields: ['error.code', 'error.message'],
-        primaryFieldSemantics: [
-          { path: 'commandCatalog', semantic: 'schema-catalog' },
-          { path: 'schemaVersion', semantic: 'schema-metadata' },
-          { path: 'schemaId', semantic: 'schema-metadata' },
-          { path: 'schema', semantic: 'schema-document' },
-        ],
-        primaryErrorFieldSemantics: [
-          { path: 'error.code', semantic: 'error-core' },
-          { path: 'error.message', semantic: 'error-core' },
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
         ],
       },
-    ]))
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'current', semantic: 'result-core' },
+        { path: 'detections', semantic: 'item-collection' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ],
+    })
+
+    expect(previewAction).toEqual({
+      action: 'preview',
+      hasPlatformSummary: false,
+      hasPlatformStats: true,
+      hasScopeCapabilities: true,
+      hasScopeAvailability: true,
+      hasScopePolicy: true,
+      primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+      primaryErrorFields: ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
+      failureCodes: [
+        { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 3, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'PREVIEW_FAILED', priority: 4, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'risk', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
+        { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'risk', channel: 'success', source: 'command-service' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopePolicy', channel: 'success', source: 'command-service' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', source: 'platform-adapter' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'risk', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
+        { path: 'error.details.scopeAvailability', channel: 'failure', stabilityTier: 'bounded' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看目标 scope 的平台级聚合。' },
+          { stage: 'detail', fields: ['risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开预览、风险和 scope 元信息。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
+          { stage: 'error-details', fields: ['error.details.scopePolicy', 'error.details.scopeAvailability'], purpose: '再看 scope 相关上下文。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'risk', semantic: 'risk' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopePolicy', semantic: 'scope-resolution' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+        { path: 'scopeAvailability', semantic: 'scope-resolution' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.scopePolicy', semantic: 'error-details' },
+        { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ],
+    })
+
+    expect(schemaAction).toEqual({
+      action: 'schema',
+      hasPlatformSummary: false,
+      hasPlatformStats: false,
+      hasScopeCapabilities: false,
+      hasScopeAvailability: false,
+      hasScopePolicy: false,
+      primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [],
+      fieldPresence: [
+        { path: 'schemaVersion', channel: 'success', presence: 'always' },
+        { path: 'commandCatalog', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+        { path: 'schemaId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+        { path: 'schema', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
+      ],
+      fieldSources: [
+        { path: 'schemaVersion', channel: 'success', source: 'schema-service' },
+        { path: 'commandCatalog', channel: 'success', source: 'schema-service' },
+        { path: 'schemaId', channel: 'success', source: 'schema-service' },
+        { path: 'schema', channel: 'success', source: 'schema-service' },
+      ],
+      fieldStability: [
+        { path: 'schemaVersion', channel: 'success', stabilityTier: 'stable' },
+        { path: 'commandCatalog', channel: 'success', stabilityTier: 'stable' },
+        { path: 'schemaId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'schema', channel: 'success', stabilityTier: 'stable' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'selection', fields: ['commandCatalog'], purpose: '先读取命令级能力索引。' },
+          { stage: 'detail', fields: ['schemaVersion', 'schemaId', 'schema'], purpose: '再按需展开 schema 元信息和完整文档。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '保留统一失败入口。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'commandCatalog', semantic: 'schema-catalog' },
+        { path: 'schemaVersion', semantic: 'schema-metadata' },
+        { path: 'schemaId', semantic: 'schema-metadata' },
+        { path: 'schema', semantic: 'schema-document' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ],
+    })
     expect(payload.data?.schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')
     expect(payload.data?.schema.$id).toBe(payload.data?.schemaId)
     expect(payload.data?.schema.$defs).toHaveProperty('ScopeCapability')

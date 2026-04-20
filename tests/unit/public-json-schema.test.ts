@@ -328,6 +328,53 @@ describe('public JSON contract types', () => {
           hasScopePolicy: boolean
           primaryFields: string[]
           primaryErrorFields: string[]
+          failureCodes: Array<{
+            code: string
+            priority: number
+            category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
+            recommendedHandling:
+              | 'fix-input-and-retry'
+              | 'select-existing-resource'
+              | 'resolve-scope-before-retry'
+              | 'confirm-before-write'
+              | 'check-platform-support'
+              | 'inspect-runtime-details'
+              | 'check-import-source'
+          }>
+          fieldPresence: Array<{
+            path: string
+            channel: 'success' | 'failure'
+            presence: 'always' | 'conditional'
+            conditionCode?: string
+          }>
+          fieldSources: Array<{
+            path: string
+            channel: 'success' | 'failure'
+            source:
+              | 'command-service'
+              | 'platform-adapter'
+              | 'schema-service'
+              | 'write-pipeline'
+              | 'import-analysis'
+              | 'error-envelope'
+          }>
+          fieldStability: Array<{
+            path: string
+            channel: 'success' | 'failure'
+            stabilityTier: 'stable' | 'bounded' | 'expandable'
+          }>
+          readOrderGroups: {
+            success: Array<{
+              stage: 'summary' | 'selection' | 'items' | 'detail' | 'artifacts'
+              fields: string[]
+              purpose?: string
+            }>
+            failure: Array<{
+              stage: 'error-core' | 'error-details' | 'error-recovery'
+              fields: string[]
+              purpose?: string
+            }>
+          }
           primaryFieldSemantics: Array<{ path: string; semantic: string }>
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
         }>
@@ -576,6 +623,11 @@ describe('public JSON contract types', () => {
       'hasScopePolicy',
       'primaryFields',
       'primaryErrorFields',
+      'failureCodes',
+      'fieldPresence',
+      'fieldSources',
+      'fieldStability',
+      'readOrderGroups',
       'primaryFieldSemantics',
       'primaryErrorFieldSemantics',
     ]))
@@ -587,6 +639,25 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { type: 'string' },
     })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.failureCodes).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaActionFailureCode' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.fieldPresence).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaActionFieldPresence' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.fieldSources).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaActionFieldSource' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.fieldStability).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaActionFieldStability' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.readOrderGroups).toEqual({
+      $ref: '#/$defs/SchemaReadOrderGroups',
+    })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFieldSemantics).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaFieldSemanticBinding' },
@@ -594,6 +665,121 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFieldSemantics).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaFieldSemanticBinding' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
+      'code',
+      'priority',
+      'category',
+      'recommendedHandling',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.code).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.priority).toEqual({
+      type: 'integer',
+      minimum: 1,
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.category).toEqual({
+      type: 'string',
+      enum: ['input', 'state', 'scope', 'confirmation', 'platform', 'runtime', 'source'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.recommendedHandling).toEqual({
+      type: 'string',
+      enum: [
+        'fix-input-and-retry',
+        'select-existing-resource',
+        'resolve-scope-before-retry',
+        'confirm-before-write',
+        'check-platform-support',
+        'inspect-runtime-details',
+        'check-import-source',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.required).toEqual(expect.arrayContaining([
+      'path',
+      'channel',
+      'presence',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.properties?.path).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.properties?.channel).toEqual({
+      type: 'string',
+      enum: ['success', 'failure'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.properties?.presence).toEqual({
+      type: 'string',
+      enum: ['always', 'conditional'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.properties?.conditionCode).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldSource?.required).toEqual(expect.arrayContaining([
+      'path',
+      'channel',
+      'source',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaActionFieldSource?.properties?.path).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldSource?.properties?.channel).toEqual({
+      type: 'string',
+      enum: ['success', 'failure'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldSource?.properties?.source).toEqual({
+      type: 'string',
+      enum: [
+        'command-service',
+        'platform-adapter',
+        'schema-service',
+        'write-pipeline',
+        'import-analysis',
+        'error-envelope',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldStability?.required).toEqual(expect.arrayContaining([
+      'path',
+      'channel',
+      'stabilityTier',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaActionFieldStability?.properties?.path).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldStability?.properties?.channel).toEqual({
+      type: 'string',
+      enum: ['success', 'failure'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFieldStability?.properties?.stabilityTier).toEqual({
+      type: 'string',
+      enum: ['stable', 'bounded', 'expandable'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaReadOrderGroups?.required).toEqual(expect.arrayContaining([
+      'success',
+      'failure',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaReadOrderGroups?.properties?.success).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaSuccessReadOrderGroup' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaReadOrderGroups?.properties?.failure).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaFailureReadOrderGroup' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaSuccessReadOrderGroup?.required).toEqual(expect.arrayContaining([
+      'stage',
+      'fields',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaSuccessReadOrderGroup?.properties?.stage).toEqual({
+      type: 'string',
+      enum: ['summary', 'selection', 'items', 'detail', 'artifacts'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaFailureReadOrderGroup?.required).toEqual(expect.arrayContaining([
+      'stage',
+      'fields',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaFailureReadOrderGroup?.properties?.stage).toEqual({
+      type: 'string',
+      enum: ['error-core', 'error-details', 'error-recovery'],
     })
   })
 

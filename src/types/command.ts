@@ -171,6 +171,11 @@ export interface SchemaActionCapability {
   hasScopePolicy: boolean
   primaryFields: string[]
   primaryErrorFields: string[]
+  failureCodes: SchemaActionFailureCode[]
+  fieldPresence: SchemaActionFieldPresence[]
+  fieldSources: SchemaActionFieldSource[]
+  fieldStability: SchemaActionFieldStability[]
+  readOrderGroups: SchemaReadOrderGroups
   primaryFieldSemantics: SchemaFieldSemanticBinding[]
   primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
 }
@@ -182,6 +187,62 @@ export interface SchemaCommandCatalog {
 export interface SchemaFieldSemanticBinding {
   path: string
   semantic: string
+}
+
+export interface SchemaActionFailureCode {
+  code: string
+  priority: number
+  category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
+  recommendedHandling:
+    | 'fix-input-and-retry'
+    | 'select-existing-resource'
+    | 'resolve-scope-before-retry'
+    | 'confirm-before-write'
+    | 'check-platform-support'
+    | 'inspect-runtime-details'
+    | 'check-import-source'
+}
+
+export interface SchemaReadOrderGroups {
+  success: SchemaSuccessReadOrderGroup[]
+  failure: SchemaFailureReadOrderGroup[]
+}
+
+export interface SchemaActionFieldPresence {
+  path: string
+  channel: 'success' | 'failure'
+  presence: 'always' | 'conditional'
+  conditionCode?: string
+}
+
+export interface SchemaActionFieldSource {
+  path: string
+  channel: 'success' | 'failure'
+  source:
+    | 'command-service'
+    | 'platform-adapter'
+    | 'schema-service'
+    | 'write-pipeline'
+    | 'import-analysis'
+    | 'error-envelope'
+}
+
+export interface SchemaActionFieldStability {
+  path: string
+  channel: 'success' | 'failure'
+  stabilityTier: 'stable' | 'bounded' | 'expandable'
+}
+
+export interface SchemaSuccessReadOrderGroup {
+  stage: 'summary' | 'selection' | 'items' | 'detail' | 'artifacts'
+  fields: string[]
+  purpose?: string
+}
+
+export interface SchemaFailureReadOrderGroup {
+  stage: 'error-core' | 'error-details' | 'error-recovery'
+  fields: string[]
+  purpose?: string
 }
 
 export interface RollbackCommandOutput {

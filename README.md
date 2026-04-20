@@ -294,6 +294,36 @@ api-switcher schema --json
             "error.code",
             "error.message"
           ],
+          "failureCodes": [
+            { "code": "ADAPTER_NOT_REGISTERED", "priority": 1, "category": "platform", "recommendedHandling": "check-platform-support" },
+            { "code": "CURRENT_FAILED", "priority": 2, "category": "runtime", "recommendedHandling": "inspect-runtime-details" }
+          ],
+          "fieldPresence": [
+            { "path": "summary.platformStats", "channel": "success", "presence": "always" },
+            { "path": "current", "channel": "success", "presence": "always" },
+            { "path": "scopeAvailability", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY" }
+          ],
+          "fieldSources": [
+            { "path": "summary.platformStats", "channel": "success", "source": "command-service" },
+            { "path": "current", "channel": "success", "source": "command-service" },
+            { "path": "scopeAvailability", "channel": "success", "source": "platform-adapter" }
+          ],
+          "fieldStability": [
+            { "path": "summary.platformStats", "channel": "success", "stabilityTier": "stable" },
+            { "path": "current", "channel": "success", "stabilityTier": "stable" },
+            { "path": "scopeAvailability", "channel": "success", "stabilityTier": "bounded" }
+          ],
+          "readOrderGroups": {
+            "success": [
+              { "stage": "summary", "fields": ["summary.platformStats"] },
+              { "stage": "selection", "fields": ["current"] },
+              { "stage": "items", "fields": ["detections"] },
+              { "stage": "detail", "fields": ["scopeCapabilities", "scopeAvailability"] }
+            ],
+            "failure": [
+              { "stage": "error-core", "fields": ["error.code", "error.message"] }
+            ]
+          },
           "primaryFieldSemantics": [
             { "path": "summary.platformStats", "semantic": "platform-aggregate" },
             { "path": "current", "semantic": "result-core" },
@@ -327,6 +357,41 @@ api-switcher schema --json
             "error.details.scopePolicy",
             "error.details.scopeAvailability"
           ],
+          "failureCodes": [
+            { "code": "PROFILE_NOT_FOUND", "priority": 1, "category": "state", "recommendedHandling": "select-existing-resource" },
+            { "code": "INVALID_SCOPE", "priority": 2, "category": "input", "recommendedHandling": "fix-input-and-retry" },
+            { "code": "ADAPTER_NOT_REGISTERED", "priority": 3, "category": "platform", "recommendedHandling": "check-platform-support" },
+            { "code": "PREVIEW_FAILED", "priority": 4, "category": "runtime", "recommendedHandling": "inspect-runtime-details" }
+          ],
+          "fieldPresence": [
+            { "path": "summary.platformStats", "channel": "success", "presence": "always" },
+            { "path": "scopeAvailability", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_SCOPE_AVAILABILITY_IS_RESOLVED" },
+            { "path": "error.details.scopeAvailability", "channel": "failure", "presence": "conditional", "conditionCode": "WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS" }
+          ],
+          "fieldSources": [
+            { "path": "summary.platformStats", "channel": "success", "source": "command-service" },
+            { "path": "preview", "channel": "success", "source": "platform-adapter" },
+            { "path": "scopePolicy", "channel": "success", "source": "command-service" },
+            { "path": "scopeAvailability", "channel": "success", "source": "platform-adapter" },
+            { "path": "error.details.scopeAvailability", "channel": "failure", "source": "platform-adapter" }
+          ],
+          "fieldStability": [
+            { "path": "summary.platformStats", "channel": "success", "stabilityTier": "stable" },
+            { "path": "preview", "channel": "success", "stabilityTier": "stable" },
+            { "path": "scopePolicy", "channel": "success", "stabilityTier": "stable" },
+            { "path": "scopeAvailability", "channel": "success", "stabilityTier": "bounded" },
+            { "path": "error.details.scopeAvailability", "channel": "failure", "stabilityTier": "bounded" }
+          ],
+          "readOrderGroups": {
+            "success": [
+              { "stage": "summary", "fields": ["summary.platformStats"] },
+              { "stage": "detail", "fields": ["risk", "preview", "scopePolicy", "scopeCapabilities", "scopeAvailability"] }
+            ],
+            "failure": [
+              { "stage": "error-core", "fields": ["error.code", "error.message"] },
+              { "stage": "error-details", "fields": ["error.details.scopePolicy", "error.details.scopeAvailability"] }
+            ]
+          },
           "primaryFieldSemantics": [
             { "path": "summary.platformStats", "semantic": "platform-aggregate" },
             { "path": "risk", "semantic": "risk" },
@@ -359,6 +424,34 @@ api-switcher schema --json
             "error.code",
             "error.message"
           ],
+          "failureCodes": [],
+          "fieldPresence": [
+            { "path": "schemaVersion", "channel": "success", "presence": "always" },
+            { "path": "commandCatalog", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_SCHEMA_DOCUMENT_IS_REQUESTED" },
+            { "path": "schemaId", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_SCHEMA_DOCUMENT_IS_REQUESTED" },
+            { "path": "schema", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_SCHEMA_DOCUMENT_IS_REQUESTED" }
+          ],
+          "fieldSources": [
+            { "path": "schemaVersion", "channel": "success", "source": "schema-service" },
+            { "path": "commandCatalog", "channel": "success", "source": "schema-service" },
+            { "path": "schemaId", "channel": "success", "source": "schema-service" },
+            { "path": "schema", "channel": "success", "source": "schema-service" }
+          ],
+          "fieldStability": [
+            { "path": "schemaVersion", "channel": "success", "stabilityTier": "stable" },
+            { "path": "commandCatalog", "channel": "success", "stabilityTier": "stable" },
+            { "path": "schemaId", "channel": "success", "stabilityTier": "stable" },
+            { "path": "schema", "channel": "success", "stabilityTier": "stable" }
+          ],
+          "readOrderGroups": {
+            "success": [
+              { "stage": "selection", "fields": ["commandCatalog"] },
+              { "stage": "detail", "fields": ["schemaVersion", "schemaId", "schema"] }
+            ],
+            "failure": [
+              { "stage": "error-core", "fields": ["error.code", "error.message"] }
+            ]
+          },
           "primaryFieldSemantics": [
             { "path": "commandCatalog", "semantic": "schema-catalog" },
             { "path": "schemaVersion", "semantic": "schema-metadata" },
@@ -368,6 +461,77 @@ api-switcher schema --json
           "primaryErrorFieldSemantics": [
             { "path": "error.code", "semantic": "error-core" },
             { "path": "error.message", "semantic": "error-core" }
+          ]
+        },
+        {
+          "action": "use",
+          "hasPlatformSummary": true,
+          "hasPlatformStats": true,
+          "hasScopeCapabilities": true,
+          "hasScopeAvailability": true,
+          "hasScopePolicy": true,
+          "primaryFields": [
+            "summary.platformStats",
+            "platformSummary",
+            "preview",
+            "scopePolicy",
+            "scopeCapabilities",
+            "scopeAvailability",
+            "changedFiles",
+            "backupId"
+          ],
+          "primaryErrorFields": [
+            "error.code",
+            "error.message",
+            "error.details.risk",
+            "error.details.scopePolicy",
+            "error.details.scopeCapabilities",
+            "error.details.scopeAvailability"
+          ],
+          "failureCodes": [
+            { "code": "PROFILE_NOT_FOUND", "priority": 1, "category": "state", "recommendedHandling": "select-existing-resource" },
+            { "code": "INVALID_SCOPE", "priority": 2, "category": "input", "recommendedHandling": "fix-input-and-retry" },
+            { "code": "VALIDATION_FAILED", "priority": 3, "category": "runtime", "recommendedHandling": "inspect-runtime-details" },
+            { "code": "CONFIRMATION_REQUIRED", "priority": 4, "category": "confirmation", "recommendedHandling": "confirm-before-write" },
+            { "code": "ADAPTER_NOT_REGISTERED", "priority": 5, "category": "platform", "recommendedHandling": "check-platform-support" },
+            { "code": "APPLY_FAILED", "priority": 6, "category": "runtime", "recommendedHandling": "inspect-runtime-details" },
+            { "code": "USE_FAILED", "priority": 7, "category": "runtime", "recommendedHandling": "inspect-runtime-details" }
+          ],
+          "fieldPresence": [
+            { "path": "summary.platformStats", "channel": "success", "presence": "always" },
+            { "path": "scopeAvailability", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_SCOPE_AVAILABILITY_IS_RESOLVED" },
+            { "path": "backupId", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_BACKUP_IS_CREATED" },
+            { "path": "error.details.scopeAvailability", "channel": "failure", "presence": "conditional", "conditionCode": "WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS" }
+          ],
+          "readOrderGroups": {
+            "success": [
+              { "stage": "summary", "fields": ["summary.platformStats"] },
+              { "stage": "detail", "fields": ["platformSummary", "preview", "scopePolicy", "scopeCapabilities", "scopeAvailability"] },
+              { "stage": "artifacts", "fields": ["changedFiles", "backupId"] }
+            ],
+            "failure": [
+              { "stage": "error-core", "fields": ["error.code", "error.message"] },
+              { "stage": "error-details", "fields": ["error.details.risk", "error.details.scopePolicy", "error.details.scopeCapabilities", "error.details.scopeAvailability"] },
+              { "stage": "error-recovery", "fields": ["error.code"] }
+            ]
+          },
+          "primaryFieldSemantics": [
+            { "path": "summary.platformStats", "semantic": "platform-aggregate" },
+            { "path": "platformSummary", "semantic": "platform-explainable" },
+            { "path": "preview", "semantic": "result-core" },
+            { "path": "scopePolicy", "semantic": "scope-resolution" },
+            { "path": "scopeCapabilities", "semantic": "scope-resolution" },
+            { "path": "scopeAvailability", "semantic": "scope-resolution" },
+            { "path": "changedFiles", "semantic": "artifacts" },
+            { "path": "backupId", "semantic": "artifacts" }
+          ],
+          "primaryErrorFieldSemantics": [
+            { "path": "error.code", "semantic": "error-core" },
+            { "path": "error.message", "semantic": "error-core" },
+            { "path": "error.details.risk", "semantic": "error-details" },
+            { "path": "error.details.scopePolicy", "semantic": "error-details" },
+            { "path": "error.details.scopeCapabilities", "semantic": "error-details" },
+            { "path": "error.details.scopeAvailability", "semantic": "error-details" }
           ]
         }
       ]
@@ -380,7 +544,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则补了一层字段语义标签，便于把点路径归类到 `platform-aggregate`、`scope-resolution`、`artifacts`、`error-core`、`error-details` 等稳定语义桶。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。`failureCodes` 会公开该 action 已稳定承诺的 `error.code` 集合，并用 `priority` 表达推荐处理顺序、`category` 表达失败类别、`recommendedHandling` 表达推荐处理动作。`fieldPresence` 则补了一层字段出现条件索引：`presence` 只有 `always` / `conditional` 两档，`conditionCode` 用稳定短码表达字段为什么只在部分平台、部分模式或部分失败态出现，例如 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。`fieldSources` 则回答这些字段主要由谁产出，目前稳定来源包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`。`fieldStability` 则补了一层长期绑定建议：`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但更依赖上下文或条件，`expandable` 表示可展示但不建议外部锁死为强 contract。`readOrderGroups` 则把成功态和失败态分别拆成结构化消费阶段：success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。当前这层推荐动作使用稳定短码：`fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则补了一层字段语义标签，便于把点路径归类到 `platform-aggregate`、`scope-resolution`、`artifacts`、`error-core`、`error-details` 等稳定语义桶。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 
