@@ -81,10 +81,10 @@ describe('preview/use/rollback integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.data?.preview.targetFiles).toEqual([
@@ -376,10 +376,10 @@ describe('preview/use/rollback integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 

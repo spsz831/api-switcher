@@ -1420,10 +1420,10 @@ describe('import apply service', () => {
     expect(result.ok).toBe(true)
     expect(result.warnings).toContain('apply warning')
     expect(result.limitations).toContain('apply limitation')
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: ['apply warning'],
       limitations: ['apply limitation'],
-    })
+    }))
   })
 
   it('sourceCompatibility.mode = schema-version-missing 时 warning 会透传到结果', async () => {

@@ -86,4 +86,15 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("$payload.action -ne 'import'")
     expect(smokeScript).toContain("IMPORT_SOURCE_NOT_FOUND")
   })
+
+  it('release smoke script includes a minimal public schema validation smoke for dist json output', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'public schema validation smoke'")
+    expect(smokeScript).toContain("docs/public-json-output.schema.json")
+    expect(smokeScript).toContain("schema --schema-version --json")
+    expect(smokeScript).toContain("schemaVersion payload failed public schema validation")
+    expect(smokeScript).toContain("function Validate-SchemaNode")
+  })
 })

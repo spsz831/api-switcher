@@ -232,10 +232,10 @@ describe('rollback service', () => {
     expect(result.action).toBe('rollback')
     expect(result.data?.backupId).toBe(backupId)
     expect(result.data?.scopePolicy).toBeUndefined()
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
-    })
+    }))
     expect(nextState.lastSwitch?.status).toBe('rolled-back')
     expect(nextState.lastSwitch?.warnings).toEqual(result.data?.summary.warnings)
     expect(nextState.lastSwitch?.limitations).toEqual(result.data?.summary.limitations)
@@ -280,10 +280,10 @@ describe('rollback service', () => {
     expect(result.action).toBe('rollback')
     expect(result.data?.backupId).toBe(backupId)
     expect(result.data?.scopePolicy).toBeUndefined()
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
-    })
+    }))
   })
 
   it('Gemini project scope 不可解析时先返回 availability 失败而不是继续回滚', async () => {

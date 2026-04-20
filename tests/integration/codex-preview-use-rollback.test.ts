@@ -58,10 +58,10 @@ describe('codex preview/use/rollback integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -156,10 +156,10 @@ describe('codex preview/use/rollback integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')

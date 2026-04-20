@@ -20,6 +20,242 @@ function Invoke-Step {
   }
 }
 
+function Test-IsObjectLike {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowNull()]
+    [object]$Value
+  )
+
+  return ($null -ne $Value -and $Value -isnot [string] -and $Value -isnot [System.Array] -and @($Value.PSObject.Properties).Count -gt 0)
+}
+
+function Get-ObjectPropertyNames {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Value
+  )
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    return @($Value.Keys)
+  }
+
+  return @($Value.PSObject.Properties | ForEach-Object { $_.Name })
+}
+
+function Test-ObjectHasProperty {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Value,
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    return $Value.Contains($Name)
+  }
+
+  return $null -ne $Value.PSObject.Properties[$Name]
+}
+
+function Get-ObjectPropertyValue {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Value,
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    return $Value[$Name]
+  }
+
+  return $Value.PSObject.Properties[$Name].Value
+}
+
+function Resolve-SchemaRef {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$RootSchema,
+    [Parameter(Mandatory = $true)]
+    [string]$Ref
+  )
+
+  if (-not $Ref.StartsWith('#/')) {
+    throw "unsupported schema ref: $Ref"
+  }
+
+  $cursor = $RootSchema
+  foreach ($part in $Ref.Substring(2).Split('/')) {
+    if (-not (Test-IsObjectLike $cursor) -or -not (Test-ObjectHasProperty -Value $cursor -Name $part)) {
+      throw "invalid schema ref path: $Ref"
+    }
+    $cursor = Get-ObjectPropertyValue -Value $cursor -Name $part
+  }
+
+  return $cursor
+}
+
+function Test-SchemaTypeMatch {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$SchemaType,
+    [AllowNull()]
+    [object]$Value
+  )
+
+  switch ($SchemaType) {
+    'object' { return Test-IsObjectLike $Value }
+    'array' { return $Value -is [System.Array] }
+    'string' { return $Value -is [string] }
+    'boolean' { return $Value -is [bool] }
+    'integer' { return ($Value -is [sbyte] -or $Value -is [byte] -or $Value -is [int16] -or $Value -is [uint16] -or $Value -is [int32] -or $Value -is [uint32] -or $Value -is [int64] -or $Value -is [uint64]) }
+    'number' { return ($Value -is [ValueType] -and $Value -isnot [bool] -and $Value -isnot [char]) }
+    'null' { return $null -eq $Value }
+    default { return $true }
+  }
+}
+
+function Validate-SchemaNode {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Schema,
+    [AllowNull()]
+    [object]$Value,
+    [Parameter(Mandatory = $true)]
+    [object]$RootSchema
+  )
+
+  if (Test-ObjectHasProperty -Value $Schema -Name '$ref') {
+    $resolvedSchema = Resolve-SchemaRef -RootSchema $RootSchema -Ref (Get-ObjectPropertyValue -Value $Schema -Name '$ref')
+    return Validate-SchemaNode -Schema $resolvedSchema -Value $Value -RootSchema $RootSchema
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'allOf') {
+    foreach ($branch in @(Get-ObjectPropertyValue -Value $Schema -Name 'allOf')) {
+      if (-not (Validate-SchemaNode -Schema $branch -Value $Value -RootSchema $RootSchema)) {
+        return $false
+      }
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'oneOf') {
+    $matchCount = 0
+    foreach ($branch in @(Get-ObjectPropertyValue -Value $Schema -Name 'oneOf')) {
+      if (Validate-SchemaNode -Schema $branch -Value $Value -RootSchema $RootSchema) {
+        $matchCount++
+      }
+    }
+    if ($matchCount -ne 1) {
+      return $false
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'anyOf') {
+    $matched = $false
+    foreach ($branch in @(Get-ObjectPropertyValue -Value $Schema -Name 'anyOf')) {
+      if (Validate-SchemaNode -Schema $branch -Value $Value -RootSchema $RootSchema) {
+        $matched = $true
+        break
+      }
+    }
+    if (-not $matched) {
+      return $false
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'if') {
+    $conditionMatched = Validate-SchemaNode -Schema (Get-ObjectPropertyValue -Value $Schema -Name 'if') -Value $Value -RootSchema $RootSchema
+    if ($conditionMatched -and (Test-ObjectHasProperty -Value $Schema -Name 'then')) {
+      if (-not (Validate-SchemaNode -Schema (Get-ObjectPropertyValue -Value $Schema -Name 'then') -Value $Value -RootSchema $RootSchema)) {
+        return $false
+      }
+    }
+    if (-not $conditionMatched -and (Test-ObjectHasProperty -Value $Schema -Name 'else')) {
+      if (-not (Validate-SchemaNode -Schema (Get-ObjectPropertyValue -Value $Schema -Name 'else') -Value $Value -RootSchema $RootSchema)) {
+        return $false
+      }
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'const') {
+    $constValue = Get-ObjectPropertyValue -Value $Schema -Name 'const'
+    if ($Value -ne $constValue) {
+      return $false
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'enum') {
+    $allowedValues = @(Get-ObjectPropertyValue -Value $Schema -Name 'enum')
+    if (-not ($allowedValues -contains $Value)) {
+      return $false
+    }
+  }
+
+  if (Test-ObjectHasProperty -Value $Schema -Name 'type') {
+    $schemaTypeNode = Get-ObjectPropertyValue -Value $Schema -Name 'type'
+    $schemaTypes = if ($schemaTypeNode -is [System.Array]) { @($schemaTypeNode) } else { @($schemaTypeNode) }
+    $typeMatched = $false
+    foreach ($schemaType in $schemaTypes) {
+      if (Test-SchemaTypeMatch -SchemaType $schemaType -Value $Value) {
+        $typeMatched = $true
+        break
+      }
+    }
+    if (-not $typeMatched) {
+      return $false
+    }
+  }
+
+  if ((Test-ObjectHasProperty -Value $Schema -Name 'minimum') -and ($Value -isnot [string]) -and ($Value -lt (Get-ObjectPropertyValue -Value $Schema -Name 'minimum'))) {
+    return $false
+  }
+
+  if (Test-IsObjectLike $Value) {
+    if (Test-ObjectHasProperty -Value $Schema -Name 'required') {
+      foreach ($requiredKey in @(Get-ObjectPropertyValue -Value $Schema -Name 'required')) {
+        if (-not (Test-ObjectHasProperty -Value $Value -Name $requiredKey)) {
+          return $false
+        }
+      }
+    }
+
+    if (Test-ObjectHasProperty -Value $Schema -Name 'properties') {
+      $properties = Get-ObjectPropertyValue -Value $Schema -Name 'properties'
+      foreach ($propertyName in Get-ObjectPropertyNames -Value $properties) {
+        if (-not (Test-ObjectHasProperty -Value $Value -Name $propertyName)) {
+          continue
+        }
+
+        $childSchema = Get-ObjectPropertyValue -Value $properties -Name $propertyName
+        if (-not (Validate-SchemaNode -Schema $childSchema -Value (Get-ObjectPropertyValue -Value $Value -Name $propertyName) -RootSchema $RootSchema)) {
+          return $false
+        }
+      }
+
+      if ((Test-ObjectHasProperty -Value $Schema -Name 'additionalProperties') -and ((Get-ObjectPropertyValue -Value $Schema -Name 'additionalProperties') -eq $false)) {
+        $allowedProperties = @(Get-ObjectPropertyNames -Value $properties)
+        foreach ($propertyName in Get-ObjectPropertyNames -Value $Value) {
+          if ($allowedProperties -notcontains $propertyName) {
+            return $false
+          }
+        }
+      }
+    }
+  }
+
+  if (($Value -is [System.Array]) -and (Test-ObjectHasProperty -Value $Schema -Name 'items')) {
+    $itemSchema = Get-ObjectPropertyValue -Value $Schema -Name 'items'
+    foreach ($item in $Value) {
+      if (-not (Validate-SchemaNode -Schema $itemSchema -Value $item -RootSchema $RootSchema)) {
+        return $false
+      }
+    }
+  }
+
+  return $true
+}
+
 Invoke-Step -Name 'typecheck' -Action { corepack pnpm typecheck }
 Invoke-Step -Name 'build' -Action { corepack pnpm build }
 Invoke-Step -Name 'test' -Action { corepack pnpm test }
@@ -51,6 +287,15 @@ Invoke-Step -Name 'schema version json' -Action {
   }
   if ($null -eq $payload.data -or $payload.data.schemaVersion -ne $publicJsonSchemaVersion) {
     throw "unexpected data.schemaVersion: $($payload.data.schemaVersion)"
+  }
+}
+Invoke-Step -Name 'public schema validation smoke' -Action {
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $schemaVersionPayload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
+
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $schemaVersionPayload -RootSchema $publicSchema)) {
+    throw "schemaVersion payload failed public schema validation"
   }
 }
 Invoke-Step -Name 'current list json platform summaries' -Action {

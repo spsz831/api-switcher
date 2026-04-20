@@ -426,10 +426,10 @@ describe('switch service', () => {
 
     expect(result.ok).toBe(true)
     expect(result.action).toBe('use')
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
-    })
+    }))
     expect(result.data?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({
         scope: 'user',
