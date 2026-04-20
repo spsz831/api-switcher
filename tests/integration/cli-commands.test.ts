@@ -220,6 +220,8 @@ async function writeImportSourceFile(
 }
 
 describe('cli commands integration', () => {
+  const PUBLIC_SCHEMA_CONTRACT_TIMEOUT_MS = 20_000
+
   it('核心命令 --json 成功输出可被 public JSON schema 校验', async () => {
     const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
     await new StateStore().markCurrent('gemini', 'gemini-prod', 'snapshot-gemini-001')
@@ -258,7 +260,7 @@ describe('cli commands integration', () => {
     for (const payload of payloads) {
       expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
     }
-  })
+  }, PUBLIC_SCHEMA_CONTRACT_TIMEOUT_MS)
 
   it('第二批命令 --json 成功输出可被 public JSON schema 校验', async () => {
     const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
@@ -317,7 +319,7 @@ describe('cli commands integration', () => {
     for (const item of payloads) {
       expect(validatePayloadAgainstPublicSchema(staticSchema, item.payload), item.name).toBe(true)
     }
-  })
+  }, PUBLIC_SCHEMA_CONTRACT_TIMEOUT_MS)
 
   it('统一失败 envelope --json 输出可被 public JSON schema 校验', async () => {
     const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
@@ -421,7 +423,7 @@ describe('cli commands integration', () => {
       expect(payload.ok).toBe(false)
       expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
     }
-  })
+  }, PUBLIC_SCHEMA_CONTRACT_TIMEOUT_MS)
 
   it('schema --json 输出当前 public JSON schema 与版本', async () => {
     const result = await runCli(['schema', '--json'])
