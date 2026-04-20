@@ -85,6 +85,8 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("unexpected top-level schemaVersion for import failure")
     expect(smokeScript).toContain("$payload.action -ne 'import'")
     expect(smokeScript).toContain("IMPORT_SOURCE_NOT_FOUND")
+    expect(smokeScript).toContain("import missing file payload failed public schema validation")
+    expect(smokeScript).toContain("Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema")
   })
 
   it('release smoke script includes a minimal public schema validation smoke for dist json output', () => {

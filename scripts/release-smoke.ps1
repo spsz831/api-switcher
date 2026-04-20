@@ -473,6 +473,8 @@ Invoke-Step -Name 'unknown command failure' -Action {
   }
 }
 Invoke-Step -Name 'json failure envelope' -Action {
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
   $missingImportFile = Join-Path -Path $repoRoot -ChildPath 'missing-file.json'
   $stdoutPath = [System.IO.Path]::GetTempFileName()
   $stderrPath = [System.IO.Path]::GetTempFileName()
@@ -501,6 +503,9 @@ Invoke-Step -Name 'json failure envelope' -Action {
   }
   if ($null -eq $payload.error -or $payload.error.code -ne 'IMPORT_SOURCE_NOT_FOUND') {
     throw "unexpected error code for import failure: $($payload.error.code)"
+  }
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema)) {
+    throw "import missing file payload failed public schema validation"
   }
 }
 
