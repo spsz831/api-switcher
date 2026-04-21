@@ -2464,6 +2464,42 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
   })
 
+  it('use 文本失败时输出 reference 解析摘要', async () => {
+    const profilesStore = new ProfilesStore()
+    const existing = await profilesStore.read()
+    await profilesStore.write({
+      ...existing,
+      profiles: [
+        ...existing.profiles,
+        {
+          id: 'claude-reference-local',
+          name: 'claude-reference-local',
+          platform: 'claude',
+          source: { secret_ref: 'env://API_SWITCHER_MISSING_SECRET' },
+          apply: {
+            auth_reference: 'vault://claude/prod',
+            secondary_auth_reference: 'env://API_SWITCHER_TEST_SECRET',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['use', 'claude-reference-local', '--scope', 'local'], {
+      API_SWITCHER_TEST_SECRET: 'sk-live-123456',
+    })
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[use] 失败')
+    expect(result.stdout).toContain('reference 解析摘要:')
+    expect(result.stdout).toContain('  - 未解析 env 引用:')
+    expect(result.stdout).toContain('    - source.secret_ref -> env://API_SWITCHER_MISSING_SECRET')
+    expect(result.stdout).toContain('  - 已解析但当前不会写入:')
+    expect(result.stdout).toContain('    - apply.secondary_auth_reference -> env://API_SWITCHER_TEST_SECRET')
+    expect(result.stdout).toContain('  - 不支持的引用 scheme:')
+    expect(result.stdout).toContain('    - apply.auth_reference -> vault://claude/prod')
+  })
+
   it('rollback --json 输出 Codex 结构化恢复结果并更新 state', async () => {
     const useResult = await runCli(['use', 'codex-prod', '--force', '--json'])
     const usePayload = parseJsonResult<{ backupId?: string }>(useResult.stdout)
@@ -4853,6 +4889,40 @@ describe('cli commands integration', () => {
     expect(confirmationDetails?.risk?.limitations).toEqual(expect.arrayContaining([
       '如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。',
     ]))
+  })
+
+  it('import apply 文本失败时输出 reference 解析摘要', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-reference-details.txt.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'claude-reference-local',
+          name: 'claude-reference-local',
+          platform: 'claude',
+          source: { secret_ref: 'env://API_SWITCHER_MISSING_SECRET' },
+          apply: {
+            auth_reference: 'vault://claude/prod',
+            secondary_auth_reference: 'env://API_SWITCHER_TEST_SECRET',
+          },
+        },
+        defaultWriteScope: 'project',
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'claude-reference-local', '--scope', 'local'], {
+      API_SWITCHER_TEST_SECRET: 'sk-live-123456',
+    })
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[import-apply] 失败')
+    expect(result.stdout).toContain('reference 解析摘要:')
+    expect(result.stdout).toContain('  - 未解析 env 引用:')
+    expect(result.stdout).toContain('    - source.secret_ref -> env://API_SWITCHER_MISSING_SECRET')
+    expect(result.stdout).toContain('  - 已解析但当前不会写入:')
+    expect(result.stdout).toContain('    - apply.secondary_auth_reference -> env://API_SWITCHER_TEST_SECRET')
+    expect(result.stdout).toContain('  - 不支持的引用 scheme:')
+    expect(result.stdout).toContain('    - apply.auth_reference -> vault://claude/prod')
   })
 
   it('import apply --scope local --force 对 Claude 可成功应用并只写入 local 文件', async () => {

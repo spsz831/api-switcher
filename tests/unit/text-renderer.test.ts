@@ -2252,6 +2252,39 @@ const confirmationFailureResult: CommandResult = {
         reasons: ['Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。'],
         limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
       },
+      referenceGovernance: {
+        hasReferenceProfiles: true,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: true,
+        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
+        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_UNRESOLVED',
+            field: 'source.secret_ref',
+            status: 'missing',
+            reference: 'env://GEMINI_API_KEY',
+            scheme: 'env',
+            message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
+          },
+          {
+            code: 'REFERENCE_ENV_RESOLVED',
+            field: 'apply.secondary_auth_reference',
+            status: 'resolved',
+            reference: 'env://GEMINI_SECONDARY_API_KEY',
+            scheme: 'env',
+            message: 'profile.apply.secondary_auth_reference 的 env 引用已解析，但当前写入链路仍不会直接消费引用。',
+          },
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://gemini/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
+      },
       scopePolicy: {
         requestedScope: 'project',
         resolvedScope: 'project',
@@ -2523,6 +2556,31 @@ const importApplyConfirmationFailureResult: CommandResult = {
         riskLevel: 'high',
         reasons: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
         limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
+      },
+      referenceGovernance: {
+        hasReferenceProfiles: true,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: true,
+        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
+        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_UNRESOLVED',
+            field: 'source.secret_ref',
+            status: 'missing',
+            reference: 'env://GEMINI_API_KEY',
+            scheme: 'env',
+            message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
+          },
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'keychain://gemini/session-token',
+            scheme: 'keychain',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
       },
       scopePolicy: importApplyPayload.scopePolicy,
       scopeCapabilities: geminiScopeCapabilities,
@@ -3222,6 +3280,13 @@ describe('text renderer', () => {
   it('确认门槛失败会输出结构化作用域策略', () => {
     expect(outputConfirmationFailure).toContain('[use] 失败')
     expect(outputConfirmationFailure).toContain('当前切换需要确认或 --force。')
+    expect(outputConfirmationFailure).toContain('reference 解析摘要:')
+    expect(outputConfirmationFailure).toContain('  - 未解析 env 引用:')
+    expect(outputConfirmationFailure).toContain('    - source.secret_ref -> env://GEMINI_API_KEY')
+    expect(outputConfirmationFailure).toContain('  - 已解析但当前不会写入:')
+    expect(outputConfirmationFailure).toContain('    - apply.secondary_auth_reference -> env://GEMINI_SECONDARY_API_KEY')
+    expect(outputConfirmationFailure).toContain('  - 不支持的引用 scheme:')
+    expect(outputConfirmationFailure).toContain('    - apply.auth_reference -> vault://gemini/prod')
     expect(outputConfirmationFailure).toContain('作用域策略:')
     expect(outputConfirmationFailure).toContain('  - 默认目标: user scope')
     expect(outputConfirmationFailure).toContain('  - 显式指定: 是')
@@ -3324,6 +3389,11 @@ describe('text renderer', () => {
     expect(outputImportApplyConfirmationFailure).toContain('风险摘要:')
     expect(outputImportApplyConfirmationFailure).toContain('  - 风险等级: high')
     expect(outputImportApplyConfirmationFailure).toContain('  - 原因: 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
+    expect(outputImportApplyConfirmationFailure).toContain('reference 解析摘要:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 未解析 env 引用:')
+    expect(outputImportApplyConfirmationFailure).toContain('    - source.secret_ref -> env://GEMINI_API_KEY')
+    expect(outputImportApplyConfirmationFailure).toContain('  - 不支持的引用 scheme:')
+    expect(outputImportApplyConfirmationFailure).toContain('    - apply.auth_reference -> keychain://gemini/session-token')
     expect(outputImportApplyConfirmationFailure).toContain('作用域策略:')
     expect(outputImportApplyConfirmationFailure).toContain('  - 请求作用域: project scope')
     expect(outputImportApplyConfirmationFailure).toContain('  - 实际目标: project scope')

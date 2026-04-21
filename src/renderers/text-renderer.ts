@@ -20,6 +20,8 @@ import type {
   ImportPreviewCommandOutput,
   ListCommandOutput,
   PreviewCommandOutput,
+  ReferenceGovernanceDetail,
+  ReferenceGovernanceFailureDetails,
   RollbackCommandOutput,
   SchemaCommandOutput,
   SecretReferenceStats,
@@ -31,6 +33,9 @@ import type { SnapshotScopePolicy } from '../types/snapshot'
 import { renderCurrentScopeSummary, renderPreviewScopeSummary } from './scope-renderer'
 
 type ImportFidelity = NonNullable<ImportApplyNotReadyDetails['fidelity']>
+type ParsedConfirmationRequiredDetails = ConfirmationRequiredDetails & {
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+}
 
 function renderLimitations(limitations?: string[]): string[] {
   return limitations && limitations.length > 0 ? limitations.map((item) => `  - ${item}`) : []
@@ -291,7 +296,7 @@ function parseConfirmationRequiredDetails(details: unknown): ConfirmationRequire
     return undefined
   }
 
-  return {
+  const parsed: ParsedConfirmationRequiredDetails = {
     risk: {
       allowed: risk.allowed,
       riskLevel: risk.riskLevel as ConfirmationRequiredDetails['risk']['riskLevel'],
@@ -302,6 +307,72 @@ function parseConfirmationRequiredDetails(details: unknown): ConfirmationRequire
     scopeCapabilities: parseScopeCapabilities(details.scopeCapabilities),
     scopeAvailability: parseScopeAvailability(details.scopeAvailability),
   }
+
+  const referenceGovernance = parseReferenceGovernanceFailureDetails(details.referenceGovernance)
+  if (referenceGovernance) {
+    parsed.referenceGovernance = referenceGovernance
+  }
+
+  return parsed
+}
+
+function parseReferenceGovernanceDetail(value: unknown): ReferenceGovernanceDetail | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  if (
+    typeof value.code !== 'string'
+    || typeof value.field !== 'string'
+    || typeof value.status !== 'string'
+    || typeof value.message !== 'string'
+  ) {
+    return undefined
+  }
+
+  return {
+    code: value.code as ReferenceGovernanceDetail['code'],
+    field: value.field,
+    status: value.status as ReferenceGovernanceDetail['status'],
+    reference: typeof value.reference === 'string' ? value.reference : undefined,
+    scheme: typeof value.scheme === 'string' ? value.scheme : undefined,
+    message: value.message,
+  }
+}
+
+function parseReferenceGovernanceFailureDetails(value: unknown): ReferenceGovernanceFailureDetails | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  if (
+    typeof value.hasReferenceProfiles !== 'boolean'
+    || typeof value.hasInlineProfiles !== 'boolean'
+    || typeof value.hasWriteUnsupportedProfiles !== 'boolean'
+    || !isStringArray(value.reasonCodes)
+  ) {
+    return undefined
+  }
+
+  const parsed: ReferenceGovernanceFailureDetails = {
+    hasReferenceProfiles: value.hasReferenceProfiles,
+    hasInlineProfiles: value.hasInlineProfiles,
+    hasWriteUnsupportedProfiles: value.hasWriteUnsupportedProfiles,
+    primaryReason: typeof value.primaryReason === 'string' ? value.primaryReason as ReferenceGovernanceFailureDetails['primaryReason'] : undefined,
+    reasonCodes: value.reasonCodes as ReferenceGovernanceFailureDetails['reasonCodes'],
+  }
+
+  if (Array.isArray(value.referenceDetails)) {
+    const referenceDetails = value.referenceDetails.flatMap((item) => {
+      const parsedItem = parseReferenceGovernanceDetail(item)
+      return parsedItem ? [parsedItem] : []
+    })
+    if (referenceDetails.length > 0) {
+      parsed.referenceDetails = referenceDetails
+    }
+  }
+
+  return parsed
 }
 
 function parseScopePolicyDetails(details: unknown): { scopePolicy?: SnapshotScopePolicy } | undefined {
@@ -929,6 +1000,39 @@ function renderRiskSummary(risk: ConfirmationRequiredDetails['risk']): string[] 
   ]
 }
 
+function renderReferenceGovernanceDetails(referenceGovernance?: ReferenceGovernanceFailureDetails): string[] {
+  if (!referenceGovernance?.referenceDetails || referenceGovernance.referenceDetails.length === 0) {
+    return []
+  }
+
+  const missingEnv = referenceGovernance.referenceDetails.filter((item) => item.code === 'REFERENCE_ENV_UNRESOLVED')
+  const resolvedEnv = referenceGovernance.referenceDetails.filter((item) => item.code === 'REFERENCE_ENV_RESOLVED')
+  const unsupportedSchemes = referenceGovernance.referenceDetails.filter((item) => item.code === 'REFERENCE_SCHEME_UNSUPPORTED')
+  const missingValues = referenceGovernance.referenceDetails.filter((item) => item.code === 'REFERENCE_VALUE_MISSING')
+
+  const renderItems = (title: string, items: ReferenceGovernanceDetail[]): string[] => {
+    if (items.length === 0) {
+      return []
+    }
+
+    return [
+      `  - ${title}:`,
+      ...items.flatMap((item) => [
+        `    - ${item.field}${item.reference ? ` -> ${item.reference}` : ''}`,
+        `      ${item.message}`,
+      ]),
+    ]
+  }
+
+  return [
+    'reference 解析摘要:',
+    ...renderItems('未解析 env 引用', missingEnv),
+    ...renderItems('已解析但当前不会写入', resolvedEnv),
+    ...renderItems('不支持的引用 scheme', unsupportedSchemes),
+    ...renderItems('缺少引用值', missingValues),
+  ]
+}
+
 function formatImportMismatchValue(value: unknown): string {
   if (value === undefined) {
     return 'undefined'
@@ -1340,6 +1444,9 @@ function renderFailure(result: CommandResult): string {
   const scopeCapabilityDetails = parseScopeCapabilityDetails(result.error?.details)
   const scopeAvailabilityDetails = parseScopeAvailabilityDetails(result.error?.details)
   const importApplyNotReadyDetails = parseImportApplyNotReadyDetails(result.error?.details)
+  const referenceGovernanceDetails = isRecord(result.error?.details)
+    ? parseReferenceGovernanceFailureDetails(result.error.details.referenceGovernance)
+    : undefined
 
   if (result.action === 'import-apply' && importApplyNotReadyDetails) {
     return [
@@ -1361,6 +1468,10 @@ function renderFailure(result: CommandResult): string {
     result.error?.message ?? '未知错误',
     ...(confirmationDetails ? renderRiskSummary(confirmationDetails.risk) : []),
     ...renderFailurePlatformSummary(result),
+    ...renderReferenceGovernanceDetails(
+      referenceGovernanceDetails
+      ?? (confirmationDetails as ParsedConfirmationRequiredDetails | undefined)?.referenceGovernance,
+    ),
     ...renderFailureScopePolicy(confirmationDetails?.scopePolicy ?? scopePolicyDetails?.scopePolicy),
     ...renderScopeCapabilities(
       confirmationDetails?.scopeCapabilities ?? scopeCapabilityDetails?.scopeCapabilities,
