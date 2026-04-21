@@ -191,6 +191,15 @@ describe('current state service', () => {
     expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
+      referenceStats: {
+        profileCount: 2,
+        referenceProfileCount: 0,
+        inlineProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        hasReferenceProfiles: false,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+      },
     })
     expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -199,6 +208,15 @@ describe('current state service', () => {
         currentProfileId: 'claude-prod',
         detectedProfileId: 'claude-prod',
         managed: true,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
       }),
       expect.objectContaining({
         platform: 'gemini',
@@ -206,11 +224,29 @@ describe('current state service', () => {
         currentProfileId: 'gemini-prod',
         detectedProfileId: 'gemini-prod',
         managed: true,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
       }),
       expect.objectContaining({
         platform: 'codex',
         profileCount: 0,
         managed: false,
+        referenceStats: {
+          profileCount: 0,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
       }),
     ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
@@ -433,6 +469,15 @@ describe('current state service', () => {
     expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
+      referenceStats: {
+        profileCount: 3,
+        referenceProfileCount: 0,
+        inlineProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        hasReferenceProfiles: false,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+      },
     })
     expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -440,11 +485,29 @@ describe('current state service', () => {
         profileCount: 1,
         detectedProfileId: 'claude-prod',
         managed: true,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
       }),
       expect.objectContaining({
         platform: 'codex',
         profileCount: 1,
         managed: false,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
         platformSummary: {
           kind: 'multi-file-composition',
           composedFiles: [],
@@ -460,6 +523,15 @@ describe('current state service', () => {
         currentProfileId: 'gemini-prod',
         detectedProfileId: 'gemini-prod',
         managed: true,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        },
       }),
     ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
@@ -477,5 +549,127 @@ describe('current state service', () => {
         message: '不支持的平台：openai',
       },
     })
+  })
+
+  it('current/list 会把 reference profile 聚合成稳定的 referenceStats', async () => {
+    const profiles = [
+      {
+        id: 'claude-ref',
+        name: 'Claude Ref',
+        platform: 'claude',
+        source: { secret_ref: 'vault://claude/prod' },
+        apply: { auth_reference: 'vault://claude/prod' },
+      },
+      {
+        id: 'gemini-inline',
+        name: 'Gemini Inline',
+        platform: 'gemini',
+        source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+        apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+      },
+    ]
+
+    const service = new CurrentStateService(
+      {
+        list: async () => profiles,
+      } as any,
+      {
+        read: async () => ({
+          current: {
+            claude: 'claude-ref',
+          },
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: (platform: string) => ({
+          detectCurrent: async () => ({
+            platform,
+            managed: platform === 'claude',
+            matchedProfileId: platform === 'claude' ? 'claude-ref' : undefined,
+            targetFiles: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    )
+
+    const currentResult = await service.getCurrent()
+    const listResult = await service.list()
+
+    expect(currentResult.ok).toBe(true)
+    expect(currentResult.data?.summary.referenceStats).toEqual({
+      profileCount: 2,
+      referenceProfileCount: 1,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(currentResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        },
+      }),
+    ]))
+
+    expect(listResult.ok).toBe(true)
+    expect(listResult.data?.summary.referenceStats).toEqual({
+      profileCount: 2,
+      referenceProfileCount: 1,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(listResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        },
+      }),
+    ]))
   })
 })

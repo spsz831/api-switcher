@@ -1,5 +1,5 @@
 import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
-import { withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
+import { buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
@@ -74,8 +74,10 @@ export class ExportService {
   }
 
   private buildExportSummary(items: ExportCommandOutput['profiles']): ExportCommandOutput['summary'] {
+    const profiles = items.map((item) => item.profile)
     return {
       platformStats: this.buildPlatformStats(items),
+      referenceStats: buildSecretReferenceStats(profiles),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation?.warnings ?? []),
         ...item.validation?.effectiveConfig?.overrides.map((override) => override.message) ?? [],
@@ -95,6 +97,7 @@ export class ExportService {
         okCount: platformItems.filter((item) => item.validation?.ok).length,
         warningCount: platformItems.reduce((count, item) => count + (item.validation?.warnings?.length ?? 0), 0),
         limitationCount: platformItems.reduce((count, item) => count + (item.validation?.limitations?.length ?? 0), 0),
+        referenceStats: buildSecretReferenceStats(platformItems.map((item) => item.profile)),
         platformSummary: platformItems[0]?.platformSummary,
       }
     })

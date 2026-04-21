@@ -1,6 +1,6 @@
 import type { CommandResult } from '../types/command'
 import { PUBLIC_JSON_SCHEMA_VERSION } from '../constants/public-json-schema'
-import { isSecretLikeKey, maskValue } from '../domain/masking'
+import { isSecretLikeKey, isSecretReferenceKey, maskValue } from '../domain/masking'
 
 function sanitizeJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -27,7 +27,7 @@ function sanitizeJsonValue(value: unknown): unknown {
         return [key, entryValue]
       }
 
-      if (isSecretLikeKey(key)) {
+      if (isSecretLikeKey(key) && !isSecretReferenceKey(key)) {
         if (Array.isArray(entryValue) || (entryValue && typeof entryValue === 'object')) {
           return [key, sanitizeJsonValue(entryValue)]
         }

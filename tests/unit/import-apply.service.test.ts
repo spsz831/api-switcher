@@ -596,6 +596,15 @@ describe('import apply service', () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
     expect(result.error?.message).toBe('当前导入应用需要确认或 --force。')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: {
+        hasReferenceProfiles: false,
+        hasInlineProfiles: true,
+        hasWriteUnsupportedProfiles: false,
+        primaryReason: 'INLINE_SECRET_PRESENT',
+        reasonCodes: ['INLINE_SECRET_PRESENT'],
+      },
+    }))
   })
 
   it('Claude local scope 带 --force 时可以成功 apply', async () => {
@@ -1087,6 +1096,13 @@ describe('import apply service', () => {
               message: 'validation limitation',
             },
           ],
+          referenceGovernance: {
+            hasReferenceProfiles: false,
+            hasInlineProfiles: true,
+            hasWriteUnsupportedProfiles: false,
+            primaryReason: 'INLINE_SECRET_PRESENT',
+            reasonCodes: ['INLINE_SECRET_PRESENT'],
+          },
         },
       },
     })

@@ -213,6 +213,15 @@ describe('export service', () => {
         okCount: 1,
         warningCount: 2,
         limitationCount: 0,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        },
         platformSummary: {
           kind: 'scope-precedence',
           precedence: ['user', 'project', 'local'],
@@ -228,6 +237,15 @@ describe('export service', () => {
         okCount: 1,
         warningCount: 2,
         limitationCount: 0,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        },
         platformSummary: {
           kind: 'scope-precedence',
           precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
@@ -238,6 +256,15 @@ describe('export service', () => {
         },
       },
     ])
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 2,
+      referenceProfileCount: 0,
+      inlineProfileCount: 2,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
     expect(new Date(result.data?.profiles[1]?.observedAt ?? '').toString()).not.toBe('Invalid Date')
     expect(result.data?.profiles[0]?.observedAt).toBeUndefined()
   })
@@ -296,8 +323,26 @@ describe('export service', () => {
         platform: 'claude',
         okCount: 1,
         warningCount: 2,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        }),
       }),
     ])
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
   })
 
   it('导出时保留 secret_ref 契约并聚合未支持写入的 limitation', async () => {
@@ -349,5 +394,28 @@ describe('export service', () => {
       }),
     ]))
     expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(result.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'codex',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+    ])
   })
 })

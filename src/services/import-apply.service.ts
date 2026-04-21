@@ -1,4 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
+import { buildReferenceGovernanceFailureDetails } from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CurrentProfileResult, PreviewResult, ValidationResult } from '../types/adapter'
@@ -8,6 +9,7 @@ import type {
   ImportObservation,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
+  ValidationFailureDetails,
 } from '../types/command'
 import type { ScopeAvailability } from '../types/capabilities'
 import {
@@ -209,6 +211,12 @@ export class ImportApplyService {
 
       const validation = await adapter.validate(importedSource.profile, { targetScope: appliedScope })
       if (!validation.ok) {
+        const referenceGovernance = buildReferenceGovernanceFailureDetails(importedSource.profile, validation)
+        const details: ValidationFailureDetails = {
+          ...validation,
+          ...(referenceGovernance ? { referenceGovernance } : {}),
+        }
+
         return {
           ok: false,
           action: 'import-apply',
@@ -217,7 +225,7 @@ export class ImportApplyService {
           error: {
             code: 'VALIDATION_FAILED',
             message: '配置校验失败',
-            details: validation,
+            details,
           },
         }
       }
@@ -237,6 +245,7 @@ export class ImportApplyService {
       const confirmationAllowed = decision.allowed && localConfirmationReasons.length === 0
 
       if (!confirmationAllowed) {
+        const referenceGovernance = buildReferenceGovernanceFailureDetails(importedSource.profile, validation)
         const details: ConfirmationRequiredDetails = {
           risk: {
             allowed: false,
@@ -256,6 +265,7 @@ export class ImportApplyService {
           }),
           scopeCapabilities,
           scopeAvailability,
+          ...(referenceGovernance ? { referenceGovernance } : {}),
         }
 
         return {

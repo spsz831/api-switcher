@@ -18,9 +18,11 @@ import type {
   ListCommandOutput,
   ListSummary,
   PreviewCommandOutput,
+  ReferenceGovernanceFailureDetails,
   RollbackCommandOutput,
   SchemaCommandOutput,
   UseCommandOutput,
+  ValidationFailureDetails,
   ValidateCommandOutput,
 } from '../../src/types/command'
 import { COMMAND_ACTIONS } from '../../src/types/command'
@@ -403,6 +405,15 @@ describe('public JSON contract types', () => {
     }>()
 
     expectTypeOf<CurrentSummary>().toMatchTypeOf<{
+      referenceStats?: {
+        profileCount: number
+        referenceProfileCount: number
+        inlineProfileCount: number
+        writeUnsupportedProfileCount: number
+        hasReferenceProfiles: boolean
+        hasInlineProfiles: boolean
+        hasWriteUnsupportedProfiles: boolean
+      }
       platformStats?: Array<{
         platform: string
         profileCount: number
@@ -410,6 +421,15 @@ describe('public JSON contract types', () => {
         detectedProfileId?: string
         managed: boolean
         currentScope?: string
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasReferenceProfiles: boolean
+          hasInlineProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -424,6 +444,15 @@ describe('public JSON contract types', () => {
     }>()
 
     expectTypeOf<ListSummary>().toMatchTypeOf<{
+      referenceStats?: {
+        profileCount: number
+        referenceProfileCount: number
+        inlineProfileCount: number
+        writeUnsupportedProfileCount: number
+        hasReferenceProfiles: boolean
+        hasInlineProfiles: boolean
+        hasWriteUnsupportedProfiles: boolean
+      }
       platformStats?: Array<{
         platform: string
         profileCount: number
@@ -431,6 +460,15 @@ describe('public JSON contract types', () => {
         detectedProfileId?: string
         managed: boolean
         currentScope?: string
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasReferenceProfiles: boolean
+          hasInlineProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -647,15 +685,24 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/CurrentListPlatformStat' },
     })
+    expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
     expect(publicJsonSchema.$defs?.ListSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/CurrentListPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ListSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
     })
     expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.required).toEqual(expect.arrayContaining([
       'platform',
       'profileCount',
       'managed',
     ]))
+    expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
     expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
     })
@@ -694,12 +741,30 @@ describe('public JSON contract types', () => {
 
     expectTypeOf<ValidateCommandOutput>().toMatchTypeOf<{
       summary: {
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasReferenceProfiles: boolean
+          hasInlineProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+        }
         platformStats?: Array<{
           platform: string
           profileCount: number
           okCount: number
           warningCount: number
           limitationCount: number
+          referenceStats?: {
+            profileCount: number
+            referenceProfileCount: number
+            inlineProfileCount: number
+            writeUnsupportedProfileCount: number
+            hasReferenceProfiles: boolean
+            hasInlineProfiles: boolean
+            hasWriteUnsupportedProfiles: boolean
+          }
           platformSummary?: {
             kind: 'scope-precedence' | 'multi-file-composition'
             facts: Array<{
@@ -716,12 +781,30 @@ describe('public JSON contract types', () => {
 
     expectTypeOf<ExportCommandOutput>().toMatchTypeOf<{
       summary: {
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasReferenceProfiles: boolean
+          hasInlineProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+        }
         platformStats?: Array<{
           platform: string
           profileCount: number
           okCount: number
           warningCount: number
           limitationCount: number
+          referenceStats?: {
+            profileCount: number
+            referenceProfileCount: number
+            inlineProfileCount: number
+            writeUnsupportedProfileCount: number
+            hasReferenceProfiles: boolean
+            hasInlineProfiles: boolean
+            hasWriteUnsupportedProfiles: boolean
+          }
           platformSummary?: {
             kind: 'scope-precedence' | 'multi-file-composition'
             facts: Array<{
@@ -754,9 +837,15 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/ValidateExportPlatformStat' },
     })
+    expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/ValidateExportPlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.ExportSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
     })
     expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.required).toEqual(expect.arrayContaining([
       'platform',
@@ -765,8 +854,72 @@ describe('public JSON contract types', () => {
       'warningCount',
       'limitationCount',
     ]))
+    expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
     expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
+  it('machine-readable schema 覆盖 SecretReferenceStats def', () => {
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.required).toEqual([
+      'profileCount',
+      'referenceProfileCount',
+      'inlineProfileCount',
+      'writeUnsupportedProfileCount',
+      'hasReferenceProfiles',
+      'hasInlineProfiles',
+      'hasWriteUnsupportedProfiles',
+    ])
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.referenceProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.inlineProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.writeUnsupportedProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasReferenceProfiles).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasInlineProfiles).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasWriteUnsupportedProfiles).toEqual({ type: 'boolean' })
+  })
+
+  it('machine-readable schema 覆盖 reference governance failure def', () => {
+    expectTypeOf<ReferenceGovernanceFailureDetails>().toMatchTypeOf<{
+      hasReferenceProfiles: boolean
+      hasInlineProfiles: boolean
+      hasWriteUnsupportedProfiles: boolean
+      primaryReason?: 'REFERENCE_WRITE_UNSUPPORTED' | 'INLINE_SECRET_PRESENT' | 'REFERENCE_MISSING' | 'REFERENCE_INPUT_CONFLICT'
+      reasonCodes: Array<'REFERENCE_WRITE_UNSUPPORTED' | 'INLINE_SECRET_PRESENT' | 'REFERENCE_MISSING' | 'REFERENCE_INPUT_CONFLICT'>
+    }>()
+    expectTypeOf<ValidationFailureDetails>().toMatchTypeOf<{
+      referenceGovernance?: ReferenceGovernanceFailureDetails
+    }>()
+
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceFailureDetails?.required).toEqual([
+      'hasReferenceProfiles',
+      'hasInlineProfiles',
+      'hasWriteUnsupportedProfiles',
+      'reasonCodes',
+    ])
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceFailureDetails?.properties?.primaryReason).toMatchObject({
+      enum: expect.arrayContaining([
+        'REFERENCE_WRITE_UNSUPPORTED',
+        'INLINE_SECRET_PRESENT',
+        'REFERENCE_MISSING',
+        'REFERENCE_INPUT_CONFLICT',
+      ]),
+    })
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceFailureDetails?.properties?.reasonCodes).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: [
+          'REFERENCE_WRITE_UNSUPPORTED',
+          'INLINE_SECRET_PRESENT',
+          'REFERENCE_MISSING',
+          'REFERENCE_INPUT_CONFLICT',
+        ],
+      },
+    })
+    expect(publicJsonSchema.$defs?.ValidationFailureDetails?.properties?.referenceGovernance).toEqual({
+      $ref: '#/$defs/ReferenceGovernanceFailureDetails',
     })
   })
 
@@ -1310,6 +1463,41 @@ describe('public JSON contract types', () => {
     }
 
     expect(validatePublicSchema(scopeUnavailableFailureResult)).toBe(true)
+  })
+
+  it('action=import-apply validation 失败样例支持 referenceGovernance 索引', () => {
+    const validationFailureResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: false,
+      action: 'import-apply',
+      warnings: [],
+      limitations: [],
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: '配置校验失败',
+        details: {
+          ok: false,
+          errors: [
+            {
+              code: 'SECRET_REFERENCE_MISSING',
+              level: 'error',
+              message: 'profile.source.secret_ref 缺少可用的 secret 引用。',
+            },
+          ],
+          warnings: [],
+          limitations: [],
+          referenceGovernance: {
+            hasReferenceProfiles: false,
+            hasInlineProfiles: false,
+            hasWriteUnsupportedProfiles: false,
+            primaryReason: 'REFERENCE_MISSING',
+            reasonCodes: ['REFERENCE_MISSING'],
+          },
+        },
+      },
+    }
+
+    expect(validatePublicSchema(validationFailureResult)).toBe(true)
   })
 
   it('明显错误的 import-apply success 实例会被 machine-readable schema 拒绝', () => {

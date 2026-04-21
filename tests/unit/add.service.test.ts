@@ -147,4 +147,95 @@ describe('add service', () => {
       }),
     ])
   })
+
+  it('支持仅用 secret_ref/auth_reference 创建 profile，并提示写入链路尚未消费引用', async () => {
+    const result = await new AddService(
+      {
+        add: async () => undefined,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [{
+              code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+              level: 'limitation',
+              message: '当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。',
+            }],
+          }),
+          preview: async () => ({
+            platform: 'codex',
+            profileId: 'codex-ref-profile',
+            targetFiles: [],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [],
+            warnings: [],
+            limitations: [{
+              code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+              level: 'limitation',
+              message: '当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。',
+            }],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: false,
+            noChanges: true,
+          }),
+        }),
+      } as any,
+    ).add({
+      platform: 'codex',
+      name: 'ref-profile',
+      secretRef: 'vault://codex/prod',
+      authReference: 'vault://codex/prod',
+      url: 'https://gateway.example.com/openai/v1',
+    } as any)
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.profile.source).toEqual({
+      secret_ref: 'vault://codex/prod',
+      baseURL: 'https://gateway.example.com/openai/v1',
+    })
+    expect(result.data?.profile.apply).toEqual({
+      auth_reference: 'vault://codex/prod',
+      base_url: 'https://gateway.example.com/openai/v1',
+    })
+    expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+  })
+
+  it('明文 key 与 secret reference 同时出现时返回参数错误', async () => {
+    const result = await new AddService().add({
+      platform: 'claude',
+      name: 'conflict-profile',
+      key: 'sk-test-123456',
+      secretRef: 'vault://claude/prod',
+    } as any)
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'add',
+      error: {
+        code: 'ADD_INPUT_CONFLICT',
+        message: '不能同时提供 --key 与 --secret-ref/--auth-reference。',
+      },
+    })
+  })
+
+  it('缺少 key 和 secret reference 时返回参数错误', async () => {
+    const result = await new AddService().add({
+      platform: 'gemini',
+      name: 'missing-secret-input',
+    } as any)
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'add',
+      error: {
+        code: 'ADD_INPUT_REQUIRED',
+        message: '必须提供 --key 或 --secret-ref/--auth-reference 其中之一。',
+      },
+    })
+  })
 })

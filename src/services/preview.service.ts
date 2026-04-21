@@ -1,4 +1,5 @@
 import { evaluateRisk } from '../domain/risk-engine'
+import { withProfileSecretReferenceContract } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import type { ScopeAvailability } from '../types/capabilities'
@@ -54,7 +55,10 @@ export class PreviewService {
         }
       }
 
-      const validation = await adapter.validate(profile, { targetScope: resolvedScope })
+      const validation = withProfileSecretReferenceContract(
+        await adapter.validate(profile, { targetScope: resolvedScope }),
+        profile,
+      )
       const preview = await adapter.preview(profile, { targetScope: resolvedScope })
       const decision = evaluateRisk(preview, validation)
       const risk = {

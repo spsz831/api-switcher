@@ -36,15 +36,15 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'add':
       return ['summary.platformStats', 'risk', 'preview', 'scopeCapabilities']
     case 'current':
-      return ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability']
+      return ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability']
     case 'export':
-      return ['summary.platformStats', 'profiles']
+      return ['summary.platformStats', 'summary.referenceStats', 'profiles']
     case 'import':
       return ['summary.platformStats', 'items', 'sourceCompatibility']
     case 'import-apply':
       return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'list':
-      return ['summary.platformStats', 'profiles']
+      return ['summary.platformStats', 'summary.referenceStats', 'profiles']
     case 'preview':
       return ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
@@ -54,7 +54,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'use':
       return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'validate':
-      return ['summary.platformStats', 'items']
+      return ['summary.platformStats', 'summary.referenceStats', 'items']
     default:
       return []
   }
@@ -65,13 +65,13 @@ function getPrimaryErrorFields(action: typeof COMMAND_ACTIONS[number]): string[]
     case 'preview':
       return ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability']
     case 'use':
-      return ['error.code', 'error.message', 'error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
+      return ['error.code', 'error.message', 'error.details.referenceGovernance', 'error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
     case 'rollback':
       return ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
     case 'import':
       return ['error.code', 'error.message']
     case 'import-apply':
-      return ['error.code', 'error.message', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
+      return ['error.code', 'error.message', 'error.details.referenceGovernance', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability']
     default:
       return ['error.code', 'error.message']
   }
@@ -81,11 +81,13 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
   switch (action) {
     case 'add':
       return [
-        { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
-        { code: 'GEMINI_URL_UNSUPPORTED', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
-        { code: 'DUPLICATE_PROFILE_ID', priority: 3, category: 'state', recommendedHandling: 'select-existing-resource' },
-        { code: 'ADAPTER_NOT_REGISTERED', priority: 4, category: 'platform', recommendedHandling: 'check-platform-support' },
-        { code: 'ADD_FAILED', priority: 5, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'ADD_INPUT_REQUIRED', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADD_INPUT_CONFLICT', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'UNSUPPORTED_PLATFORM', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'GEMINI_URL_UNSUPPORTED', priority: 4, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'DUPLICATE_PROFILE_ID', priority: 5, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 6, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ADD_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
       ]
     case 'current':
       return [
@@ -177,6 +179,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'current':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
@@ -185,6 +188,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'export':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
       ]
     case 'import':
@@ -205,6 +209,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
         { path: 'changedFiles', channel: 'success', presence: 'always' },
         { path: 'backupId', channel: 'success', presence: 'always' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED' },
         { path: 'error.details.previewDecision', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_IMPORT_APPLY_FAILURE_PROVIDES_PREVIEW_DECISION' },
         { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
@@ -213,6 +218,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'list':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
       ]
     case 'preview':
@@ -257,6 +263,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
         { path: 'changedFiles', channel: 'success', presence: 'always' },
         { path: 'backupId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_BACKUP_IS_CREATED' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED' },
         { path: 'error.details.risk', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_CONFIRMATION_OR_VALIDATION_FAILURE_PROVIDES_RISK' },
         { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
@@ -265,6 +272,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'validate':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
       ]
     default:
@@ -284,6 +292,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'current':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
@@ -292,6 +301,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'export':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
       ]
     case 'import':
@@ -312,6 +322,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
         { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
         { path: 'backupId', channel: 'success', source: 'write-pipeline' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', source: 'command-service' },
         { path: 'error.details.previewDecision', channel: 'failure', source: 'import-analysis' },
         { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
@@ -320,6 +331,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'list':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
       ]
     case 'preview':
@@ -364,6 +376,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
         { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
         { path: 'backupId', channel: 'success', source: 'write-pipeline' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', source: 'command-service' },
         { path: 'error.details.risk', channel: 'failure', source: 'command-service' },
         { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
@@ -372,6 +385,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'validate':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
       ]
     default:
@@ -391,6 +405,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'current':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
@@ -399,6 +414,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'export':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
       ]
     case 'import':
@@ -419,6 +435,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
         { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', stabilityTier: 'stable' },
         { path: 'error.details.previewDecision', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
@@ -427,6 +444,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'list':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
       ]
     case 'preview':
@@ -471,6 +489,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
         { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
+        { path: 'error.details.referenceGovernance', channel: 'failure', stabilityTier: 'stable' },
         { path: 'error.details.risk', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
@@ -479,6 +498,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'validate':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
       ]
     default:
@@ -501,7 +521,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'current':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级聚合和 reference 聚合。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -513,7 +533,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'export':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级导出聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级导出聚合和 reference 聚合。' },
           { stage: 'items', fields: ['profiles'], purpose: '再读导出 profile 列表。' },
         ],
         failure: [
@@ -541,14 +561,14 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
-          { stage: 'error-details', fields: ['error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看导入决策和 scope 上下文。' },
+          { stage: 'error-details', fields: ['error.details.referenceGovernance', 'error.details.previewDecision', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看 reference 治理、导入决策和 scope 上下文。' },
           { stage: 'error-recovery', fields: ['error.code'], purpose: '最后按 recommendedHandling 选择修复动作。' },
         ],
       }
     case 'list':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先按平台分组。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先按平台分组并识别 reference 聚合。' },
           { stage: 'items', fields: ['profiles'], purpose: '再读 profile 列表。' },
         ],
         failure: [
@@ -598,14 +618,14 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
-          { stage: 'error-details', fields: ['error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看风险和 scope 上下文。' },
+          { stage: 'error-details', fields: ['error.details.referenceGovernance', 'error.details.risk', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability'], purpose: '再看 reference 治理、风险和 scope 上下文。' },
           { stage: 'error-recovery', fields: ['error.code'], purpose: '最后按 recommendedHandling 选择修复动作。' },
         ],
       }
     case 'validate':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级通过/限制聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级通过/限制聚合和 reference 聚合。' },
           { stage: 'items', fields: ['items'], purpose: '再展开各 profile 校验结果。' },
         ],
         failure: [
@@ -632,6 +652,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'current':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
@@ -640,6 +661,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'export':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
       ]
     case 'import':
@@ -662,6 +684,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'list':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
       ]
     case 'preview':
@@ -705,6 +728,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'validate':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'items', semantic: 'item-collection' },
       ]
     default:
@@ -725,6 +749,7 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
       return [
         { path: 'error.code', semantic: 'error-core' },
         { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.referenceGovernance', semantic: 'reference-governance' },
         { path: 'error.details.risk', semantic: 'error-details' },
         { path: 'error.details.scopePolicy', semantic: 'error-details' },
         { path: 'error.details.scopeCapabilities', semantic: 'error-details' },
@@ -742,6 +767,7 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
       return [
         { path: 'error.code', semantic: 'error-core' },
         { path: 'error.message', semantic: 'error-core' },
+        { path: 'error.details.referenceGovernance', semantic: 'reference-governance' },
         { path: 'error.details.previewDecision', semantic: 'error-details' },
         { path: 'error.details.scopePolicy', semantic: 'error-details' },
         { path: 'error.details.scopeCapabilities', semantic: 'error-details' },

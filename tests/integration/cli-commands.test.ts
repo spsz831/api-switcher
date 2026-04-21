@@ -837,6 +837,52 @@ describe('cli commands integration', () => {
     expect(payload.data?.schema).toEqual(staticSchema)
   })
 
+  it('schema --json 暴露 use/import-apply 失败态 referenceGovernance 消费入口', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        actions: Array<{
+          action: string
+          primaryErrorFields: string[]
+          fieldPresence: Array<{ path: string; channel: string; presence: string; conditionCode?: string }>
+          fieldSources: Array<{ path: string; channel: string; source: string }>
+          fieldStability: Array<{ path: string; channel: string; stabilityTier: string }>
+          readOrderGroups: { failure: Array<{ stage: string; fields: string[] }> }
+          primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+
+    for (const actionName of ['use', 'import-apply']) {
+      const action = payload.data?.commandCatalog.actions.find((item) => item.action === actionName)
+      expect(action?.primaryErrorFields).toContain('error.details.referenceGovernance')
+      expect(action?.fieldPresence).toContainEqual({
+        path: 'error.details.referenceGovernance',
+        channel: 'failure',
+        presence: 'conditional',
+        conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED',
+      })
+      expect(action?.fieldSources).toContainEqual({
+        path: 'error.details.referenceGovernance',
+        channel: 'failure',
+        source: 'command-service',
+      })
+      expect(action?.fieldStability).toContainEqual({
+        path: 'error.details.referenceGovernance',
+        channel: 'failure',
+        stabilityTier: 'stable',
+      })
+      expect(action?.readOrderGroups.failure.find((group) => group.stage === 'error-details')?.fields).toContain('error.details.referenceGovernance')
+      expect(action?.primaryErrorFieldSemantics).toContainEqual({
+        path: 'error.details.referenceGovernance',
+        semantic: 'reference-governance',
+      })
+    }
+  })
+
   it('schema 文本输出当前 public JSON schema 摘要', async () => {
     const result = await runCli(['schema'])
 
@@ -2349,6 +2395,13 @@ describe('cli commands integration', () => {
     expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
     expect(payload.error?.message).toBe('当前切换需要确认或 --force。')
     expect(payload.error?.details).toMatchObject({
+      referenceGovernance: {
+        hasReferenceProfiles: false,
+        hasInlineProfiles: true,
+        hasWriteUnsupportedProfiles: false,
+        primaryReason: 'INLINE_SECRET_PRESENT',
+        reasonCodes: ['INLINE_SECRET_PRESENT'],
+      },
       risk: expect.objectContaining({
         allowed: false,
       }),
@@ -5002,6 +5055,13 @@ describe('cli commands integration', () => {
       path: geminiProjectSettingsPath,
     }))
     expect(payload.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: {
+        hasReferenceProfiles: false,
+        hasInlineProfiles: true,
+        hasWriteUnsupportedProfiles: false,
+        primaryReason: 'INLINE_SECRET_PRESENT',
+        reasonCodes: ['INLINE_SECRET_PRESENT'],
+      },
       risk: expect.objectContaining({
         allowed: false,
         riskLevel: 'high',

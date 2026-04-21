@@ -1,10 +1,11 @@
 import { collectIssueMessages } from '../domain/masking'
+import { buildReferenceGovernanceFailureDetails } from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { ScopeAvailability } from '../types/capabilities'
-import type { CommandResult, ConfirmationRequiredDetails, UseCommandOutput } from '../types/command'
+import type { CommandResult, ConfirmationRequiredDetails, UseCommandOutput, ValidationFailureDetails } from '../types/command'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { buildPlatformSummary } from './platform-summary'
 import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
@@ -70,6 +71,12 @@ export class SwitchService {
       const validation = await adapter.validate(profile, { targetScope: resolvedScope })
 
       if (!validation.ok) {
+        const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
+        const details: ValidationFailureDetails = {
+          ...validation,
+          ...(referenceGovernance ? { referenceGovernance } : {}),
+        }
+
         return {
           ok: false,
           action: 'use',
@@ -78,7 +85,7 @@ export class SwitchService {
           error: {
             code: 'VALIDATION_FAILED',
             message: '配置校验失败',
-            details: validation,
+            details,
           },
         }
       }
@@ -111,6 +118,7 @@ export class SwitchService {
         limitations: risk.limitations,
       }
       if (!decision.allowed) {
+        const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
         const details: ConfirmationRequiredDetails = {
           risk,
           scopePolicy: buildSnapshotScopePolicy(profile.platform, {
@@ -119,6 +127,7 @@ export class SwitchService {
           }),
           scopeCapabilities,
           scopeAvailability,
+          ...(referenceGovernance ? { referenceGovernance } : {}),
         }
         return {
           ok: false,

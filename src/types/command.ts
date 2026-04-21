@@ -82,6 +82,7 @@ export interface ConfirmationRequiredDetails {
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+  referenceGovernance?: ReferenceGovernanceFailureDetails
 }
 
 export interface UseCommandOutput {
@@ -118,6 +119,30 @@ export interface SinglePlatformStat {
   platformSummary?: PlatformExplainableSummary
 }
 
+export interface SecretReferenceStats {
+  profileCount: number
+  referenceProfileCount: number
+  inlineProfileCount: number
+  writeUnsupportedProfileCount: number
+  hasReferenceProfiles: boolean
+  hasInlineProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+}
+
+export type ReferenceGovernanceReasonCode =
+  | 'REFERENCE_WRITE_UNSUPPORTED'
+  | 'INLINE_SECRET_PRESENT'
+  | 'REFERENCE_MISSING'
+  | 'REFERENCE_INPUT_CONFLICT'
+
+export interface ReferenceGovernanceFailureDetails {
+  hasReferenceProfiles: boolean
+  hasInlineProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+  primaryReason?: ReferenceGovernanceReasonCode
+  reasonCodes: ReferenceGovernanceReasonCode[]
+}
+
 export interface CurrentListPlatformStat {
   platform: PlatformName
   profileCount: number
@@ -125,17 +150,20 @@ export interface CurrentListPlatformStat {
   detectedProfileId?: string
   managed: boolean
   currentScope?: string
+  referenceStats?: SecretReferenceStats
   platformSummary?: PlatformExplainableSummary
 }
 
 export interface CurrentSummary {
   platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
 
 export interface ListSummary {
   platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -146,11 +174,13 @@ export interface ValidateExportPlatformStat {
   okCount: number
   warningCount: number
   limitationCount: number
+  referenceStats?: SecretReferenceStats
   platformSummary?: PlatformExplainableSummary
 }
 
 export interface ExportSummary {
   platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -272,6 +302,7 @@ export interface CurrentCommandOutput {
 
 export interface ValidateSummary {
   platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -440,6 +471,10 @@ export interface ImportApplyNotReadyDetails {
   exportedObservation?: ImportObservation
 }
 
+export interface ValidationFailureDetails extends ValidationResult {
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+}
+
 export interface ImportApplySummary {
   platformStats?: SinglePlatformStat[]
   warnings: string[]
@@ -510,6 +545,8 @@ export interface ListCommandOutput {
 export interface AddProfileInput {
   platform: PlatformName
   name: string
-  key: string
+  key?: string
+  secretRef?: string
+  authReference?: string
   url?: string
 }

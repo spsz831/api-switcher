@@ -10,6 +10,7 @@ import type {
 } from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
+import { buildSecretReferenceStats, collectProfileSecretReferenceContractLimitations } from '../domain/secret-inspection'
 import { buildPlatformSummary } from './platform-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
@@ -138,8 +139,12 @@ export class CurrentStateService {
 
     return {
       platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, PLATFORM_NAMES, false),
+      referenceStats: buildSecretReferenceStats(profiles),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
-      limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+      limitations: Array.from(new Set([
+        ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+        ...profiles.flatMap((profile) => collectProfileSecretReferenceContractLimitations(profile)),
+      ])),
     }
   }
 
@@ -153,8 +158,12 @@ export class CurrentStateService {
 
     return {
       platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, targetPlatforms, true),
+      referenceStats: buildSecretReferenceStats(profiles),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
-      limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+      limitations: Array.from(new Set([
+        ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+        ...profiles.flatMap((profile) => collectProfileSecretReferenceContractLimitations(profile)),
+      ])),
     }
   }
 
@@ -176,6 +185,7 @@ export class CurrentStateService {
         detectedProfileId: detection?.matchedProfileId,
         managed: detection?.managed ?? false,
         currentScope: detection?.currentScope,
+        referenceStats: buildSecretReferenceStats(profiles.filter((item) => item.platform === platform)),
         platformSummary: buildPlatformSummary(platform, {
           currentScope: detection?.currentScope,
           composedFiles: detection?.targetFiles.map((target) => target.path) ?? [],

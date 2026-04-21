@@ -293,7 +293,66 @@
         "detectedProfileId": { "type": "string" },
         "managed": { "type": "boolean" },
         "currentScope": { "type": "string" },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "SecretReferenceStats": {
+      "type": "object",
+      "required": [
+        "profileCount",
+        "referenceProfileCount",
+        "inlineProfileCount",
+        "writeUnsupportedProfileCount",
+        "hasReferenceProfiles",
+        "hasInlineProfiles",
+        "hasWriteUnsupportedProfiles"
+      ],
+      "properties": {
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "referenceProfileCount": { "type": "integer", "minimum": 0 },
+        "inlineProfileCount": { "type": "integer", "minimum": 0 },
+        "writeUnsupportedProfileCount": { "type": "integer", "minimum": 0 },
+        "hasReferenceProfiles": { "type": "boolean" },
+        "hasInlineProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceGovernanceFailureDetails": {
+      "type": "object",
+      "required": [
+        "hasReferenceProfiles",
+        "hasInlineProfiles",
+        "hasWriteUnsupportedProfiles",
+        "reasonCodes"
+      ],
+      "properties": {
+        "hasReferenceProfiles": { "type": "boolean" },
+        "hasInlineProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" },
+        "primaryReason": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_WRITE_UNSUPPORTED",
+            "INLINE_SECRET_PRESENT",
+            "REFERENCE_MISSING",
+            "REFERENCE_INPUT_CONFLICT"
+          ]
+        },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "REFERENCE_WRITE_UNSUPPORTED",
+              "INLINE_SECRET_PRESENT",
+              "REFERENCE_MISSING",
+              "REFERENCE_INPUT_CONFLICT"
+            ]
+          }
+        }
       },
       "additionalProperties": false
     },
@@ -305,6 +364,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -324,6 +384,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -703,6 +764,7 @@
         "okCount": { "type": "integer", "minimum": 0 },
         "warningCount": { "type": "integer", "minimum": 0 },
         "limitationCount": { "type": "integer", "minimum": 0 },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
       },
       "additionalProperties": false
@@ -715,6 +777,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -734,6 +797,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -1200,7 +1264,8 @@
         { "$ref": "#/$defs/ImportApplySourceDetails" },
         { "$ref": "#/$defs/ImportApplyNotReadyDetails" },
         { "$ref": "#/$defs/ImportScopeUnavailableDetails" },
-        { "$ref": "#/$defs/ConfirmationRequiredDetails" }
+        { "$ref": "#/$defs/ConfirmationRequiredDetails" },
+        { "$ref": "#/$defs/ValidationFailureDetails" }
       ]
     },
     "ImportApplySuccessResult": {
@@ -1360,7 +1425,29 @@
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
-        }
+        },
+        "referenceGovernance": { "$ref": "#/$defs/ReferenceGovernanceFailureDetails" }
+      },
+      "additionalProperties": true
+    },
+    "ValidationFailureDetails": {
+      "type": "object",
+      "required": ["ok", "errors", "warnings", "limitations"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "errors": {
+          "type": "array",
+          "items": {}
+        },
+        "warnings": {
+          "type": "array",
+          "items": {}
+        },
+        "limitations": {
+          "type": "array",
+          "items": {}
+        },
+        "referenceGovernance": { "$ref": "#/$defs/ReferenceGovernanceFailureDetails" }
       },
       "additionalProperties": true
     },

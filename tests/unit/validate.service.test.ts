@@ -186,6 +186,15 @@ describe('validate service', () => {
         okCount: 1,
         warningCount: 2,
         limitationCount: 0,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        },
         platformSummary: {
           kind: 'scope-precedence',
           precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
@@ -196,6 +205,15 @@ describe('validate service', () => {
         },
       },
     ])
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
   })
 
   it('会把 profile 中的明文 secret 暴露为非阻断 warning', async () => {
@@ -252,8 +270,26 @@ describe('validate service', () => {
         platform: 'codex',
         okCount: 1,
         warningCount: 2,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        }),
       }),
     ])
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
   })
 
   it('secret_ref/auth_reference profile 在 validate 层可被识别，但会提示写入链路尚未消费引用', async () => {
@@ -316,6 +352,29 @@ describe('validate service', () => {
     ]))
     expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(result.data?.summary.warnings).not.toContain('profile.source.auth_reference 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
+    expect(result.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(result.data?.summary.platformStats).toEqual([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+    ])
   })
 
   it('空 secret_ref/auth_reference 会返回结构化校验错误', async () => {

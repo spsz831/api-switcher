@@ -260,6 +260,13 @@ describe('switch service', () => {
         rollbackScopeMatchRequired: true,
       }),
       scopeAvailability: undefined,
+      referenceGovernance: {
+        hasReferenceProfiles: false,
+        hasInlineProfiles: true,
+        hasWriteUnsupportedProfiles: false,
+        primaryReason: 'INLINE_SECRET_PRESENT',
+        reasonCodes: ['INLINE_SECRET_PRESENT'],
+      },
     }))
     expect(result.warnings).toContain('Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效，当前仅托管 settings.json 中已确认的配置字段。')
     expect(result.warnings).toContain('当前 Gemini settings.json 存在非托管字段：ui')
