@@ -208,6 +208,7 @@ export interface SchemaActionCapability {
   readOrderGroups: SchemaReadOrderGroups
   primaryFieldSemantics: SchemaFieldSemanticBinding[]
   primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
+  referenceGovernanceCodes?: SchemaReferenceGovernanceCode[]
 }
 
 export interface SchemaCommandCatalog {
@@ -231,6 +232,16 @@ export interface SchemaActionFailureCode {
     | 'check-platform-support'
     | 'inspect-runtime-details'
     | 'check-import-source'
+}
+
+export interface SchemaReferenceGovernanceCode {
+  code: ReferenceGovernanceReasonCode
+  priority: number
+  category: 'reference' | 'inline-secret' | 'input'
+  recommendedHandling:
+    | 'resolve-reference-support'
+    | 'migrate-inline-secret'
+    | 'fix-reference-input'
 }
 
 export interface SchemaReadOrderGroups {

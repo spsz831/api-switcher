@@ -239,6 +239,19 @@ describe('public JSON contract types', () => {
           }
           primaryFieldSemantics: Array<{ path: string; semantic: string }>
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
+          referenceGovernanceCodes?: Array<{
+            code:
+              | 'REFERENCE_INPUT_CONFLICT'
+              | 'REFERENCE_MISSING'
+              | 'REFERENCE_WRITE_UNSUPPORTED'
+              | 'INLINE_SECRET_PRESENT'
+            priority: number
+            category: 'reference' | 'inline-secret' | 'input'
+            recommendedHandling:
+              | 'resolve-reference-support'
+              | 'migrate-inline-secret'
+              | 'fix-reference-input'
+          }>
         }>
       }
     }>()
@@ -563,6 +576,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaFieldSemanticBinding' },
     })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.referenceGovernanceCodes).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaReferenceGovernanceCode' },
+    })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',
       'priority',
@@ -590,6 +607,37 @@ describe('public JSON contract types', () => {
         'check-platform-support',
         'inspect-runtime-details',
         'check-import-source',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.required).toEqual(expect.arrayContaining([
+      'code',
+      'priority',
+      'category',
+      'recommendedHandling',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.code).toEqual({
+      type: 'string',
+      enum: [
+        'REFERENCE_INPUT_CONFLICT',
+        'REFERENCE_MISSING',
+        'REFERENCE_WRITE_UNSUPPORTED',
+        'INLINE_SECRET_PRESENT',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.priority).toEqual({
+      type: 'integer',
+      minimum: 1,
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.category).toEqual({
+      type: 'string',
+      enum: ['reference', 'inline-secret', 'input'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.recommendedHandling).toEqual({
+      type: 'string',
+      enum: [
+        'resolve-reference-support',
+        'migrate-inline-secret',
+        'fix-reference-input',
       ],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.required).toEqual(expect.arrayContaining([

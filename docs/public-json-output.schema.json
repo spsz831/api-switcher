@@ -464,6 +464,10 @@
         "primaryErrorFieldSemantics": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
+        },
+        "referenceGovernanceCodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaReferenceGovernanceCode" }
         }
       },
       "additionalProperties": false
@@ -488,6 +492,35 @@
             "check-platform-support",
             "inspect-runtime-details",
             "check-import-source"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaReferenceGovernanceCode": {
+      "type": "object",
+      "required": ["code", "priority", "category", "recommendedHandling"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_INPUT_CONFLICT",
+            "REFERENCE_MISSING",
+            "REFERENCE_WRITE_UNSUPPORTED",
+            "INLINE_SECRET_PRESENT"
+          ]
+        },
+        "priority": { "type": "integer", "minimum": 1 },
+        "category": {
+          "type": "string",
+          "enum": ["reference", "inline-secret", "input"]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "resolve-reference-support",
+            "migrate-inline-secret",
+            "fix-reference-input"
           ]
         }
       },

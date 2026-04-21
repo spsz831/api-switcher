@@ -9,9 +9,17 @@ import {
   type SchemaActionFieldSource,
   type SchemaActionFieldStability,
   type SchemaCommandOutput,
-  type SchemaReadOrderGroups,
   type SchemaFieldSemanticBinding,
+  type SchemaReadOrderGroups,
+  type SchemaReferenceGovernanceCode,
 } from '../types/command'
+
+const REFERENCE_GOVERNANCE_CODE_CATALOG: SchemaReferenceGovernanceCode[] = [
+  { code: 'REFERENCE_INPUT_CONFLICT', priority: 1, category: 'input', recommendedHandling: 'fix-reference-input' },
+  { code: 'REFERENCE_MISSING', priority: 2, category: 'reference', recommendedHandling: 'fix-reference-input' },
+  { code: 'REFERENCE_WRITE_UNSUPPORTED', priority: 3, category: 'reference', recommendedHandling: 'resolve-reference-support' },
+  { code: 'INLINE_SECRET_PRESENT', priority: 4, category: 'inline-secret', recommendedHandling: 'migrate-inline-secret' },
+]
 
 const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map((action) => ({
   action,
@@ -29,7 +37,16 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   readOrderGroups: getReadOrderGroups(action),
   primaryFieldSemantics: getPrimaryFieldSemantics(action),
   primaryErrorFieldSemantics: getPrimaryErrorFieldSemantics(action),
+  ...getReferenceGovernanceCodeCatalog(action),
 }))
+
+function getReferenceGovernanceCodeCatalog(action: typeof COMMAND_ACTIONS[number]): { referenceGovernanceCodes?: SchemaReferenceGovernanceCode[] } {
+  if (action !== 'use' && action !== 'import-apply') {
+    return {}
+  }
+
+  return { referenceGovernanceCodes: REFERENCE_GOVERNANCE_CODE_CATALOG }
+}
 
 function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
   switch (action) {

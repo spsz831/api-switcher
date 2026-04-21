@@ -849,6 +849,12 @@ describe('cli commands integration', () => {
           fieldStability: Array<{ path: string; channel: string; stabilityTier: string }>
           readOrderGroups: { failure: Array<{ stage: string; fields: string[] }> }
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
+          referenceGovernanceCodes?: Array<{
+            code: string
+            priority: number
+            category: string
+            recommendedHandling: string
+          }>
         }>
       }
     }>(result.stdout)
@@ -880,6 +886,12 @@ describe('cli commands integration', () => {
         path: 'error.details.referenceGovernance',
         semantic: 'reference-governance',
       })
+      expect(action?.referenceGovernanceCodes).toEqual([
+        { code: 'REFERENCE_INPUT_CONFLICT', priority: 1, category: 'input', recommendedHandling: 'fix-reference-input' },
+        { code: 'REFERENCE_MISSING', priority: 2, category: 'reference', recommendedHandling: 'fix-reference-input' },
+        { code: 'REFERENCE_WRITE_UNSUPPORTED', priority: 3, category: 'reference', recommendedHandling: 'resolve-reference-support' },
+        { code: 'INLINE_SECRET_PRESENT', priority: 4, category: 'inline-secret', recommendedHandling: 'migrate-inline-secret' },
+      ])
     }
   })
 
