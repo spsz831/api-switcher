@@ -1931,6 +1931,20 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
+对应的非 JSON 文本输出会把这层 resolver explainable 直接折叠成摘要，便于人工快速判断“是 env 没解析，还是虽然能解析但当前仍不会写入真实 secret”：
+
+```text
+[import-apply] 失败
+当前操作风险较高，需要显式确认。请重新执行并附加 --force。
+reference 解析摘要:
+  - 未解析 env 引用:
+    - apiKey -> env://CLAUDE_API_KEY
+      引用 env://CLAUDE_API_KEY 当前未解析，导入写入不会注入真实 secret。
+  - 不支持的引用 scheme:
+    - sessionToken -> keychain://claude/session-token
+      当前写入链路不支持 keychain:// 引用。
+```
+
 `import preview --json` 当前会同时给出导入源兼容性、整批汇总和按平台汇总。下面示例展示的是一个 mixed-batch 导入结果，同一批里同时包含 `match / partial / mismatch / insufficient-data` 四类 item：
 
 接入建议：
@@ -3111,6 +3125,20 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
     }
   }
 }
+```
+
+对应的非 JSON 文本输出也会直接展示 `referenceDetails[]` 聚合后的失败摘要：
+
+```text
+[use] 失败
+当前切换需要确认或 --force。
+reference 解析摘要:
+  - 未解析 env 引用:
+    - apiKey -> env://GEMINI_API_KEY
+      引用 env://GEMINI_API_KEY 当前未解析，写入前仍需要人工确认。
+  - 已解析但当前不会写入:
+    - secondaryApiKey -> env://GEMINI_SECONDARY_API_KEY
+      引用 env://GEMINI_SECONDARY_API_KEY 可在当前环境解析，但写入链路不会直接写入真实 secret。
 ```
 
 `rollback --json` 成功时也会返回 `platformSummary`。同时，`data.summary.platformStats[]` 会提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 理解本次恢复涉及的平台、scope 与 warning/limitation 计数，再决定是否展开 `rollback` 明细。

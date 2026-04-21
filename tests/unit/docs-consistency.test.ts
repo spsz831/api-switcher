@@ -146,6 +146,9 @@ describe('docs consistency', () => {
     expect(readme).toContain('"code": "GEMINI_SCOPE_PRECEDENCE"')
     expect(readme).toContain('"code": "CODEX_LIST_IS_PROFILE_LEVEL"')
     expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
+    expect(readme).toContain('[import-apply] 失败')
+    expect(readme).toContain('reference 解析摘要:')
+    expect(readme).toContain('sessionToken -> keychain://claude/session-token')
 
     expect(publicJsonSchemaDoc).toContain('[`import preview --json`](#import-preview---json)')
     expect(publicJsonSchemaDoc).toContain('[`import apply --json`](#import-apply---json)')
@@ -175,6 +178,8 @@ describe('docs consistency', () => {
     expect(readme).toContain('"action": "rollback"')
     expect(readme).toContain('"code": "GEMINI_SCOPE_PRECEDENCE"')
     expect(readme).toContain('"code": "CODEX_MULTI_FILE_CONFIGURATION"')
+    expect(readme).toContain('[use] 失败')
+    expect(readme).toContain('secondaryApiKey -> env://GEMINI_SECONDARY_API_KEY')
 
     expect(publicJsonSchemaDoc).toContain('成功时，`data.platformSummary` 会把平台 precedence 或多文件组合语义一起返回。')
     expect(publicJsonSchemaDoc).toContain('成功时，`data.platformSummary` 会把恢复目标所属平台的 explainable 摘要一起返回。')
