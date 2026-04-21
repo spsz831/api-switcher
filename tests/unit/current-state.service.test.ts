@@ -634,6 +634,20 @@ describe('current state service', () => {
         }),
       }),
     ]))
+    expect(currentResult.data?.detections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: true,
+          hasInlineSecrets: false,
+          writeUnsupported: true,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 2,
+          missingValueCount: 0,
+        }),
+      }),
+    ]))
 
     expect(listResult.ok).toBe(true)
     expect(listResult.data?.summary.referenceStats).toMatchObject({
@@ -668,6 +682,32 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: true,
           hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+    ]))
+    expect(listResult.data?.profiles).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        profile: expect.objectContaining({ id: 'claude-ref' }),
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: true,
+          hasInlineSecrets: false,
+          writeUnsupported: true,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 2,
+          missingValueCount: 0,
+        }),
+      }),
+      expect.objectContaining({
+        profile: expect.objectContaining({ id: 'gemini-inline' }),
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: false,
+          hasInlineSecrets: true,
+          writeUnsupported: false,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 0,
+          missingValueCount: 0,
         }),
       }),
     ]))

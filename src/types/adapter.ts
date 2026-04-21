@@ -1,6 +1,7 @@
 import type { PlatformCapabilities, PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from './capabilities'
 import type { PlatformName, RiskLevel } from './platform'
 import type { Profile } from './profile'
+import type { ReferenceSummary } from './command'
 
 export type IssueLevel = 'error' | 'warning' | 'limitation'
 export type ManagedScope = 'full-file' | 'partial-fields' | 'multi-file'
@@ -144,6 +145,7 @@ export interface CurrentProfileResult {
   effectiveConfig?: EffectiveConfigView
   managedBoundaries?: ManagedBoundary[]
   secretReferences?: SecretReference[]
+  referenceSummary?: ReferenceSummary
   warnings?: ValidationIssue[]
   limitations?: ValidationIssue[]
 }

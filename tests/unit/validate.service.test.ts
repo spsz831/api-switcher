@@ -375,6 +375,15 @@ describe('validate service', () => {
         }),
       }),
     ]))
+    expect(result.data?.items[0]?.referenceSummary).toMatchObject({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
   })
 
   it('空 secret_ref/auth_reference 会返回结构化校验错误', async () => {

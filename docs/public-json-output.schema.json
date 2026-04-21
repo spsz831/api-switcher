@@ -396,6 +396,32 @@
       },
       "additionalProperties": false
     },
+    "ReferenceSummary": {
+      "type": "object",
+      "required": [
+        "hasReferenceFields",
+        "hasInlineSecrets",
+        "writeUnsupported",
+        "resolvedReferenceCount",
+        "missingReferenceCount",
+        "unsupportedReferenceCount",
+        "missingValueCount"
+      ],
+      "properties": {
+        "hasReferenceFields": { "type": "boolean" },
+        "hasInlineSecrets": { "type": "boolean" },
+        "writeUnsupported": { "type": "boolean" },
+        "resolvedReferenceCount": { "type": "integer", "minimum": 0 },
+        "missingReferenceCount": { "type": "integer", "minimum": 0 },
+        "unsupportedReferenceCount": { "type": "integer", "minimum": 0 },
+        "missingValueCount": { "type": "integer", "minimum": 0 },
+        "referenceDetails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReferenceGovernanceDetail" }
+        }
+      },
+      "additionalProperties": false
+    },
     "CurrentSummary": {
       "type": "object",
       "required": ["warnings", "limitations"],
@@ -735,6 +761,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
@@ -788,6 +815,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
@@ -906,6 +934,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
@@ -938,6 +967,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }

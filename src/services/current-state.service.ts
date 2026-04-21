@@ -10,7 +10,7 @@ import type {
 } from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
-import { buildSecretReferenceStats, collectProfileSecretReferenceContractLimitations } from '../domain/secret-inspection'
+import { buildProfileReferenceSummary, buildSecretReferenceStats, collectProfileSecretReferenceContractLimitations } from '../domain/secret-inspection'
 import { buildPlatformSummary } from './platform-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
@@ -107,6 +107,12 @@ export class CurrentStateService {
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .map((item) => ({
         ...item,
+        ...(item.matchedProfileId
+          ? (() => {
+              const matchedProfile = profiles.find((profile) => profile.id === item.matchedProfileId && profile.platform === item.platform)
+              return matchedProfile ? { referenceSummary: buildProfileReferenceSummary(matchedProfile) } : {}
+            })()
+          : {}),
         platformSummary: buildPlatformSummary(item.platform, {
           currentScope: item.currentScope,
           composedFiles: item.targetFiles.map((target) => target.path),
@@ -257,6 +263,7 @@ export class CurrentStateService {
       }),
       scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
       scopeAvailability: detection?.scopeAvailability,
+      referenceSummary: buildProfileReferenceSummary(profile),
     }
   }
 

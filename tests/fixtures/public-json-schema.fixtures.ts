@@ -8,6 +8,25 @@ export const currentCommandOutputFixture = {
       platform: 'gemini',
       managed: true,
       matchedProfileId: 'gemini-prod',
+      referenceSummary: {
+        hasReferenceFields: true,
+        hasInlineSecrets: false,
+        writeUnsupported: true,
+        resolvedReferenceCount: 1,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_RESOLVED',
+            field: 'apply.auth_reference',
+            status: 'resolved',
+            reference: 'env://GEMINI_API_KEY',
+            scheme: 'env',
+            message: 'profile.apply.auth_reference 的 env 引用已解析，但当前写入链路仍不会直接消费引用。',
+          },
+        ],
+      },
       currentScope: 'user',
       platformSummary: {
         kind: 'scope-precedence',
@@ -152,6 +171,15 @@ export const listCommandOutputFixture = {
       current: true,
       healthStatus: 'valid',
       riskLevel: 'low',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       platformSummary: {
         kind: 'scope-precedence',
         precedence: ['user', 'project', 'local'],
@@ -281,6 +309,25 @@ export const validateCommandOutputFixture = {
         warnings: [],
         limitations: [],
       },
+      referenceSummary: {
+        hasReferenceFields: true,
+        hasInlineSecrets: false,
+        writeUnsupported: true,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 1,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_UNRESOLVED',
+            field: 'source.secret_ref',
+            status: 'missing',
+            reference: 'env://GEMINI_API_KEY',
+            scheme: 'env',
+            message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
+          },
+        ],
+      },
       scopeCapabilities: [
         {
           scope: 'project',
@@ -353,6 +400,25 @@ export const exportCommandOutputFixture = {
         errors: [],
         warnings: [],
         limitations: [],
+      },
+      referenceSummary: {
+        hasReferenceFields: true,
+        hasInlineSecrets: false,
+        writeUnsupported: true,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 1,
+        missingValueCount: 0,
+        referenceDetails: [
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://codex/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
       },
     },
   ],

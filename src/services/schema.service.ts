@@ -53,15 +53,15 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'add':
       return ['summary.platformStats', 'risk', 'preview', 'scopeCapabilities']
     case 'current':
-      return ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability']
+      return ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability']
     case 'export':
-      return ['summary.platformStats', 'summary.referenceStats', 'profiles']
+      return ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary']
     case 'import':
       return ['summary.platformStats', 'items', 'sourceCompatibility']
     case 'import-apply':
       return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'list':
-      return ['summary.platformStats', 'summary.referenceStats', 'profiles']
+      return ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
       return ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
@@ -71,7 +71,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'use':
       return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'validate':
-      return ['summary.platformStats', 'summary.referenceStats', 'items']
+      return ['summary.platformStats', 'summary.referenceStats', 'items', 'items.referenceSummary']
     default:
       return []
   }
@@ -199,6 +199,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
+        { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY' },
       ]
@@ -207,6 +208,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
+        { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
     case 'import':
       return [
@@ -237,6 +239,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
+        { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
     case 'preview':
       return [
@@ -291,6 +294,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
+        { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
     default:
       return []
@@ -312,6 +316,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
+        { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
       ]
@@ -320,6 +325,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
+        { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ]
     case 'import':
       return [
@@ -350,6 +356,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
+        { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ]
     case 'preview':
       return [
@@ -404,6 +411,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
+        { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ]
     default:
       return []
@@ -425,6 +433,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
+        { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
       ]
@@ -433,6 +442,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
     case 'import':
       return [
@@ -463,6 +473,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
     case 'preview':
       return [
@@ -517,6 +528,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
+        { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
     default:
       return []
@@ -540,7 +552,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级聚合和 reference 聚合。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
-          { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
+          { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
         ],
         failure: [
@@ -551,7 +563,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
       return {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级导出聚合和 reference 聚合。' },
-          { stage: 'items', fields: ['profiles'], purpose: '再读导出 profile 列表。' },
+          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -586,7 +598,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
       return {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先按平台分组并识别 reference 聚合。' },
-          { stage: 'items', fields: ['profiles'], purpose: '再读 profile 列表。' },
+          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -643,7 +655,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
       return {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级通过/限制聚合和 reference 聚合。' },
-          { stage: 'items', fields: ['items'], purpose: '再展开各 profile 校验结果。' },
+          { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -672,6 +684,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
+        { path: 'detections.referenceSummary', semantic: 'item-explainable' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
         { path: 'scopeAvailability', semantic: 'scope-resolution' },
       ]
@@ -680,6 +693,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
+        { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ]
     case 'import':
       return [
@@ -703,6 +717,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
+        { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ]
     case 'preview':
       return [
@@ -747,6 +762,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'items', semantic: 'item-collection' },
+        { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ]
     default:
       return []

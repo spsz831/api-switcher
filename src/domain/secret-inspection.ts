@@ -7,6 +7,7 @@ import type {
   ReferenceGovernanceDetail,
   ReferenceGovernanceFailureDetails,
   ReferenceGovernanceReasonCode,
+  ReferenceSummary,
   SecretReferenceStats,
 } from '../types/command'
 
@@ -104,6 +105,11 @@ function hasUsableSecretReference(profile: Profile): boolean {
   const records = [profile.source, profile.apply]
   return records.some((record) => Object.entries(record).some(([key, value]) =>
     isSecretReferenceKey(key) && typeof value === 'string' && value.trim().length > 0))
+}
+
+function hasAnySecretReferenceField(profile: Profile): boolean {
+  const records = [profile.source, profile.apply]
+  return records.some((record) => Object.keys(record).some((key) => isSecretReferenceKey(key)))
 }
 
 function collectProfileSecretReferenceValues(profile: Profile): string[] {
@@ -276,6 +282,36 @@ export function buildSecretReferenceStats(
     hasUnsupportedReferenceProfiles: unsupportedReferenceProfileCount > 0,
     hasInlineProfiles: inlineProfileCount > 0,
     hasWriteUnsupportedProfiles: writeUnsupportedProfileCount > 0,
+  }
+}
+
+export function buildProfileReferenceSummary(
+  profile: Profile,
+  resolver: SecretReferenceResolver = defaultSecretReferenceResolver,
+): ReferenceSummary | undefined {
+  const referenceDetails = collectReferenceGovernanceDetails(profile, resolver)
+  const hasReferenceFields = hasAnySecretReferenceField(profile)
+  const hasInlineSecrets = hasProfileInlineSecrets(profile)
+  const writeUnsupported = hasProfileUsableSecretReference(profile)
+
+  if (!hasReferenceFields && !hasInlineSecrets) {
+    return undefined
+  }
+
+  const resolvedReferenceCount = referenceDetails.filter((item) => item.code === 'REFERENCE_ENV_RESOLVED').length
+  const missingReferenceCount = referenceDetails.filter((item) => item.code === 'REFERENCE_ENV_UNRESOLVED').length
+  const unsupportedReferenceCount = referenceDetails.filter((item) => item.code === 'REFERENCE_SCHEME_UNSUPPORTED').length
+  const missingValueCount = referenceDetails.filter((item) => item.code === 'REFERENCE_VALUE_MISSING').length
+
+  return {
+    hasReferenceFields,
+    hasInlineSecrets,
+    writeUnsupported,
+    resolvedReferenceCount,
+    missingReferenceCount,
+    unsupportedReferenceCount,
+    missingValueCount,
+    ...(referenceDetails.length > 0 ? { referenceDetails } : {}),
   }
 }
 

@@ -1,5 +1,5 @@
 import { collectIssueMessages, collectSecretReferences } from '../domain/masking'
-import { buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
+import { buildProfileReferenceSummary, buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CommandResult, ExportCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
@@ -47,6 +47,7 @@ export class ExportService {
           scopeAvailability,
           defaultWriteScope: profile.platform === 'gemini' ? 'user' : undefined,
           observedAt: profile.platform === 'gemini' ? observedAt : undefined,
+          referenceSummary: buildProfileReferenceSummary(profile),
         }
       }))
       const summary = this.buildExportSummary(exportedProfiles)

@@ -165,6 +165,17 @@ export interface ReferenceGovernanceFailureDetails {
   referenceDetails?: ReferenceGovernanceDetail[]
 }
 
+export interface ReferenceSummary {
+  hasReferenceFields: boolean
+  hasInlineSecrets: boolean
+  writeUnsupported: boolean
+  resolvedReferenceCount: number
+  missingReferenceCount: number
+  unsupportedReferenceCount: number
+  missingValueCount: number
+  referenceDetails?: ReferenceGovernanceDetail[]
+}
+
 export interface CurrentListPlatformStat {
   platform: PlatformName
   profileCount: number
@@ -346,6 +357,7 @@ export interface ValidateCommandItem {
   validation: ValidationResult
   platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
+  referenceSummary?: ReferenceSummary
 }
 
 export interface ValidateCommandOutput {
@@ -361,6 +373,7 @@ export interface ExportedProfileItem {
   scopeAvailability?: ScopeAvailability[]
   defaultWriteScope?: string
   observedAt?: string
+  referenceSummary?: ReferenceSummary
 }
 
 export interface ExportCommandOutput {
@@ -568,6 +581,7 @@ export interface ListCommandItem {
   platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+  referenceSummary?: ReferenceSummary
 }
 
 export interface ListCommandOutput {

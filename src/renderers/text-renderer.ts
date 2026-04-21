@@ -22,6 +22,7 @@ import type {
   PreviewCommandOutput,
   ReferenceGovernanceDetail,
   ReferenceGovernanceFailureDetails,
+  ReferenceSummary,
   RollbackCommandOutput,
   SchemaCommandOutput,
   SecretReferenceStats,
@@ -772,6 +773,7 @@ function renderDetection(item: CurrentProfileResult): string[] {
     ...renderCurrentPlatformSummary(item),
     ...renderScopeCapabilities(item.scopeCapabilities),
     ...renderScopeAvailability(item.scopeAvailability),
+    ...renderReferenceSummary(item.referenceSummary),
     ...item.targetFiles.map((target) => `  目标文件: ${target.path}`),
     ...renderEffectiveConfig(item.effectiveConfig),
     ...renderManagedBoundaries(item.managedBoundaries),
@@ -928,6 +930,7 @@ function renderExport(data: ExportCommandOutput): string {
       ...('defaultWriteScope' in item && item.defaultWriteScope ? [`  默认写入作用域: ${item.defaultWriteScope} scope`] : []),
       ...renderScopeCapabilities(item.scopeCapabilities),
       ...renderScopeAvailability(item.scopeAvailability),
+      ...renderReferenceSummary(item.referenceSummary),
       ...(item.validation ? [
         `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
         ...item.validation.errors.map((error) => `  错误: ${error.message}`),
@@ -1033,6 +1036,33 @@ function renderReferenceGovernanceDetails(referenceGovernance?: ReferenceGoverna
   ]
 }
 
+function renderReferenceSummary(referenceSummary?: ReferenceSummary, indent = '  '): string[] {
+  if (!referenceSummary) {
+    return []
+  }
+
+  const lines = [
+    `${indent}reference 摘要:`,
+    `${indent}- hasReferenceFields=${referenceSummary.hasReferenceFields ? 'yes' : 'no'}, hasInlineSecrets=${referenceSummary.hasInlineSecrets ? 'yes' : 'no'}, writeUnsupported=${referenceSummary.writeUnsupported ? 'yes' : 'no'}`,
+    `${indent}- resolved=${referenceSummary.resolvedReferenceCount}, missing=${referenceSummary.missingReferenceCount}, unsupported=${referenceSummary.unsupportedReferenceCount}, missingValue=${referenceSummary.missingValueCount}`,
+  ]
+
+  if (!referenceSummary.referenceDetails || referenceSummary.referenceDetails.length === 0) {
+    return lines
+  }
+
+  return [
+    ...lines,
+    ...renderReferenceGovernanceDetails({
+      hasReferenceProfiles: referenceSummary.hasReferenceFields,
+      hasInlineProfiles: referenceSummary.hasInlineSecrets,
+      hasWriteUnsupportedProfiles: referenceSummary.writeUnsupported,
+      reasonCodes: [],
+      referenceDetails: referenceSummary.referenceDetails,
+    }).map((line) => `${indent}${line}`),
+  ]
+}
+
 function formatImportMismatchValue(value: unknown): string {
   if (value === undefined) {
     return 'undefined'
@@ -1110,6 +1140,7 @@ function renderValidate(data: ValidateCommandOutput): string {
       ...item.validation.warnings.map((warning) => `  警告: ${warning.message}`),
       ...item.validation.limitations.map((issue) => `  限制: ${issue.message}`),
       ...renderScopeCapabilities(item.scopeCapabilities),
+      ...renderReferenceSummary(item.referenceSummary),
       ...renderEffectiveConfig(item.validation.effectiveConfig),
       ...renderManagedBoundaries(item.validation.managedBoundaries),
       ...renderSecretReferences(item.validation.secretReferences),
@@ -1132,6 +1163,7 @@ function renderList(data: ListCommandOutput): string {
       ...renderListPlatformSummary(item),
       ...renderScopeCapabilities(item.scopeCapabilities),
       ...renderScopeAvailability(item.scopeAvailability),
+      ...renderReferenceSummary(item.referenceSummary),
     ].join('\n')).join('\n'),
     ...renderWarnings('附加提示:', data.summary.warnings),
     ...renderCommandLimitations(data.summary.limitations),

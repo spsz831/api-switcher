@@ -291,6 +291,15 @@ const currentPayload: CurrentCommandOutput = {
       platform: 'gemini',
       managed: true,
       matchedProfileId: 'gemini-prod',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       targetFiles: [
         {
           path: 'C:/Users/test/.gemini/settings.json',
@@ -388,6 +397,15 @@ const currentPayload: CurrentCommandOutput = {
       platform: 'claude',
       managed: true,
       matchedProfileId: 'claude-prod',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       targetFiles: [
         {
           path: 'C:/Users/test/.claude/settings.json',
@@ -475,6 +493,25 @@ const currentPayload: CurrentCommandOutput = {
       platform: 'codex',
       managed: true,
       matchedProfileId: 'codex-prod',
+      referenceSummary: {
+        hasReferenceFields: true,
+        hasInlineSecrets: false,
+        writeUnsupported: true,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 1,
+        missingValueCount: 0,
+        referenceDetails: [
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://codex/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
+      },
       targetFiles: [
         {
           path: 'C:/Users/test/.codex/config.toml',
@@ -1099,6 +1136,15 @@ const validatePayload: ValidateCommandOutput = {
     {
       profileId: 'gemini-prod',
       platform: 'gemini',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       validation: {
         ok: false,
         errors: [
@@ -1424,6 +1470,15 @@ const exportPayload: ExportCommandOutput = {
         apply: {},
       },
       defaultWriteScope: 'user',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       validation: {
         ok: true,
         errors: [],
@@ -1698,6 +1753,15 @@ const listPayload: ListCommandOutput = {
       current: true,
       healthStatus: 'valid',
       riskLevel: 'low',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       platformSummary: {
         kind: 'scope-precedence',
         precedence: ['user', 'project', 'local'],
@@ -1720,6 +1784,15 @@ const listPayload: ListCommandOutput = {
       current: false,
       healthStatus: 'warning',
       riskLevel: 'medium',
+      referenceSummary: {
+        hasReferenceFields: false,
+        hasInlineSecrets: true,
+        writeUnsupported: false,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 0,
+        missingValueCount: 0,
+      },
       platformSummary: {
         kind: 'scope-precedence',
         precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
@@ -1743,6 +1816,25 @@ const listPayload: ListCommandOutput = {
       current: false,
       healthStatus: 'valid',
       riskLevel: 'medium',
+      referenceSummary: {
+        hasReferenceFields: true,
+        hasInlineSecrets: false,
+        writeUnsupported: true,
+        resolvedReferenceCount: 0,
+        missingReferenceCount: 0,
+        unsupportedReferenceCount: 1,
+        missingValueCount: 0,
+        referenceDetails: [
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://codex/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
+      },
       platformSummary: {
         kind: 'multi-file-composition',
         composedFiles: [],
@@ -2756,6 +2848,8 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('    托管字段: enforcedAuthType')
     expect(outputCurrent).toContain('    保留字段: ui.theme')
     expect(outputCurrent).toContain('    说明: Gemini 当前仅稳定托管 settings.json 中的已确认字段，API key 仍由环境变量主导。')
+    expect(outputCurrent).toContain('  reference 摘要:')
+    expect(outputCurrent).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
     expect(outputCurrent).toContain('- 平台: claude')
     expect(outputCurrent).toContain('  当前作用域: local')
     expect(outputCurrent).toContain('  - 生效优先级: user < project < local')
@@ -2769,6 +2863,9 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('  - 组成文件: C:/Users/test/.codex/config.toml, C:/Users/test/.codex/auth.json')
     expect(outputCurrent).toContain('  - 自定义 current Codex 双文件摘要。')
     expect(outputCurrent).toContain('  - 自定义 current Codex 双文件缺一不可提示。')
+    expect(outputCurrent).toContain('  - hasReferenceFields=yes, hasInlineSecrets=no, writeUnsupported=yes')
+    expect(outputCurrent).toContain('  reference 解析摘要:')
+    expect(outputCurrent).toContain('    - apply.auth_reference -> vault://codex/prod')
     expect(outputCurrent).toContain('附加提示:')
     expect(outputCurrent).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputCurrent).toContain('限制说明:')
@@ -2997,6 +3094,8 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputValidate).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputValidate).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputValidate).toContain('  reference 摘要:')
+    expect(outputValidate).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
     expect(outputValidate).toContain('  校验结果: 失败')
     expect(outputValidate).toContain('  错误: 缺少 GEMINI_API_KEY')
     expect(outputValidate).toContain('  警告: Gemini base URL 当前未确认支持。')
@@ -3045,6 +3144,8 @@ describe('text renderer', () => {
     expect(outputExport).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputExport).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputExport).toContain('- claude-prod (claude)')
+    expect(outputExport).toContain('  reference 摘要:')
+    expect(outputExport).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
     expect(outputExport).toContain('  名称: Claude 生产')
     expect(outputExport).toContain('  默认写入作用域: user scope')
     expect(outputExport).toContain('  作用域能力:')
@@ -3227,6 +3328,8 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputList).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
     expect(outputList).toContain('- claude-prod (claude)')
+    expect(outputList).toContain('  reference 摘要:')
+    expect(outputList).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
     expect(outputList).toContain('  名称: Claude 生产')
     expect(outputList).toContain('  当前生效: 是')
     expect(outputList).toContain('  健康状态: valid')
@@ -3245,6 +3348,8 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - 自定义 list Claude precedence 摘要。')
     expect(outputList).toContain('  - 自定义 list Claude local 覆盖提示。')
     expect(outputList).toContain('- codex-prod (codex)')
+    expect(outputList).toContain('  - hasReferenceFields=yes, hasInlineSecrets=no, writeUnsupported=yes')
+    expect(outputList).toContain('    - apply.auth_reference -> vault://codex/prod')
     expect(outputList).toContain('  名称: Codex 生产')
     expect(outputList).toContain('  - 自定义 list Codex 双文件摘要。')
     expect(outputList).toContain('  - 自定义 list Codex profile-level 提示。')

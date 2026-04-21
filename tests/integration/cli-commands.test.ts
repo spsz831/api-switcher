@@ -510,7 +510,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: true,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -521,6 +521,7 @@ describe('cli commands integration', () => {
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
+        { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY' },
       ],
@@ -529,6 +530,7 @@ describe('cli commands integration', () => {
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
+        { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
       ],
@@ -537,6 +539,7 @@ describe('cli commands integration', () => {
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
+        { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
       ],
@@ -544,7 +547,7 @@ describe('cli commands integration', () => {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级聚合和 reference 聚合。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
-          { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
+          { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
         ],
         failure: [
@@ -556,6 +559,7 @@ describe('cli commands integration', () => {
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
+        { path: 'detections.referenceSummary', semantic: 'item-explainable' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
         { path: 'scopeAvailability', semantic: 'scope-resolution' },
       ],
@@ -572,7 +576,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -582,21 +586,24 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
+        { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
+        { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级导出聚合和 reference 聚合。' },
-          { stage: 'items', fields: ['profiles'], purpose: '再读导出 profile 列表。' },
+          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -606,6 +613,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
+        { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ],
       primaryErrorFieldSemantics: [
         { path: 'error.code', semantic: 'error-core' },
@@ -620,7 +628,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
@@ -631,21 +639,24 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
+        { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
+        { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先按平台分组并识别 reference 聚合。' },
-          { stage: 'items', fields: ['profiles'], purpose: '再读 profile 列表。' },
+          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -655,6 +666,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
+        { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ],
       primaryErrorFieldSemantics: [
         { path: 'error.code', semantic: 'error-core' },
@@ -740,7 +752,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'items'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'items', 'items.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -751,21 +763,24 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
+        { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
+        { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
+        { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级通过/限制聚合和 reference 聚合。' },
-          { stage: 'items', fields: ['items'], purpose: '再展开各 profile 校验结果。' },
+          { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -775,6 +790,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'items', semantic: 'item-collection' },
+        { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ],
       primaryErrorFieldSemantics: [
         { path: 'error.code', semantic: 'error-core' },
@@ -1495,6 +1511,15 @@ describe('cli commands integration', () => {
         }),
       }),
     ]))
+    expect(payload.data?.items[0]?.referenceSummary).toMatchObject({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
   })
 
   it('current --json 会聚合 reference profile 的写入未启用 limitation', async () => {
@@ -1601,6 +1626,15 @@ describe('cli commands integration', () => {
         }),
       }),
     ]))
+    expect(payload.data?.profiles?.[0]?.referenceSummary).toMatchObject({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
   })
 
 
@@ -1651,6 +1685,8 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('  - 当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(result.stdout).toContain('referenceStats 摘要:')
     expect(result.stdout).toContain('profiles=1, reference=1, inline=0, writeUnsupported=1')
+    expect(result.stdout).toContain('reference 摘要:')
+    expect(result.stdout).toContain('hasReferenceFields=yes, hasInlineSecrets=no, writeUnsupported=yes')
   })
 
   it('list 文本输出非法 platform 的失败结果', async () => {
@@ -2056,6 +2092,15 @@ describe('cli commands integration', () => {
         }),
       }),
     ]))
+    expect(payload.data?.profiles?.[0]?.referenceSummary).toMatchObject({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
     expect(payload.data?.profiles?.[0]?.validation?.warnings).toEqual([])
     expect(payload.data?.profiles?.[0]?.validation?.errors).toEqual([])
     expect(payload.data?.profiles?.[0]?.validation?.limitations).toEqual(expect.arrayContaining([

@@ -389,6 +389,15 @@ describe('public JSON contract types', () => {
   it('用类型断言定义 current/list platformSummary 的最小公共 contract', () => {
     expectTypeOf<CurrentCommandOutput>().toMatchTypeOf<{
       detections: Array<{
+        referenceSummary?: {
+          hasReferenceFields: boolean
+          hasInlineSecrets: boolean
+          writeUnsupported: boolean
+          resolvedReferenceCount: number
+          missingReferenceCount: number
+          unsupportedReferenceCount: number
+          missingValueCount: number
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -404,6 +413,15 @@ describe('public JSON contract types', () => {
 
     expectTypeOf<ListCommandOutput>().toMatchTypeOf<{
       profiles: Array<{
+        referenceSummary?: {
+          hasReferenceFields: boolean
+          hasInlineSecrets: boolean
+          writeUnsupported: boolean
+          resolvedReferenceCount: number
+          missingReferenceCount: number
+          unsupportedReferenceCount: number
+          missingValueCount: number
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -501,10 +519,16 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.CurrentProfileResult?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
     })
+    expect(publicJsonSchema.$defs?.CurrentProfileResult?.properties?.referenceSummary).toEqual({
+      $ref: '#/$defs/ReferenceSummary',
+    })
 
     expect(publicJsonSchema.$defs?.ListCommandOutput).toBeDefined()
     expect(publicJsonSchema.$defs?.ListCommandItem?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
+    })
+    expect(publicJsonSchema.$defs?.ListCommandItem?.properties?.referenceSummary).toEqual({
+      $ref: '#/$defs/ReferenceSummary',
     })
 
     expect(publicJsonSchema.$defs?.PlatformExplainableSummary?.required).toEqual(expect.arrayContaining([
@@ -759,6 +783,15 @@ describe('public JSON contract types', () => {
   it('用类型断言定义 validate/export platformSummary 的最小公共 contract', () => {
     expectTypeOf<ValidateCommandOutput>().toMatchTypeOf<{
       items: Array<{
+        referenceSummary?: {
+          hasReferenceFields: boolean
+          hasInlineSecrets: boolean
+          writeUnsupported: boolean
+          resolvedReferenceCount: number
+          missingReferenceCount: number
+          unsupportedReferenceCount: number
+          missingValueCount: number
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -774,6 +807,15 @@ describe('public JSON contract types', () => {
 
     expectTypeOf<ExportCommandOutput>().toMatchTypeOf<{
       profiles: Array<{
+        referenceSummary?: {
+          hasReferenceFields: boolean
+          hasInlineSecrets: boolean
+          writeUnsupported: boolean
+          resolvedReferenceCount: number
+          missingReferenceCount: number
+          unsupportedReferenceCount: number
+          missingValueCount: number
+        }
         platformSummary?: {
           kind: 'scope-precedence' | 'multi-file-composition'
           facts: Array<{
@@ -873,10 +915,16 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ValidateCommandItem?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
     })
+    expect(publicJsonSchema.$defs?.ValidateCommandItem?.properties?.referenceSummary).toEqual({
+      $ref: '#/$defs/ReferenceSummary',
+    })
 
     expect(publicJsonSchema.$defs?.ExportCommandOutput).toBeDefined()
     expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
+    })
+    expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.referenceSummary).toEqual({
+      $ref: '#/$defs/ReferenceSummary',
     })
   })
 
@@ -938,6 +986,29 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasUnsupportedReferenceProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasInlineProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasWriteUnsupportedProfiles).toEqual({ type: 'boolean' })
+  })
+
+  it('machine-readable schema 覆盖 ReferenceSummary def', () => {
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.required).toEqual([
+      'hasReferenceFields',
+      'hasInlineSecrets',
+      'writeUnsupported',
+      'resolvedReferenceCount',
+      'missingReferenceCount',
+      'unsupportedReferenceCount',
+      'missingValueCount',
+    ])
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.hasReferenceFields).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.hasInlineSecrets).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.writeUnsupported).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.resolvedReferenceCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.missingReferenceCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.unsupportedReferenceCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.missingValueCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.ReferenceSummary?.properties?.referenceDetails).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ReferenceGovernanceDetail' },
+    })
   })
 
   it('machine-readable schema 覆盖 reference governance failure def', () => {

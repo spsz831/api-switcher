@@ -1,5 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
-import { buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
+import { buildProfileReferenceSummary, buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
@@ -32,6 +32,7 @@ export class ValidateService {
           validation,
           platformSummary: buildPlatformSummary(profile.platform, { listMode: true }),
           scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+          referenceSummary: buildProfileReferenceSummary(profile),
         }
       }))
       const summary = this.buildValidateSummary(profiles, items)

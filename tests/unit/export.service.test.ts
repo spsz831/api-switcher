@@ -417,5 +417,14 @@ describe('export service', () => {
         }),
       }),
     ]))
+    expect(result.data?.profiles?.[0]?.referenceSummary).toMatchObject({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
   })
 })

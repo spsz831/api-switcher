@@ -32,6 +32,10 @@ function sanitizeJsonValue(value: unknown): unknown {
           return [key, sanitizeJsonValue(entryValue)]
         }
 
+        if (typeof entryValue !== 'string') {
+          return [key, entryValue]
+        }
+
         return [key, maskValue(key, entryValue)]
       }
 
