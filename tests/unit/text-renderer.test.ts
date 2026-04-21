@@ -220,6 +220,15 @@ const currentPayload: CurrentCommandOutput = {
     status: 'success',
   },
   summary: {
+    referenceStats: {
+      profileCount: 3,
+      referenceProfileCount: 1,
+      inlineProfileCount: 2,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    },
     platformStats: [
       {
         platform: 'gemini',
@@ -1173,6 +1182,15 @@ const validatePayload: ValidateCommandOutput = {
     },
   ],
   summary: {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'gemini',
@@ -1457,6 +1475,15 @@ const exportPayload: ExportCommandOutput = {
     },
   ],
   summary: {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'claude',
@@ -1709,6 +1736,15 @@ const listPayload: ListCommandOutput = {
     },
   ],
   summary: {
+    referenceStats: {
+      profileCount: 3,
+      referenceProfileCount: 1,
+      inlineProfileCount: 2,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    },
     platformStats: [
       {
         platform: 'claude',
@@ -2599,6 +2635,11 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('    - current 汇总 Claude precedence 摘要。')
     expect(outputCurrent).toContain('  - codex: profiles=1, current=codex-prod, detected=codex-prod, managed=yes')
     expect(outputCurrent).toContain('    - current 汇总 Codex 双文件摘要。')
+    expect(outputCurrent).toContain('referenceStats 摘要:')
+    expect(outputCurrent).toContain('  - profiles=3, reference=1, inline=2, writeUnsupported=1')
+    expect(outputCurrent).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=yes')
+    expect(outputCurrent).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputCurrent).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
     expect(outputCurrent).toContain('检测结果:')
     expect(outputCurrent).toContain('- 平台: gemini')
     expect(outputCurrent).toContain('  托管识别: 是')
@@ -2870,6 +2911,10 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('按平台汇总:')
     expect(outputValidate).toContain('  - gemini: profiles=1, ok=0, warnings=1, limitations=1')
     expect(outputValidate).toContain('    - validate 汇总 Gemini precedence 摘要。')
+    expect(outputValidate).toContain('referenceStats 摘要:')
+    expect(outputValidate).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputValidate).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
+    expect(outputValidate).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputValidate).toContain('  校验结果: 失败')
     expect(outputValidate).toContain('  错误: 缺少 GEMINI_API_KEY')
     expect(outputValidate).toContain('  警告: Gemini base URL 当前未确认支持。')
@@ -2913,6 +2958,10 @@ describe('text renderer', () => {
     expect(outputExport).toContain('按平台汇总:')
     expect(outputExport).toContain('  - claude: profiles=1, ok=1, warnings=1, limitations=1')
     expect(outputExport).toContain('    - export 汇总 Claude precedence 摘要。')
+    expect(outputExport).toContain('referenceStats 摘要:')
+    expect(outputExport).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputExport).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
+    expect(outputExport).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputExport).toContain('- claude-prod (claude)')
     expect(outputExport).toContain('  名称: Claude 生产')
     expect(outputExport).toContain('  默认写入作用域: user scope')
@@ -3090,6 +3139,11 @@ describe('text renderer', () => {
     expect(outputList).toContain('    - list 汇总 Gemini precedence 摘要。')
     expect(outputList).toContain('  - codex: profiles=1, managed=no')
     expect(outputList).toContain('    - list 汇总 Codex 双文件摘要。')
+    expect(outputList).toContain('referenceStats 摘要:')
+    expect(outputList).toContain('  - profiles=3, reference=1, inline=2, writeUnsupported=1')
+    expect(outputList).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=yes')
+    expect(outputList).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputList).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
     expect(outputList).toContain('- claude-prod (claude)')
     expect(outputList).toContain('  名称: Claude 生产')
     expect(outputList).toContain('  当前生效: 是')

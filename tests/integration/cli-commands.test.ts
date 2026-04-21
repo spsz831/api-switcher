@@ -497,8 +497,11 @@ describe('cli commands integration', () => {
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
     const actions = payload.data?.commandCatalog.actions ?? []
     const currentAction = actions.find((action) => action.action === 'current')
+    const exportAction = actions.find((action) => action.action === 'export')
+    const listAction = actions.find((action) => action.action === 'list')
     const previewAction = actions.find((action) => action.action === 'preview')
     const schemaAction = actions.find((action) => action.action === 'schema')
+    const validateAction = actions.find((action) => action.action === 'validate')
 
     expect(currentAction).toEqual({
       action: 'current',
@@ -507,7 +510,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: true,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -515,6 +518,7 @@ describe('cli commands integration', () => {
       ],
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
@@ -522,6 +526,7 @@ describe('cli commands integration', () => {
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
@@ -529,6 +534,7 @@ describe('cli commands integration', () => {
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
@@ -536,7 +542,7 @@ describe('cli commands integration', () => {
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看平台级聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级聚合和 reference 聚合。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections'], purpose: '最后展开检测结果列表。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -547,10 +553,108 @@ describe('cli commands integration', () => {
       },
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
         { path: 'scopeAvailability', semantic: 'scope-resolution' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ],
+    })
+
+    expect(exportAction).toEqual({
+      action: 'export',
+      hasPlatformSummary: true,
+      hasPlatformStats: true,
+      hasScopeCapabilities: false,
+      hasScopeAvailability: false,
+      hasScopePolicy: false,
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'EXPORT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'profiles', channel: 'success', presence: 'always' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'profiles', channel: 'success', source: 'command-service' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级导出聚合和 reference 聚合。' },
+          { stage: 'items', fields: ['profiles'], purpose: '再读导出 profile 列表。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'profiles', semantic: 'item-collection' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ],
+    })
+
+    expect(listAction).toEqual({
+      action: 'list',
+      hasPlatformSummary: true,
+      hasPlatformStats: true,
+      hasScopeCapabilities: true,
+      hasScopeAvailability: false,
+      hasScopePolicy: false,
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [
+        { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'LIST_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'profiles', channel: 'success', presence: 'always' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'profiles', channel: 'success', source: 'command-service' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先按平台分组并识别 reference 聚合。' },
+          { stage: 'items', fields: ['profiles'], purpose: '再读 profile 列表。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'profiles', semantic: 'item-collection' },
       ],
       primaryErrorFieldSemantics: [
         { path: 'error.code', semantic: 'error-core' },
@@ -626,6 +730,55 @@ describe('cli commands integration', () => {
         { path: 'error.message', semantic: 'error-core' },
         { path: 'error.details.scopePolicy', semantic: 'error-details' },
         { path: 'error.details.scopeAvailability', semantic: 'error-details' },
+      ],
+    })
+
+    expect(validateAction).toEqual({
+      action: 'validate',
+      hasPlatformSummary: true,
+      hasPlatformStats: true,
+      hasScopeCapabilities: false,
+      hasScopeAvailability: false,
+      hasScopePolicy: false,
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'items'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [
+        { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'VALIDATE_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'items', channel: 'success', presence: 'always' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'items', channel: 'success', source: 'command-service' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'items', channel: 'success', stabilityTier: 'stable' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级通过/限制聚合和 reference 聚合。' },
+          { stage: 'items', fields: ['items'], purpose: '再展开各 profile 校验结果。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'items', semantic: 'item-collection' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
       ],
     })
 
@@ -1261,6 +1414,135 @@ describe('cli commands integration', () => {
     ]))
     expect(payload.data?.summary.warnings).toEqual([])
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+    ]))
+  })
+
+  it('current --json 会聚合 reference profile 的写入未启用 limitation', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'codex-ref',
+          name: 'codex-ref',
+          platform: 'codex',
+          source: {
+            secret_ref: 'vault://codex/prod',
+            baseURL: 'https://gateway.example.com/openai/v1',
+          },
+          apply: {
+            auth_reference: 'vault://codex/prod',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['current', '--json'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'codex',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+    ]))
+  })
+
+  it('list --json 会聚合 reference profile 的写入未启用 limitation', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'claude-ref',
+          name: 'claude-ref',
+          platform: 'claude',
+          source: {
+            secret_ref: 'vault://claude/prod',
+            baseURL: 'https://gateway.example.com/api',
+          },
+          apply: {
+            auth_reference: 'vault://claude/prod',
+            ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['list', '--json'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
+      }),
+    ]))
   })
 
 
@@ -1273,12 +1555,44 @@ describe('cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('[list] 成功')
+    expect(result.stdout).toContain('referenceStats 摘要:')
+    expect(result.stdout).toContain('hasReferenceProfiles=')
     expect(result.stdout).toContain('- gemini-prod (gemini)')
     expect(result.stdout).toContain('  当前生效: 是')
     expect(result.stdout).toContain('附加提示:')
     expect(result.stdout).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(result.stdout).toContain('限制说明:')
     expect(result.stdout).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('list 文本输出会提示 reference profile 当前不会被写入链路消费', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'codex-ref',
+          name: 'codex-ref',
+          platform: 'codex',
+          source: {
+            secret_ref: 'vault://codex/prod',
+            baseURL: 'https://gateway.example.com/openai/v1',
+          },
+          apply: {
+            auth_reference: 'vault://codex/prod',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['list'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('限制说明:')
+    expect(result.stdout).toContain('  - 当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(result.stdout).toContain('referenceStats 摘要:')
+    expect(result.stdout).toContain('profiles=1, reference=1, inline=0, writeUnsupported=1')
   })
 
   it('list 文本输出非法 platform 的失败结果', async () => {
@@ -1658,12 +1972,30 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.summary.warnings).toEqual([])
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.referenceStats).toEqual({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
         okCount: 1,
         warningCount: 0,
         limitationCount: 2,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        },
       }),
     ]))
     expect(payload.data?.profiles?.[0]?.validation?.warnings).toEqual([])
@@ -1789,6 +2121,41 @@ describe('cli commands integration', () => {
     expect(payload.warnings).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.warnings).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.warnings).toContain('Codex 将修改多个目标文件。')
+  })
+
+  it('preview --json 会提示 reference profile 当前不会被写入链路消费', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'codex-ref',
+          name: 'codex-ref',
+          platform: 'codex',
+          source: {
+            secret_ref: 'vault://codex/prod',
+            baseURL: 'https://gateway.example.com/openai/v1',
+          },
+          apply: {
+            auth_reference: 'vault://codex/prod',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      ],
+    })
+
+    const result = await runCli(['preview', 'codex-ref', '--json'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.action).toBe('preview')
+    expect(payload.data?.validation.limitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
+      }),
+    ]))
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
   })
 
   it('preview --json 输出 Gemini scope capability contract', async () => {
@@ -2334,6 +2701,51 @@ describe('cli commands integration', () => {
 
     const profiles = await new ProfilesStore().list()
     expect(profiles.some((item) => item.id === 'claude-new-prod')).toBe(true)
+  })
+
+  it('add --json 支持 secret_ref/auth_reference 创建 profile，并明确写入链路未启用', async () => {
+    const result = await runCli([
+      'add',
+      '--platform', 'codex',
+      '--name', 'ref-profile',
+      '--secret-ref', 'vault://codex/prod',
+      '--auth-reference', 'vault://codex/prod',
+      '--url', 'https://gateway.example.com/openai/v1',
+      '--json',
+    ])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.data?.profile.source).toEqual({
+      secret_ref: 'vault://codex/prod',
+      baseURL: 'https://gateway.example.com/openai/v1',
+    })
+    expect(payload.data?.profile.apply).toEqual({
+      auth_reference: 'vault://codex/prod',
+      base_url: 'https://gateway.example.com/openai/v1',
+    })
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+  })
+
+  it('add 同时传入 --key 与 reference 参数时返回结构化参数错误', async () => {
+    const result = await runCli([
+      'add',
+      '--platform', 'claude',
+      '--name', 'conflict-profile',
+      '--key', 'sk-conflict-123',
+      '--secret-ref', 'vault://claude/prod',
+      '--json',
+    ])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('ADD_INPUT_CONFLICT')
+    expect(payload.error?.message).toBe('不能同时提供 --key 与 --secret-ref/--auth-reference。')
   })
 
   it('add 输出低风险摘要时显示无需确认', async () => {
@@ -3167,6 +3579,8 @@ describe('cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('[current] 成功')
+    expect(result.stdout).toContain('referenceStats 摘要:')
+    expect(result.stdout).toContain('hasReferenceProfiles=')
     expect(result.stdout).toContain('- gemini: gemini-prod')
     expect(result.stdout).toContain('检测结果:')
     expect(result.stdout).toContain('- 平台: claude')
@@ -3212,6 +3626,8 @@ describe('cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('[validate] 成功')
+    expect(result.stdout).toContain('referenceStats 摘要:')
+    expect(result.stdout).toContain('profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(result.stdout).toContain('- gemini-prod (gemini)')
     expect(result.stdout).toContain('  生效配置:')
     expect(result.stdout).toContain('    已写入:')
@@ -3260,6 +3676,8 @@ describe('cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('[export] 成功')
+    expect(result.stdout).toContain('referenceStats 摘要:')
+    expect(result.stdout).toContain('hasReferenceProfiles=')
     expect(result.stdout).toContain('- claude-prod (claude)')
     expect(result.stdout).toContain('  名称: claude-prod')
     expect(result.stdout).toContain('  校验结果: 通过')

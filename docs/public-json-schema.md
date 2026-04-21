@@ -398,7 +398,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取；`readOrderGroups` 则把 success / failure 两侧的推荐阅读阶段结构化。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；对 `current/list/validate/export` 这四个只读命令，`summary.referenceStats` 已纳入 `primaryFields` 与 `readOrderGroups.success[0]`，表示调用方应先看平台级聚合，再看 reference profile / inline profile / write unsupported profile 的批次治理摘要；`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取；`readOrderGroups` 则把 success / failure 两侧的推荐阅读阶段结构化。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 
@@ -412,19 +412,19 @@ type SchemaVersionCommandOutput = {
 
 | Command | 适合谁读 | 成功重点字段 | 失败重点字段 / 失败码 |
 | --- | --- | --- | --- |
-| [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 拿平台级聚合，再读 `detections[].platform/currentScope`，最后按需展开 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
-| [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 做平台分组，再读 `profiles[]` 的平台与 selector，最后按需读取 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 拿平台级聚合与 reference 聚合，再读 `detections[].platform/currentScope`，最后按需展开 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 做平台分组与治理分层，再读 `profiles[]` 的平台与 selector，最后按需读取 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
 | [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再展开 `preview/platformSummary`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED` |
 | [`rollback --json`](#rollback---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级恢复聚合，再展开 `rollback`。 | `scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED` |
-| [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`。推荐消费顺序：先读 `summary.platformStats[]` 看平台级通过/限制聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
-| [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 看平台级聚合，再读 `profile` 基本信息，最后结合 `observedAt` 理解 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
+| [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级聚合与 secret 治理聚合，再读 `profile` 基本信息，最后结合 `observedAt` 理解 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`import preview --json`](#import-preview---json) | UI 接入方、导入迁移工具 | item 级 `platformSummary`、`exportedObservation`、`localObservation`、`previewDecision`、`summary` | 重点看 `previewDecision`、`fidelity`、`sourceCompatibility`；命令本身通常不以 item 阻塞作为顶层失败 |
 | [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`preview`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再展开 `platformSummary/preview`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败 |
 
 ### current --json
 
-`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`summary.platformStats[]` 进一步把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做成稳定聚合。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
+`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`summary.platformStats[]` 进一步把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做成稳定聚合；`summary.referenceStats` 则把这一批 profile 中 reference profile、inline profile、write unsupported profile 的总量做成单独入口，适合 UI 或治理脚本先决定是否提示“仍有明文 profile”或“当前仍有不可直接写入的 profile”。文本输出也沿同一顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 detection。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
 
 语义补充：
 
@@ -444,8 +444,19 @@ type CurrentCommandOutput = {
 
 type CurrentSummary = {
   platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
+}
+
+type SecretReferenceStats = {
+  profileCount: number
+  referenceProfileCount: number
+  inlineProfileCount: number
+  writeUnsupportedProfileCount: number
+  hasReferenceProfiles: boolean
+  hasInlineProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
 }
 
 type CurrentListPlatformStat = {
@@ -689,7 +700,7 @@ type CurrentProfileResult = {
 
 ### list --json
 
-`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。`summary.platformStats[]` 则提供当前返回批次的 platform-aware 聚合，调用方可以先按平台分组，再决定是否展开单个 profile。
+`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。`summary.platformStats[]` 提供当前返回批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前列表里 reference / inline / write unsupported 的批次摘要，调用方可以先做平台分组与 secret 治理分层，再决定是否展开单个 profile。文本输出也与此对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表。
 
 相关示例：[`current --json`](#current---json)、[`validate --json`](#validate---json)、[`export --json`](#export---json)
 
@@ -711,6 +722,7 @@ type ListCommandItem = {
 
 type ListSummary = {
   platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -906,7 +918,7 @@ type ListSummary = {
 
 ### validate --json
 
-`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。`summary.platformStats[]` 则提供当前校验批次的 platform-aware 聚合，调用方可先读每个平台的通过数、warning 数与 limitation 数，再决定是否展开单条 item。
+`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。`summary.platformStats[]` 提供当前校验批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前校验批次里 reference / inline / write unsupported 的治理摘要，调用方可先判断这是“校验问题”还是“secret 形态治理问题”，再决定是否展开单条 item。文本输出同样先给出“按平台汇总”和“referenceStats 摘要”，再进入 item 级校验结果。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`export --json`](#export---json)
 
@@ -926,6 +938,7 @@ type ValidateCommandItem = {
 
 type ValidateSummary = {
   platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -942,7 +955,7 @@ type ValidateExportPlatformStat = {
 
 ### export --json
 
-`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。`summary.platformStats[]` 则把当前导出批次按平台聚合，方便调用方先看每个平台导出了几条 profile、其中多少条校验通过、warning/limitation 有多少。
+`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。`summary.platformStats[]` 把当前导出批次按平台聚合；`summary.referenceStats` 则补出本次导出里 reference / inline / write unsupported 的批次聚合，方便调用方先看平台分布，再决定是否需要对导出结果做 secret 治理或过滤。文本输出也采用同一顺序：先看“按平台汇总”，再看“referenceStats 摘要”，最后再进入 profile 导出明细。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`validate --json`](#validate---json)
 
@@ -964,6 +977,7 @@ type ExportedProfileItem = {
 
 type ExportSummary = {
   platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
   warnings: string[]
   limitations: string[]
 }
@@ -1995,6 +2009,8 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 ### add --json
 
 `add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。
+
+`add` 的 secret 输入面支持两类互斥模式：明文 `--key`，或 reference-only 的 `--secret-ref` / `--auth-reference`。reference-only 成功时，`profile.source.secret_ref` 与 `profile.apply.auth_reference` 会保留原始引用字符串，便于外部系统继续消费；同时 `summary.limitations` 会提示 `preview/use/import apply` 暂未消费该引用。若既没有 key 也没有 reference，失败码为 `ADD_INPUT_REQUIRED`；若同时传入明文 key 与 reference，失败码为 `ADD_INPUT_CONFLICT`。
 
 ```ts
 type AddCommandOutput = {

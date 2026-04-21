@@ -22,6 +22,7 @@ import type {
   PreviewCommandOutput,
   RollbackCommandOutput,
   SchemaCommandOutput,
+  SecretReferenceStats,
   UseCommandOutput,
   ValidateCommandOutput,
 } from '../types/command'
@@ -107,6 +108,28 @@ function renderValidateExportPlatformStats(
       ...(item.platformSummary?.facts ?? []).map((fact) => `    - ${fact.message}`),
     ]),
   ]
+}
+
+function renderReferenceStats(stats?: SecretReferenceStats): string[] {
+  if (!stats) {
+    return []
+  }
+
+  const lines = [
+    'referenceStats 摘要:',
+    `  - profiles=${stats.profileCount}, reference=${stats.referenceProfileCount}, inline=${stats.inlineProfileCount}, writeUnsupported=${stats.writeUnsupportedProfileCount}`,
+    `  - hasReferenceProfiles=${stats.hasReferenceProfiles ? 'yes' : 'no'}, hasInlineProfiles=${stats.hasInlineProfiles ? 'yes' : 'no'}, hasWriteUnsupportedProfiles=${stats.hasWriteUnsupportedProfiles ? 'yes' : 'no'}`,
+  ]
+
+  if (stats.hasInlineProfiles) {
+    lines.push('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+  }
+
+  if (stats.hasWriteUnsupportedProfiles) {
+    lines.push('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
+  }
+
+  return lines
 }
 
 function renderSinglePlatformStats(
@@ -702,6 +725,7 @@ function renderCurrent(data: CurrentCommandOutput): string {
   }
 
   lines.push(...renderCurrentListPlatformStats(data.summary.platformStats))
+  lines.push(...renderReferenceStats(data.summary.referenceStats))
 
   if (data.detections.length > 0) {
     lines.push('检测结果:')
@@ -825,6 +849,7 @@ function renderRollback(data: RollbackCommandOutput): string {
 function renderExport(data: ExportCommandOutput): string {
   return [
     ...renderValidateExportPlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
@@ -972,6 +997,7 @@ function renderImportPreview(data: ImportPreviewCommandOutput): string {
 function renderValidate(data: ValidateCommandOutput): string {
   return [
     ...renderValidateExportPlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
     data.items.map((item) => [
       `- ${item.profileId} (${item.platform})`,
       `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
@@ -991,6 +1017,7 @@ function renderValidate(data: ValidateCommandOutput): string {
 function renderList(data: ListCommandOutput): string {
   return [
     ...renderCurrentListPlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,

@@ -93,6 +93,14 @@ api-switcher --help
 api-switcher add --platform gemini --name "Gemini 生产" --key "$GEMINI_API_KEY"
 ```
 
+如果只想先登记 secret 引用而不把明文 key 写入 profile，可使用 reference-only 输入面：
+
+```bash
+api-switcher add --platform codex --name "Codex 生产" --secret-ref "vault://codex/prod" --auth-reference "vault://codex/prod" --url "https://gateway.example.com/openai/v1"
+```
+
+当前 `secret_ref/auth_reference` 只作为 profile 契约被保留和导出；`preview/use/import apply` 暂不解析引用，后续真实写入仍需要明文 secret 或运行时环境变量。
+
 也可以先用 `api-switcher list` 看现有 profiles，再决定后续用哪个 selector。
 
 ### 2. 先预览，不直接写入
@@ -191,7 +199,7 @@ pnpm test
 - `current`
 - `list`
 - `validate [selector]`
-- `add --platform <platform> --name <name> --key <key> [--url <url>]`
+- `add --platform <platform> --name <name> (--key <key> | --secret-ref <ref> [--auth-reference <reference>]) [--url <url>]`
 - `export`
 - `import preview <file>`
 - `import apply <file> --profile <id> [--scope <scope>] [--force]`
@@ -285,6 +293,7 @@ api-switcher schema --json
           "hasScopePolicy": false,
           "primaryFields": [
             "summary.platformStats",
+            "summary.referenceStats",
             "current",
             "detections",
             "scopeCapabilities",
@@ -300,22 +309,25 @@ api-switcher schema --json
           ],
           "fieldPresence": [
             { "path": "summary.platformStats", "channel": "success", "presence": "always" },
+            { "path": "summary.referenceStats", "channel": "success", "presence": "always" },
             { "path": "current", "channel": "success", "presence": "always" },
             { "path": "scopeAvailability", "channel": "success", "presence": "conditional", "conditionCode": "WHEN_PLATFORM_EXPOSES_SCOPE_AVAILABILITY" }
           ],
           "fieldSources": [
             { "path": "summary.platformStats", "channel": "success", "source": "command-service" },
+            { "path": "summary.referenceStats", "channel": "success", "source": "command-service" },
             { "path": "current", "channel": "success", "source": "command-service" },
             { "path": "scopeAvailability", "channel": "success", "source": "platform-adapter" }
           ],
           "fieldStability": [
             { "path": "summary.platformStats", "channel": "success", "stabilityTier": "stable" },
+            { "path": "summary.referenceStats", "channel": "success", "stabilityTier": "stable" },
             { "path": "current", "channel": "success", "stabilityTier": "stable" },
             { "path": "scopeAvailability", "channel": "success", "stabilityTier": "bounded" }
           ],
           "readOrderGroups": {
             "success": [
-              { "stage": "summary", "fields": ["summary.platformStats"] },
+              { "stage": "summary", "fields": ["summary.platformStats", "summary.referenceStats"] },
               { "stage": "selection", "fields": ["current"] },
               { "stage": "items", "fields": ["detections"] },
               { "stage": "detail", "fields": ["scopeCapabilities", "scopeAvailability"] }
@@ -326,6 +338,7 @@ api-switcher schema --json
           },
           "primaryFieldSemantics": [
             { "path": "summary.platformStats", "semantic": "platform-aggregate" },
+            { "path": "summary.referenceStats", "semantic": "platform-aggregate" },
             { "path": "current", "semantic": "result-core" },
             { "path": "detections", "semantic": "item-collection" },
             { "path": "scopeCapabilities", "semantic": "scope-resolution" },
@@ -544,7 +557,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。`failureCodes` 会公开该 action 已稳定承诺的 `error.code` 集合，并用 `priority` 表达推荐处理顺序、`category` 表达失败类别、`recommendedHandling` 表达推荐处理动作。`fieldPresence` 则补了一层字段出现条件索引：`presence` 只有 `always` / `conditional` 两档，`conditionCode` 用稳定短码表达字段为什么只在部分平台、部分模式或部分失败态出现，例如 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。`fieldSources` 则回答这些字段主要由谁产出，目前稳定来源包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`。`fieldStability` 则补了一层长期绑定建议：`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但更依赖上下文或条件，`expandable` 表示可展示但不建议外部锁死为强 contract。`readOrderGroups` 则把成功态和失败态分别拆成结构化消费阶段：success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。当前这层推荐动作使用稳定短码：`fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则补了一层字段语义标签，便于把点路径归类到 `platform-aggregate`、`scope-resolution`、`artifacts`、`error-core`、`error-details` 等稳定语义桶。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。对 `current/list/validate/export` 这四个只读命令，`primaryFields` 与 `readOrderGroups.success` 已明确把 `summary.referenceStats` 放进第一阶段，表示调用方应先看平台级聚合，再看 reference profile / inline profile / write unsupported profile 的聚合。`failureCodes` 会公开该 action 已稳定承诺的 `error.code` 集合，并用 `priority` 表达推荐处理顺序、`category` 表达失败类别、`recommendedHandling` 表达推荐处理动作。`fieldPresence` 则补了一层字段出现条件索引：`presence` 只有 `always` / `conditional` 两档，`conditionCode` 用稳定短码表达字段为什么只在部分平台、部分模式或部分失败态出现，例如 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。`fieldSources` 则回答这些字段主要由谁产出，目前稳定来源包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`。`fieldStability` 则补了一层长期绑定建议：`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但更依赖上下文或条件，`expandable` 表示可展示但不建议外部锁死为强 contract。`readOrderGroups` 则把成功态和失败态分别拆成结构化消费阶段：success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。当前这层推荐动作使用稳定短码：`fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则补了一层字段语义标签，便于把点路径归类到 `platform-aggregate`、`scope-resolution`、`artifacts`、`error-core`、`error-details` 等稳定语义桶。
 
 如果只需要脚本化检查当前 public JSON schema 版本，可使用更轻量的版本输出：
 
@@ -567,7 +580,7 @@ api-switcher schema --schema-version --json
 
 ### JSON 输出示例
 
-`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`。同时，`data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要聚合出来，方便列表页先按平台分组再决定是否展开单个 profile：
+`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`。同时，`data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要聚合出来；`data.summary.referenceStats` 则补出这一批 profile 里有多少条是 reference profile、多少条仍是 inline secret、多少条当前属于 write unsupported，方便列表页先做治理分层再决定是否展开单个 profile。文本输出也与这条读取顺序对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表：
 
 ```json
 {
@@ -725,6 +738,15 @@ api-switcher schema --schema-version --json
       }
     ],
     "summary": {
+      "referenceStats": {
+        "profileCount": 3,
+        "referenceProfileCount": 1,
+        "inlineProfileCount": 2,
+        "writeUnsupportedProfileCount": 1,
+        "hasReferenceProfiles": true,
+        "hasInlineProfiles": true,
+        "hasWriteUnsupportedProfiles": true
+      },
       "platformStats": [
         {
           "platform": "claude",
@@ -797,7 +819,7 @@ api-switcher schema --schema-version --json
 }
 ```
 
-`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；它们的 `data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、校验通过数、warnings/limitations 总数和平台 explainable 摘要聚合出来。`export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
+`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；它们的 `data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、校验通过数、warnings/limitations 总数和平台 explainable 摘要聚合出来，`data.summary.referenceStats` 则补出当前批次的 reference / inline / write unsupported 聚合。文本输出也按这条 schema catalog 顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 item/profile 级明细。`export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
 
 ```json
 {
@@ -844,6 +866,15 @@ api-switcher schema --schema-version --json
       }
     ],
     "summary": {
+      "referenceStats": {
+        "profileCount": 1,
+        "referenceProfileCount": 0,
+        "inlineProfileCount": 1,
+        "writeUnsupportedProfileCount": 0,
+        "hasReferenceProfiles": false,
+        "hasInlineProfiles": true,
+        "hasWriteUnsupportedProfiles": false
+      },
       "platformStats": [
         {
           "platform": "gemini",
@@ -2498,7 +2529,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
-`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；`data.summary.platformStats[]` 则把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做了一层聚合，便于 UI 或自动化脚本不扫描完整 `detections[]` 也能先拿到平台级摘要。对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
+`current --json` 会在 `detections[]` 里同时返回当前生效来源 `currentScope`、机器可消费的 `platformSummary`、平台 `scopeCapabilities` 与当前环境里的 `scopeAvailability`；`data.summary.platformStats[]` 则把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做了一层聚合，`data.summary.referenceStats` 则补出 reference / inline / write unsupported 的治理摘要，便于 UI 或自动化脚本不扫描完整 `detections[]` 也能先拿到平台级摘要。文本输出现在也按同一顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开具体 detection。对 Gemini 来说，这表示 current/effective 是先按四层 precedence 推导，再判断当前命中的 profile：
 
 ```json
 {
