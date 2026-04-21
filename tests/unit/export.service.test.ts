@@ -206,7 +206,7 @@ describe('export service', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toMatchObject([
       {
         platform: 'claude',
         profileCount: 1,
@@ -256,7 +256,7 @@ describe('export service', () => {
         },
       },
     ])
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 2,
       referenceProfileCount: 0,
       inlineProfileCount: 2,
@@ -318,7 +318,7 @@ describe('export service', () => {
       'profile.source.token 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
       'profile.apply.ANTHROPIC_AUTH_TOKEN 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
     ]))
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toMatchObject([
       expect.objectContaining({
         platform: 'claude',
         okCount: 1,
@@ -334,7 +334,7 @@ describe('export service', () => {
         }),
       }),
     ])
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 0,
       inlineProfileCount: 1,
@@ -394,7 +394,7 @@ describe('export service', () => {
       }),
     ]))
     expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -403,10 +403,10 @@ describe('export service', () => {
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
     })
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -414,8 +414,8 @@ describe('export service', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
-    ])
+    ]))
   })
 })

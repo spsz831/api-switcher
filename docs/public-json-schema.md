@@ -430,7 +430,7 @@ type SchemaVersionCommandOutput = {
 
 ### current --json
 
-`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`summary.platformStats[]` 进一步把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做成稳定聚合；`summary.referenceStats` 则把这一批 profile 中 reference profile、inline profile、write unsupported profile 的总量做成单独入口，适合 UI 或治理脚本先决定是否提示“仍有明文 profile”或“当前仍有不可直接写入的 profile”。文本输出也沿同一顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 detection。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
+`current` 会在每个平台检测结果里输出当前检测态、scope 能力矩阵、当前环境里的 scope 可用性，以及机器可消费的平台语义摘要。`summary.platformStats[]` 进一步把每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要做成稳定聚合；`summary.referenceStats` 则把这一批 profile 中 reference profile、inline profile、write unsupported profile 的总量做成单独入口，并用 `resolvedReferenceProfileCount` / `missingReferenceProfileCount` / `unsupportedReferenceProfileCount` 区分 `env://` 可解析、缺失和暂不支持的引用 scheme，适合 UI 或治理脚本先决定是否提示“仍有明文 profile”或“当前仍有不可直接写入的 profile”。文本输出也沿同一顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 detection。`details`、`effectiveConfig`、`managedBoundaries` 等 adapter 细节允许扩展；稳定字段是 envelope、`summary`、`detections[].platform/managed/targetFiles/currentScope/platformSummary/scopeCapabilities/scopeAvailability`。
 
 语义补充：
 
@@ -458,9 +458,15 @@ type CurrentSummary = {
 type SecretReferenceStats = {
   profileCount: number
   referenceProfileCount: number
+  resolvedReferenceProfileCount: number
+  missingReferenceProfileCount: number
+  unsupportedReferenceProfileCount: number
   inlineProfileCount: number
   writeUnsupportedProfileCount: number
   hasReferenceProfiles: boolean
+  hasResolvedReferenceProfiles: boolean
+  hasMissingReferenceProfiles: boolean
+  hasUnsupportedReferenceProfiles: boolean
   hasInlineProfiles: boolean
   hasWriteUnsupportedProfiles: boolean
 }
@@ -706,7 +712,7 @@ type CurrentProfileResult = {
 
 ### list --json
 
-`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。`summary.platformStats[]` 提供当前返回批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前列表里 reference / inline / write unsupported 的批次摘要，调用方可以先做平台分组与 secret 治理分层，再决定是否展开单个 profile。文本输出也与此对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表。
+`list` 的每个 profile 条目会带出该 profile 所属平台的 scope 能力矩阵与平台语义摘要；Gemini 还会附带当前环境里的 `scopeAvailability`，便于 UI 同时判断“入口该不该显示”和“入口点了之后当前会不会失败”。`summary.platformStats[]` 提供当前返回批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前列表里 reference / inline / write unsupported 的批次摘要，并区分 `env://` 可解析、缺失和暂不支持 scheme 的 reference profile，调用方可以先做平台分组与 secret 治理分层，再决定是否展开单个 profile。文本输出也与此对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表。
 
 相关示例：[`current --json`](#current---json)、[`validate --json`](#validate---json)、[`export --json`](#export---json)
 
@@ -924,7 +930,7 @@ type ListSummary = {
 
 ### validate --json
 
-`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。`summary.platformStats[]` 提供当前校验批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前校验批次里 reference / inline / write unsupported 的治理摘要，调用方可先判断这是“校验问题”还是“secret 形态治理问题”，再决定是否展开单条 item。文本输出同样先给出“按平台汇总”和“referenceStats 摘要”，再进入 item 级校验结果。
+`validate` 的每个 item 会带出对应 profile 平台的 `platformSummary` 与 scope 能力矩阵，便于 UI 在校验结果页同时展示平台 precedence / 多文件语义，以及该平台可写 scope、只读 scope 和确认门槛。`summary.platformStats[]` 提供当前校验批次的 platform-aware 聚合；`summary.referenceStats` 则补充当前校验批次里 reference / inline / write unsupported 的治理摘要，并区分 `env://` 可解析、缺失和暂不支持 scheme 的 reference profile，调用方可先判断这是“校验问题”还是“secret 形态治理问题”，再决定是否展开单条 item。文本输出同样先给出“按平台汇总”和“referenceStats 摘要”，再进入 item 级校验结果。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`export --json`](#export---json)
 
@@ -961,7 +967,7 @@ type ValidateExportPlatformStat = {
 
 ### export --json
 
-`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。`summary.platformStats[]` 把当前导出批次按平台聚合；`summary.referenceStats` 则补出本次导出里 reference / inline / write unsupported 的批次聚合，方便调用方先看平台分布，再决定是否需要对导出结果做 secret 治理或过滤。文本输出也采用同一顺序：先看“按平台汇总”，再看“referenceStats 摘要”，最后再进入 profile 导出明细。
+`export` 的每个导出 profile 条目会带出所属平台的 `platformSummary` 与 scope 能力矩阵；Gemini 还会导出当前探测到的 `scopeAvailability` 与 `defaultWriteScope`，便于迁移工具或 UI 同时保留平台语义、“默认写到哪一层”以及“导出时当前环境里 project scope 是否可用”。`summary.platformStats[]` 把当前导出批次按平台聚合；`summary.referenceStats` 则补出本次导出里 reference / inline / write unsupported 的批次聚合，并区分 `env://` 可解析、缺失和暂不支持 scheme 的 reference profile，方便调用方先看平台分布，再决定是否需要对导出结果做 secret 治理或过滤。文本输出也采用同一顺序：先看“按平台汇总”，再看“referenceStats 摘要”，最后再进入 profile 导出明细。
 
 相关示例：[`current --json`](#current---json)、[`list --json`](#list---json)、[`validate --json`](#validate---json)
 

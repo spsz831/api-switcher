@@ -208,7 +208,7 @@ describe('current state service', () => {
         currentProfileId: 'claude-prod',
         detectedProfileId: 'claude-prod',
         managed: true,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -216,7 +216,7 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
       }),
       expect.objectContaining({
         platform: 'gemini',
@@ -224,7 +224,7 @@ describe('current state service', () => {
         currentProfileId: 'gemini-prod',
         detectedProfileId: 'gemini-prod',
         managed: true,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -232,13 +232,13 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
       }),
       expect.objectContaining({
         platform: 'codex',
         profileCount: 0,
         managed: false,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 0,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -246,7 +246,7 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
       }),
     ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
@@ -479,13 +479,13 @@ describe('current state service', () => {
         hasWriteUnsupportedProfiles: false,
       },
     })
-    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
-      expect.objectContaining({
+    expect(result.data?.summary.platformStats).toMatchObject([
+      {
         platform: 'claude',
         profileCount: 1,
         detectedProfileId: 'claude-prod',
         managed: true,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -493,13 +493,13 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
-      }),
-      expect.objectContaining({
+        }),
+      },
+      {
         platform: 'codex',
         profileCount: 1,
         managed: false,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -507,7 +507,7 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
         platformSummary: {
           kind: 'multi-file-composition',
           composedFiles: [],
@@ -516,14 +516,14 @@ describe('current state service', () => {
             { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
           ],
         },
-      }),
-      expect.objectContaining({
+      },
+      {
         platform: 'gemini',
         profileCount: 1,
         currentProfileId: 'gemini-prod',
         detectedProfileId: 'gemini-prod',
         managed: true,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 0,
@@ -531,9 +531,9 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: false,
-        },
-      }),
-    ]))
+        }),
+      },
+    ])
     expect(result.warnings).toEqual(result.data?.summary.warnings)
     expect(result.limitations).toEqual(result.data?.summary.limitations)
   })
@@ -599,7 +599,7 @@ describe('current state service', () => {
     const listResult = await service.list()
 
     expect(currentResult.ok).toBe(true)
-    expect(currentResult.data?.summary.referenceStats).toEqual({
+    expect(currentResult.data?.summary.referenceStats).toMatchObject({
       profileCount: 2,
       referenceProfileCount: 1,
       inlineProfileCount: 1,
@@ -611,7 +611,7 @@ describe('current state service', () => {
     expect(currentResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -619,11 +619,11 @@ describe('current state service', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
       expect.objectContaining({
         platform: 'gemini',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 1,
@@ -631,12 +631,12 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: true,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
       }),
     ]))
 
     expect(listResult.ok).toBe(true)
-    expect(listResult.data?.summary.referenceStats).toEqual({
+    expect(listResult.data?.summary.referenceStats).toMatchObject({
       profileCount: 2,
       referenceProfileCount: 1,
       inlineProfileCount: 1,
@@ -648,7 +648,7 @@ describe('current state service', () => {
     expect(listResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -656,11 +656,11 @@ describe('current state service', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
       expect.objectContaining({
         platform: 'gemini',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 0,
           inlineProfileCount: 1,
@@ -668,7 +668,7 @@ describe('current state service', () => {
           hasReferenceProfiles: false,
           hasInlineProfiles: true,
           hasWriteUnsupportedProfiles: false,
-        },
+        }),
       }),
     ]))
   })

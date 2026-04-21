@@ -118,6 +118,7 @@ function renderReferenceStats(stats?: SecretReferenceStats): string[] {
   const lines = [
     'referenceStats 摘要:',
     `  - profiles=${stats.profileCount}, reference=${stats.referenceProfileCount}, inline=${stats.inlineProfileCount}, writeUnsupported=${stats.writeUnsupportedProfileCount}`,
+    `  - referenceResolution: resolved=${stats.resolvedReferenceProfileCount}, missing=${stats.missingReferenceProfileCount}, unsupported=${stats.unsupportedReferenceProfileCount}`,
     `  - hasReferenceProfiles=${stats.hasReferenceProfiles ? 'yes' : 'no'}, hasInlineProfiles=${stats.hasInlineProfiles ? 'yes' : 'no'}, hasWriteUnsupportedProfiles=${stats.hasWriteUnsupportedProfiles ? 'yes' : 'no'}`,
   ]
 

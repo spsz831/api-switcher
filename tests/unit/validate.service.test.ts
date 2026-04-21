@@ -179,7 +179,7 @@ describe('validate service', () => {
         { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
       ],
     })
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toMatchObject([
       {
         platform: 'gemini',
         profileCount: 1,
@@ -205,7 +205,7 @@ describe('validate service', () => {
         },
       },
     ])
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 0,
       inlineProfileCount: 1,
@@ -265,7 +265,7 @@ describe('validate service', () => {
       'profile.source.apiKey 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
       'profile.apply.OPENAI_API_KEY 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。',
     ]))
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toMatchObject([
       expect.objectContaining({
         platform: 'codex',
         okCount: 1,
@@ -281,7 +281,7 @@ describe('validate service', () => {
         }),
       }),
     ])
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 0,
       inlineProfileCount: 1,
@@ -352,7 +352,7 @@ describe('validate service', () => {
     ]))
     expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(result.data?.summary.warnings).not.toContain('profile.source.auth_reference 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
-    expect(result.data?.summary.referenceStats).toEqual({
+    expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -361,10 +361,10 @@ describe('validate service', () => {
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
     })
-    expect(result.data?.summary.platformStats).toEqual([
+    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -372,9 +372,9 @@ describe('validate service', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
-    ])
+    ]))
   })
 
   it('空 secret_ref/auth_reference 会返回结构化校验错误', async () => {

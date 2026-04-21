@@ -1,4 +1,5 @@
 import { isSecretLikeKey, isSecretReferenceKey } from './masking'
+import { defaultSecretReferenceResolver, type SecretReferenceResolver } from './secret-reference-resolver'
 import type { ValidationIssue } from '../types/adapter'
 import type { Profile } from '../types/profile'
 import type { ValidationResult } from '../types/adapter'
@@ -100,6 +101,14 @@ function hasUsableSecretReference(profile: Profile): boolean {
     isSecretReferenceKey(key) && typeof value === 'string' && value.trim().length > 0))
 }
 
+function collectProfileSecretReferenceValues(profile: Profile): string[] {
+  const records = [profile.source, profile.apply]
+  return records.flatMap((record) => Object.entries(record)
+    .filter(([key]) => isSecretReferenceKey(key))
+    .map(([, value]) => typeof value === 'string' ? value.trim() : '')
+    .filter((value) => value.length > 0))
+}
+
 export function hasProfileInlineSecrets(profile: Profile): boolean {
   return inspectProfileInlineSecrets(profile).length > 0
 }
@@ -168,9 +177,23 @@ export function collectProfileSecretReferenceContractLimitations(profile: Profil
   return hasProfileUsableSecretReference(profile) ? [SECRET_REFERENCE_WRITE_UNSUPPORTED_MESSAGE] : []
 }
 
-export function buildSecretReferenceStats(profiles: Profile[]): SecretReferenceStats {
+export function buildSecretReferenceStats(
+  profiles: Profile[],
+  resolver: SecretReferenceResolver = defaultSecretReferenceResolver,
+): SecretReferenceStats {
   const profileCount = profiles.length
   const referenceProfileCount = profiles.filter(hasProfileUsableSecretReference).length
+  const resolvedReferenceProfileCount = profiles.filter((profile) => {
+    const references = collectProfileSecretReferenceValues(profile)
+    return references.length > 0 && references.every((reference) => resolver.resolve(reference).status === 'resolved')
+  }).length
+  const missingReferenceProfileCount = profiles.filter((profile) => {
+    const hasMissingInput = collectProfileSecretReferenceIssues(profile).length > 0
+    const references = collectProfileSecretReferenceValues(profile)
+    return hasMissingInput || references.some((reference) => resolver.resolve(reference).status === 'missing')
+  }).length
+  const unsupportedReferenceProfileCount = profiles.filter((profile) =>
+    collectProfileSecretReferenceValues(profile).some((reference) => resolver.resolve(reference).status === 'unsupported-scheme')).length
   const inlineProfileCount = profiles.filter(hasProfileInlineSecrets).length
   const writeUnsupportedProfileCount = profiles.filter((profile) =>
     collectProfileSecretReferenceContractLimitations(profile).length > 0).length
@@ -178,9 +201,15 @@ export function buildSecretReferenceStats(profiles: Profile[]): SecretReferenceS
   return {
     profileCount,
     referenceProfileCount,
+    resolvedReferenceProfileCount,
+    missingReferenceProfileCount,
+    unsupportedReferenceProfileCount,
     inlineProfileCount,
     writeUnsupportedProfileCount,
     hasReferenceProfiles: referenceProfileCount > 0,
+    hasResolvedReferenceProfiles: resolvedReferenceProfileCount > 0,
+    hasMissingReferenceProfiles: missingReferenceProfileCount > 0,
+    hasUnsupportedReferenceProfiles: unsupportedReferenceProfileCount > 0,
     hasInlineProfiles: inlineProfileCount > 0,
     hasWriteUnsupportedProfiles: writeUnsupportedProfileCount > 0,
   }

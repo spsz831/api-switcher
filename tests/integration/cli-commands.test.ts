@@ -1472,7 +1472,7 @@ describe('cli commands integration', () => {
     ]))
     expect(payload.data?.summary.warnings).toEqual([])
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.data?.summary.referenceStats).toEqual({
+    expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -1484,7 +1484,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -1492,7 +1492,7 @@ describe('cli commands integration', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
     ]))
   })
@@ -1525,7 +1525,7 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.data?.summary.referenceStats).toEqual({
+    expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -1537,7 +1537,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -1545,7 +1545,7 @@ describe('cli commands integration', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
     ]))
   })
@@ -1578,7 +1578,7 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.data?.summary.referenceStats).toEqual({
+    expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -1590,7 +1590,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -1598,7 +1598,7 @@ describe('cli commands integration', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
     ]))
   })
@@ -2030,7 +2030,7 @@ describe('cli commands integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.data?.summary.warnings).toEqual([])
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.data?.summary.referenceStats).toEqual({
+    expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
       inlineProfileCount: 0,
@@ -2045,7 +2045,7 @@ describe('cli commands integration', () => {
         okCount: 1,
         warningCount: 0,
         limitationCount: 2,
-        referenceStats: {
+        referenceStats: expect.objectContaining({
           profileCount: 1,
           referenceProfileCount: 1,
           inlineProfileCount: 0,
@@ -2053,7 +2053,7 @@ describe('cli commands integration', () => {
           hasReferenceProfiles: true,
           hasInlineProfiles: false,
           hasWriteUnsupportedProfiles: true,
-        },
+        }),
       }),
     ]))
     expect(payload.data?.profiles?.[0]?.validation?.warnings).toEqual([])

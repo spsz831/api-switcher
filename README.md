@@ -589,7 +589,7 @@ api-switcher schema --schema-version --json
 
 ### JSON 输出示例
 
-`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`。同时，`data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要聚合出来；`data.summary.referenceStats` 则补出这一批 profile 里有多少条是 reference profile、多少条仍是 inline secret、多少条当前属于 write unsupported，方便列表页先做治理分层再决定是否展开单个 profile。文本输出也与这条读取顺序对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表：
+`list --json` 会在每个 profile 条目上带出所属平台的 `platformSummary` 与 `scopeCapabilities`；Gemini 还会带出当前环境里的 `scopeAvailability`。同时，`data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、当前 state 记录、当前检测命中和 explainable 摘要聚合出来；`data.summary.referenceStats` 则补出这一批 profile 里有多少条是 reference profile、多少条仍是 inline secret、多少条当前属于 write unsupported，并用 `resolvedReferenceProfileCount` / `missingReferenceProfileCount` / `unsupportedReferenceProfileCount` 区分 `env://` 可解析、缺失和暂不支持的引用 scheme，方便列表页先做治理分层再决定是否展开单个 profile。文本输出也与这条读取顺序对齐：先读“按平台汇总”，再读“referenceStats 摘要”，最后再看 profile 列表：
 
 ```json
 {
@@ -750,9 +750,15 @@ api-switcher schema --schema-version --json
       "referenceStats": {
         "profileCount": 3,
         "referenceProfileCount": 1,
+        "resolvedReferenceProfileCount": 0,
+        "missingReferenceProfileCount": 0,
+        "unsupportedReferenceProfileCount": 1,
         "inlineProfileCount": 2,
         "writeUnsupportedProfileCount": 1,
         "hasReferenceProfiles": true,
+        "hasResolvedReferenceProfiles": false,
+        "hasMissingReferenceProfiles": false,
+        "hasUnsupportedReferenceProfiles": true,
         "hasInlineProfiles": true,
         "hasWriteUnsupportedProfiles": true
       },
@@ -828,7 +834,7 @@ api-switcher schema --schema-version --json
 }
 ```
 
-`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；它们的 `data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、校验通过数、warnings/limitations 总数和平台 explainable 摘要聚合出来，`data.summary.referenceStats` 则补出当前批次的 reference / inline / write unsupported 聚合。文本输出也按这条 schema catalog 顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 item/profile 级明细。`export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
+`validate --json` 与 `export --json` 也是按条目输出 `platformSummary` 与 `scopeCapabilities`；它们的 `data.summary.platformStats[]` 会把当前返回批次里每个平台的 profile 数、校验通过数、warnings/limitations 总数和平台 explainable 摘要聚合出来，`data.summary.referenceStats` 则补出当前批次的 reference / inline / write unsupported 聚合，并额外区分 `env://` 可解析、缺失和暂不支持 scheme 的 reference profile。文本输出也按这条 schema catalog 顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”，最后再展开 item/profile 级明细。`export` 额外输出默认写入目标、观测时间，Gemini 还会携带 `scopeAvailability`：
 
 ```json
 {
@@ -878,9 +884,15 @@ api-switcher schema --schema-version --json
       "referenceStats": {
         "profileCount": 1,
         "referenceProfileCount": 0,
+        "resolvedReferenceProfileCount": 0,
+        "missingReferenceProfileCount": 0,
+        "unsupportedReferenceProfileCount": 0,
         "inlineProfileCount": 1,
         "writeUnsupportedProfileCount": 0,
         "hasReferenceProfiles": false,
+        "hasResolvedReferenceProfiles": false,
+        "hasMissingReferenceProfiles": false,
+        "hasUnsupportedReferenceProfiles": false,
         "hasInlineProfiles": true,
         "hasWriteUnsupportedProfiles": false
       },

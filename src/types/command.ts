@@ -122,9 +122,15 @@ export interface SinglePlatformStat {
 export interface SecretReferenceStats {
   profileCount: number
   referenceProfileCount: number
+  resolvedReferenceProfileCount: number
+  missingReferenceProfileCount: number
+  unsupportedReferenceProfileCount: number
   inlineProfileCount: number
   writeUnsupportedProfileCount: number
   hasReferenceProfiles: boolean
+  hasResolvedReferenceProfiles: boolean
+  hasMissingReferenceProfiles: boolean
+  hasUnsupportedReferenceProfiles: boolean
   hasInlineProfiles: boolean
   hasWriteUnsupportedProfiles: boolean
 }

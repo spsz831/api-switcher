@@ -914,16 +914,28 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.required).toEqual([
       'profileCount',
       'referenceProfileCount',
+      'resolvedReferenceProfileCount',
+      'missingReferenceProfileCount',
+      'unsupportedReferenceProfileCount',
       'inlineProfileCount',
       'writeUnsupportedProfileCount',
       'hasReferenceProfiles',
+      'hasResolvedReferenceProfiles',
+      'hasMissingReferenceProfiles',
+      'hasUnsupportedReferenceProfiles',
       'hasInlineProfiles',
       'hasWriteUnsupportedProfiles',
     ])
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.referenceProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.resolvedReferenceProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.missingReferenceProfileCount).toEqual({ type: 'integer', minimum: 0 })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.unsupportedReferenceProfileCount).toEqual({ type: 'integer', minimum: 0 })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.inlineProfileCount).toEqual({ type: 'integer', minimum: 0 })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.writeUnsupportedProfileCount).toEqual({ type: 'integer', minimum: 0 })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasReferenceProfiles).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasResolvedReferenceProfiles).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasMissingReferenceProfiles).toEqual({ type: 'boolean' })
+    expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasUnsupportedReferenceProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasInlineProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasWriteUnsupportedProfiles).toEqual({ type: 'boolean' })
   })
