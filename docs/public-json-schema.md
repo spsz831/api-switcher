@@ -398,7 +398,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；对 `current/list/validate/export` 这四个只读命令，`summary.referenceStats` 已纳入 `primaryFields` 与 `readOrderGroups.success[0]`，表示调用方应先看平台级聚合，再看 reference profile / inline profile / write unsupported profile 的批次治理摘要；`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取；`readOrderGroups` 则把 success / failure 两侧的推荐阅读阶段结构化。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；对 `current/list/validate/export` 这四个只读命令，`summary.referenceStats` 已纳入 `primaryFields` 与 `readOrderGroups.success[0]`，表示调用方应先看平台级聚合，再看 reference profile / inline profile / write unsupported profile 的批次治理摘要；失败态不要读取或等待 `summary.referenceStats`，治理类失败应读取 `error.details.referenceGovernance.primaryReason/reasonCodes`。`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取；`readOrderGroups` 则把 success / failure 两侧的推荐阅读阶段结构化。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。failure 侧推荐顺序是先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，最后按需展开 `risk/scope/validation` 细节。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 
@@ -415,12 +415,12 @@ type SchemaVersionCommandOutput = {
 | [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 拿平台级聚合与 reference 聚合，再读 `detections[].platform/currentScope`，最后按需展开 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 做平台分组与治理分层，再读 `profiles[]` 的平台与 selector，最后按需读取 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
-| [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再展开 `preview/platformSummary`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED` |
+| [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再展开 `preview/platformSummary`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED`。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `risk/scope/validation` |
 | [`rollback --json`](#rollback---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级恢复聚合，再展开 `rollback`。 | `scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED` |
 | [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级聚合与 secret 治理聚合，再读 `profile` 基本信息，最后结合 `observedAt` 理解 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`import preview --json`](#import-preview---json) | UI 接入方、导入迁移工具 | item 级 `platformSummary`、`exportedObservation`、`localObservation`、`previewDecision`、`summary` | 重点看 `previewDecision`、`fidelity`、`sourceCompatibility`；命令本身通常不以 item 阻塞作为顶层失败 |
-| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`preview`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再展开 `platformSummary/preview`。 | `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败 |
+| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`scopePolicy`、`preview`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再展开 `platformSummary/preview`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `risk/scope/validation` |
 
 ### current --json
 
@@ -1304,12 +1304,13 @@ type ImportScopeUnavailableDetails = {
 
 - `CONFIRMATION_REQUIRED` 继续复用通用 `ConfirmationRequiredDetails`。
 - `IMPORT_APPLY_FAILED`、`VALIDATION_FAILED` 等失败的 `error.details` 只保证保留结构化对象，不冻结 adapter 内部字段。
+- `referenceGovernance` 是失败态的治理类索引，只表达分类和原因码，不替代成功态的 `summary.referenceStats` 聚合。
 - machine-readable schema 只冻结失败路径里的稳定字段，不对失败 `code` 与 adapter 私有 detail 做过度枚举。
 
 样例阅读方式：
 
 - 成功样例重点看 success payload 中的 `platformSummary`、`scopePolicy`、`preview`、`backupId` 与 `changedFiles`。
-- 失败样例重点看 `CONFIRMATION_REQUIRED` 或 scope unavailable 类失败下的 `risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 或 scope unavailable 类失败下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，最后再展开 `risk/scope/validation` 细节。
 
 成功样例：
 
@@ -1953,6 +1954,15 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
     "code": "CONFIRMATION_REQUIRED",
     "message": "当前操作风险较高，需要显式确认。请重新执行并附加 --force。",
     "details": {
+      "referenceGovernance": {
+        "hasReferenceProfiles": false,
+        "hasInlineProfiles": true,
+        "hasWriteUnsupportedProfiles": false,
+        "primaryReason": "INLINE_SECRET_PRESENT",
+        "reasonCodes": [
+          "INLINE_SECRET_PRESENT"
+        ]
+      },
       "risk": {
         "allowed": false,
         "riskLevel": "high",
@@ -2233,12 +2243,13 @@ type PreviewCommandOutput = {
 语义补充：
 
 - 成功态与 `CONFIRMATION_REQUIRED` 失败态都属于公共契约面；失败时结构化信息位于 `error.details`。
+- 如果失败涉及 secret/reference 治理，`error.details.referenceGovernance` 会给出稳定的 `primaryReason` 与 `reasonCodes`；失败态不要读取 `summary.referenceStats`。
 - 完整 JSON 样例见 [`README.md`](../README.md) 中的 `use --json` 成功/失败示例。
 
 样例阅读方式：
 
 - 成功样例重点看 success payload 中的 `summary.platformStats`、`platformSummary`、`scopeCapabilities`、`scopeAvailability` 与写入结果字段。
-- 失败样例重点看 `CONFIRMATION_REQUIRED` 下的 `risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，最后再展开 `risk/scope/validation` 细节。
 
 成功样例：
 
@@ -2329,6 +2340,15 @@ type PreviewCommandOutput = {
     "code": "CONFIRMATION_REQUIRED",
     "message": "当前切换需要确认或 --force。",
     "details": {
+      "referenceGovernance": {
+        "hasReferenceProfiles": false,
+        "hasInlineProfiles": true,
+        "hasWriteUnsupportedProfiles": false,
+        "primaryReason": "INLINE_SECRET_PRESENT",
+        "reasonCodes": [
+          "INLINE_SECRET_PRESENT"
+        ]
+      },
       "risk": {
         "allowed": false,
         "riskLevel": "high",
@@ -2398,6 +2418,7 @@ type ConfirmationRequiredDetails = {
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: ScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+  referenceGovernance?: ReferenceGovernanceFailureDetails
 }
 ```
 
