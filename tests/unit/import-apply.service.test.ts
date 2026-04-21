@@ -695,6 +695,100 @@ describe('import apply service', () => {
     expect(result.data?.changedFiles).toEqual(['C:/Users/test/.claude/settings.local.json'])
   })
 
+  it('import apply 的 referenceGovernance 会输出 resolver-aware referenceDetails', async () => {
+    const importedProfile = createClaudeProfile({
+      source: { secret_ref: 'env://API_SWITCHER_MISSING_SECRET' },
+      apply: { auth_reference: 'vault://claude/prod' } as any,
+    })
+
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [{ code: 'READY_USING_LOCAL_OBSERVATION', blocking: false, message: 'ready' }],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => null,
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'claude',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.claude/settings.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'project',
+                role: 'settings',
+                managedKeys: ['auth_reference'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/test/.claude/settings.json',
+                changedKeys: ['auth_reference'],
+                hasChanges: true,
+              },
+            ],
+            riskLevel: 'medium',
+            requiresConfirmation: true,
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          throw new Error('should not snapshot before confirmation')
+        },
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: {
+        hasReferenceProfiles: true,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: true,
+        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
+        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_UNRESOLVED',
+            field: 'source.secret_ref',
+            status: 'missing',
+            reference: 'env://API_SWITCHER_MISSING_SECRET',
+            scheme: 'env',
+            message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
+          },
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://claude/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
+      },
+    }))
+  })
+
   it('previewDecision 阻止 apply design 时返回 IMPORT_APPLY_NOT_READY', async () => {
     const importedProfile = createProfile()
     const service = new ImportApplyService(

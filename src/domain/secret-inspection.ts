@@ -3,7 +3,12 @@ import { defaultSecretReferenceResolver, type SecretReferenceResolver } from './
 import type { ValidationIssue } from '../types/adapter'
 import type { Profile } from '../types/profile'
 import type { ValidationResult } from '../types/adapter'
-import type { ReferenceGovernanceFailureDetails, ReferenceGovernanceReasonCode, SecretReferenceStats } from '../types/command'
+import type {
+  ReferenceGovernanceDetail,
+  ReferenceGovernanceFailureDetails,
+  ReferenceGovernanceReasonCode,
+  SecretReferenceStats,
+} from '../types/command'
 
 export const INLINE_SECRET_IN_PROFILE = 'INLINE_SECRET_IN_PROFILE'
 export const SECRET_REFERENCE_MISSING = 'SECRET_REFERENCE_MISSING'
@@ -107,6 +112,65 @@ function collectProfileSecretReferenceValues(profile: Profile): string[] {
     .filter(([key]) => isSecretReferenceKey(key))
     .map(([, value]) => typeof value === 'string' ? value.trim() : '')
     .filter((value) => value.length > 0))
+}
+
+function collectReferenceGovernanceDetails(
+  profile: Profile,
+  resolver: SecretReferenceResolver,
+): ReferenceGovernanceDetail[] {
+  const records = [
+    { prefix: 'source', record: profile.source },
+    { prefix: 'apply', record: profile.apply },
+  ]
+
+  return records.flatMap(({ prefix, record }) => Object.entries(record).flatMap<ReferenceGovernanceDetail>(([key, value]) => {
+    if (!isSecretReferenceKey(key)) {
+      return []
+    }
+
+    const field = `${prefix}.${key}`
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return [{
+        code: 'REFERENCE_VALUE_MISSING',
+        field,
+        status: 'missing',
+        message: `profile.${field} 缺少可用的 secret 引用。`,
+      }]
+    }
+
+    const reference = value.trim()
+    const resolution = resolver.resolve(reference)
+    if (resolution.status === 'resolved') {
+      return [{
+        code: 'REFERENCE_ENV_RESOLVED',
+        field,
+        status: 'resolved',
+        reference,
+        scheme: resolution.scheme,
+        message: `profile.${field} 的 ${resolution.scheme ?? 'reference'} 引用已解析，但当前写入链路仍不会直接消费引用。`,
+      }]
+    }
+
+    if (resolution.status === 'missing') {
+      return [{
+        code: 'REFERENCE_ENV_UNRESOLVED',
+        field,
+        status: 'missing',
+        reference,
+        scheme: resolution.scheme,
+        message: `profile.${field} 的 ${resolution.scheme ?? 'reference'} 引用当前不可解析。`,
+      }]
+    }
+
+    return [{
+      code: 'REFERENCE_SCHEME_UNSUPPORTED',
+      field,
+      status: 'unsupported-scheme',
+      reference,
+      scheme: resolution.scheme,
+      message: `profile.${field} 使用的引用 scheme 当前不受支持。`,
+    }]
+  }))
 }
 
 export function hasProfileInlineSecrets(profile: Profile): boolean {
@@ -237,9 +301,11 @@ function sortReferenceGovernanceReasonCodes(reasonCodes: Set<ReferenceGovernance
 export function buildReferenceGovernanceFailureDetails(
   profile: Profile,
   validation: Pick<ValidationResult, 'errors' | 'warnings' | 'limitations'>,
+  resolver: SecretReferenceResolver = defaultSecretReferenceResolver,
 ): ReferenceGovernanceFailureDetails | undefined {
   const validationCodes = collectValidationIssueCodes(validation)
   const referenceIssues = collectProfileSecretReferenceIssues(profile)
+  const referenceDetails = collectReferenceGovernanceDetails(profile, resolver)
   const hasReferenceProfiles = hasProfileUsableSecretReference(profile)
   const hasInlineProfiles = hasProfileInlineSecrets(profile)
   const hasWriteUnsupportedProfiles = hasReferenceProfiles
@@ -272,5 +338,6 @@ export function buildReferenceGovernanceFailureDetails(
     hasWriteUnsupportedProfiles,
     primaryReason: sortedReasonCodes[0]!,
     reasonCodes: sortedReasonCodes,
+    ...(referenceDetails.length > 0 ? { referenceDetails } : {}),
   }
 }

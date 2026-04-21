@@ -947,6 +947,14 @@ describe('public JSON contract types', () => {
       hasWriteUnsupportedProfiles: boolean
       primaryReason?: 'REFERENCE_WRITE_UNSUPPORTED' | 'INLINE_SECRET_PRESENT' | 'REFERENCE_MISSING' | 'REFERENCE_INPUT_CONFLICT'
       reasonCodes: Array<'REFERENCE_WRITE_UNSUPPORTED' | 'INLINE_SECRET_PRESENT' | 'REFERENCE_MISSING' | 'REFERENCE_INPUT_CONFLICT'>
+      referenceDetails?: Array<{
+        code: 'REFERENCE_VALUE_MISSING' | 'REFERENCE_ENV_RESOLVED' | 'REFERENCE_ENV_UNRESOLVED' | 'REFERENCE_SCHEME_UNSUPPORTED'
+        field: string
+        status: 'resolved' | 'missing' | 'unsupported-scheme'
+        reference?: string
+        scheme?: string
+        message: string
+      }>
     }>()
     expectTypeOf<ValidationFailureDetails>().toMatchTypeOf<{
       referenceGovernance?: ReferenceGovernanceFailureDetails
@@ -977,6 +985,29 @@ describe('public JSON contract types', () => {
           'REFERENCE_INPUT_CONFLICT',
         ],
       },
+    })
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceFailureDetails?.properties?.referenceDetails).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/ReferenceGovernanceDetail' },
+    })
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceDetail?.required).toEqual([
+      'code',
+      'field',
+      'status',
+      'message',
+    ])
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceDetail?.properties?.code).toEqual({
+      type: 'string',
+      enum: [
+        'REFERENCE_VALUE_MISSING',
+        'REFERENCE_ENV_RESOLVED',
+        'REFERENCE_ENV_UNRESOLVED',
+        'REFERENCE_SCHEME_UNSUPPORTED',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.ReferenceGovernanceDetail?.properties?.status).toEqual({
+      type: 'string',
+      enum: ['resolved', 'missing', 'unsupported-scheme'],
     })
     expect(publicJsonSchema.$defs?.ValidationFailureDetails?.properties?.referenceGovernance).toEqual({
       $ref: '#/$defs/ReferenceGovernanceFailureDetails',
@@ -1552,6 +1583,14 @@ describe('public JSON contract types', () => {
             hasWriteUnsupportedProfiles: false,
             primaryReason: 'REFERENCE_MISSING',
             reasonCodes: ['REFERENCE_MISSING'],
+            referenceDetails: [
+              {
+                code: 'REFERENCE_VALUE_MISSING',
+                field: 'source.secret_ref',
+                status: 'missing',
+                message: 'profile.source.secret_ref 缺少可用的 secret 引用。',
+              },
+            ],
           },
         },
       },

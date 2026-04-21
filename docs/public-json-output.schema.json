@@ -364,7 +364,35 @@
               "REFERENCE_INPUT_CONFLICT"
             ]
           }
+        },
+        "referenceDetails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReferenceGovernanceDetail" }
         }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceGovernanceDetail": {
+      "type": "object",
+      "required": ["code", "field", "status", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_VALUE_MISSING",
+            "REFERENCE_ENV_RESOLVED",
+            "REFERENCE_ENV_UNRESOLVED",
+            "REFERENCE_SCHEME_UNSUPPORTED"
+          ]
+        },
+        "field": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["resolved", "missing", "unsupported-scheme"]
+        },
+        "reference": { "type": "string" },
+        "scheme": { "type": "string" },
+        "message": { "type": "string" }
       },
       "additionalProperties": false
     },

@@ -141,12 +141,28 @@ export type ReferenceGovernanceReasonCode =
   | 'REFERENCE_MISSING'
   | 'REFERENCE_INPUT_CONFLICT'
 
+export type ReferenceGovernanceDetailCode =
+  | 'REFERENCE_VALUE_MISSING'
+  | 'REFERENCE_ENV_RESOLVED'
+  | 'REFERENCE_ENV_UNRESOLVED'
+  | 'REFERENCE_SCHEME_UNSUPPORTED'
+
+export interface ReferenceGovernanceDetail {
+  code: ReferenceGovernanceDetailCode
+  field: string
+  status: 'resolved' | 'missing' | 'unsupported-scheme'
+  reference?: string
+  scheme?: string
+  message: string
+}
+
 export interface ReferenceGovernanceFailureDetails {
   hasReferenceProfiles: boolean
   hasInlineProfiles: boolean
   hasWriteUnsupportedProfiles: boolean
   primaryReason?: ReferenceGovernanceReasonCode
   reasonCodes: ReferenceGovernanceReasonCode[]
+  referenceDetails?: ReferenceGovernanceDetail[]
 }
 
 export interface CurrentListPlatformStat {

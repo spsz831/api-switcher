@@ -277,6 +277,100 @@ describe('switch service', () => {
     ])
   })
 
+  it('use 的 referenceGovernance 会输出 resolver-aware referenceDetails', async () => {
+    const profile = {
+      id: 'claude-reference-details',
+      name: 'claude-reference-details',
+      platform: 'claude' as const,
+      source: { secret_ref: 'env://API_SWITCHER_MISSING_SECRET' },
+      apply: { auth_reference: 'vault://claude/prod' },
+    }
+
+    const result = await new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'claude',
+            profileId: profile.id,
+            targetFiles: [
+              {
+                path: 'E:\\WorkSpace\\.claude\\settings.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'project',
+                role: 'settings',
+                managedKeys: ['auth_reference'],
+              },
+            ],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [
+              {
+                path: 'E:\\WorkSpace\\.claude\\settings.json',
+                changedKeys: ['auth_reference'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'medium',
+            requiresConfirmation: true,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          throw new Error('should not snapshot before confirmation')
+        },
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    ).use(profile.id)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: {
+        hasReferenceProfiles: true,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: true,
+        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
+        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        referenceDetails: [
+          {
+            code: 'REFERENCE_ENV_UNRESOLVED',
+            field: 'source.secret_ref',
+            status: 'missing',
+            reference: 'env://API_SWITCHER_MISSING_SECRET',
+            scheme: 'env',
+            message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
+          },
+          {
+            code: 'REFERENCE_SCHEME_UNSUPPORTED',
+            field: 'apply.auth_reference',
+            status: 'unsupported-scheme',
+            reference: 'vault://claude/prod',
+            scheme: 'vault',
+            message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
+          },
+        ],
+      },
+    }))
+  })
+
   it('project scope 不可用时先返回 availability 结构化失败，不进入 CONFIRMATION_REQUIRED', async () => {
     process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = path.join(runtimeDir, 'missing-project-root')
     await fs.writeFile(settingsPath, JSON.stringify({ enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')

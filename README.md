@@ -1203,7 +1203,7 @@ api-switcher import preview exported.json --json
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
 - `import apply --json` 成功态也会返回 `platformSummary`，用于把平台 precedence / 多文件组合语义与本次 apply 结果一起交给机器消费方。
 - `import apply --json` 成功态也会在 `data.summary.platformStats[]` 中提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 拿平台、scope、warning/limitation、变更文件计数，再决定是否展开 `platformSummary` 与 `preview`。
-- `import apply --json` 失败态如果涉及 secret/reference 治理，会在 `error.details.referenceGovernance` 给出机器可读原因；失败态不要读取 `summary.referenceStats`，推荐顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `risk/scope/validation` 细节。
+- `import apply --json` 失败态如果涉及 secret/reference 治理，会在 `error.details.referenceGovernance` 给出机器可读原因；失败态不要读取 `summary.referenceStats`，推荐顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节。`referenceDetails[]` 会进一步暴露字段级 resolver explainable，例如 `REFERENCE_ENV_UNRESOLVED`、`REFERENCE_SCHEME_UNSUPPORTED`、`REFERENCE_ENV_RESOLVED`。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判断 `scopeAvailability`，再判断是否需要 `--force`。
 - Gemini 继续支持 `--scope user|project`，其中 `project` 属于高风险显式目标。
@@ -1858,6 +1858,24 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
         "primaryReason": "INLINE_SECRET_PRESENT",
         "reasonCodes": [
           "INLINE_SECRET_PRESENT"
+        ],
+        "referenceDetails": [
+          {
+            "code": "REFERENCE_ENV_UNRESOLVED",
+            "field": "apiKey",
+            "status": "missing",
+            "reference": "env://CLAUDE_API_KEY",
+            "scheme": "env",
+            "message": "引用 env://CLAUDE_API_KEY 当前未解析，导入写入不会注入真实 secret。"
+          },
+          {
+            "code": "REFERENCE_SCHEME_UNSUPPORTED",
+            "field": "sessionToken",
+            "status": "unsupported-scheme",
+            "reference": "keychain://claude/session-token",
+            "scheme": "keychain",
+            "message": "当前写入链路不支持 keychain:// 引用。"
+          }
         ]
       },
       "risk": {
@@ -2936,7 +2954,7 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 
 `use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]` 也会给出单平台聚合入口，推荐机器消费方先读 `summary.platformStats[0]`，再展开 `platformSummary` 与 `preview` 细节。
 
-`use --json` 需要区分成功态和确认门槛失败态。成功时会把平台 precedence / 多文件组合语义和本次写入结果一起交给机器消费方；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`。如果失败同时涉及 secret/reference 治理，机器消费方应读取 `error.details.referenceGovernance`，不要从失败 envelope 里寻找 `summary.referenceStats`。推荐失败读取顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `risk/scope/validation` 细节：
+`use --json` 需要区分成功态和确认门槛失败态。成功时会把平台 precedence / 多文件组合语义和本次写入结果一起交给机器消费方；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`。如果失败同时涉及 secret/reference 治理，机器消费方应读取 `error.details.referenceGovernance`，不要从失败 envelope 里寻找 `summary.referenceStats`。推荐失败读取顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节：
 
 ```json
 {
@@ -3030,6 +3048,24 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
         "primaryReason": "INLINE_SECRET_PRESENT",
         "reasonCodes": [
           "INLINE_SECRET_PRESENT"
+        ],
+        "referenceDetails": [
+          {
+            "code": "REFERENCE_ENV_UNRESOLVED",
+            "field": "apiKey",
+            "status": "missing",
+            "reference": "env://GEMINI_API_KEY",
+            "scheme": "env",
+            "message": "引用 env://GEMINI_API_KEY 当前未解析，写入前仍需要人工确认。"
+          },
+          {
+            "code": "REFERENCE_ENV_RESOLVED",
+            "field": "secondaryApiKey",
+            "status": "resolved",
+            "reference": "env://GEMINI_SECONDARY_API_KEY",
+            "scheme": "env",
+            "message": "引用 env://GEMINI_SECONDARY_API_KEY 可在当前环境解析，但写入链路不会直接写入真实 secret。"
+          }
         ]
       },
       "risk": {
