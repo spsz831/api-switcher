@@ -861,6 +861,8 @@ describe('public JSON contract types', () => {
       'title',
       'priority',
       'use',
+      'appliesWhen',
+      'triggerFields',
       'summarySectionIds',
       'nextStep',
       'primaryFields',
@@ -888,11 +890,20 @@ describe('public JSON contract types', () => {
       type: 'string',
       enum: ['inspect-items', 'review-reference-details', 'repair-source-input', 'group-by-platform', 'continue-to-write'],
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.appliesWhen).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.triggerFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',
       'priority',
       'category',
       'recommendedHandling',
+      'appliesWhen',
+      'triggerFields',
     ]))
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.code).toEqual({
       type: 'string',
@@ -925,11 +936,20 @@ describe('public JSON contract types', () => {
         'migrate-inline-secret',
       ],
     })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.appliesWhen).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.triggerFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
     expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.required).toEqual(expect.arrayContaining([
       'code',
       'priority',
       'category',
       'recommendedHandling',
+      'appliesWhen',
+      'triggerFields',
     ]))
     expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.code).toEqual({
       type: 'string',
@@ -967,6 +987,13 @@ describe('public JSON contract types', () => {
         'migrate-inline-secret',
         'fix-reference-input',
       ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.appliesWhen).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.triggerFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
     })
     expect(publicJsonSchema.$defs?.SchemaRecommendedAction?.required).toEqual(expect.arrayContaining([
       'code',

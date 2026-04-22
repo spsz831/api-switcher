@@ -778,7 +778,7 @@
     },
     "SchemaConsumerProfileAction": {
       "type": "object",
-      "required": ["id", "title", "priority", "use", "summarySectionIds", "nextStep", "primaryFields", "purpose"],
+      "required": ["id", "title", "priority", "use", "appliesWhen", "triggerFields", "summarySectionIds", "nextStep", "primaryFields", "purpose"],
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
@@ -786,6 +786,11 @@
         "use": {
           "type": "string",
           "enum": ["overview", "governance", "gating", "routing"]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
         },
         "summarySectionIds": {
           "type": "array",
@@ -855,7 +860,7 @@
     },
     "SchemaActionFailureCode": {
       "type": "object",
-      "required": ["code", "priority", "category", "recommendedHandling"],
+      "required": ["code", "priority", "category", "recommendedHandling", "appliesWhen", "triggerFields"],
       "properties": {
         "code": { "type": "string" },
         "priority": { "type": "integer", "minimum": 1 },
@@ -882,13 +887,18 @@
             "resolve-reference-support",
             "migrate-inline-secret"
           ]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "additionalProperties": false
     },
     "SchemaReferenceGovernanceCode": {
       "type": "object",
-      "required": ["code", "priority", "category", "recommendedHandling"],
+      "required": ["code", "priority", "category", "recommendedHandling", "appliesWhen", "triggerFields"],
       "properties": {
         "code": {
           "type": "string",
@@ -923,6 +933,11 @@
             "migrate-inline-secret",
             "fix-reference-input"
           ]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "additionalProperties": false

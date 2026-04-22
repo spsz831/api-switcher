@@ -379,6 +379,8 @@ export interface SchemaConsumerProfileAction {
   title: string
   priority: number
   use: SchemaConsumerProfileFollowUpHint['use']
+  appliesWhen: string
+  triggerFields: string[]
   summarySectionIds: SchemaSummarySection['id'][]
   triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
   nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
@@ -391,6 +393,8 @@ export interface SchemaActionFailureCode {
   priority: number
   category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
   recommendedHandling: SchemaRecommendedActionCode
+  appliesWhen: string
+  triggerFields: string[]
 }
 
 export interface SchemaReferenceGovernanceCode {
@@ -398,6 +402,8 @@ export interface SchemaReferenceGovernanceCode {
   priority: number
   category: 'reference' | 'inline-secret' | 'input'
   recommendedHandling: SchemaRecommendedActionCode
+  appliesWhen: string
+  triggerFields: string[]
 }
 
 export type SchemaRecommendedActionCode =

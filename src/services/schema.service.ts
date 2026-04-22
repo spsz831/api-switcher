@@ -88,6 +88,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Inspect overview',
         priority: 1,
         use: 'overview',
+        appliesWhen: '当只读结果需要先做平台级总览，并确认哪些条目值得继续展开时优先使用。',
+        triggerFields: ['summary.platformStats', 'summary.triageStats'],
         summarySectionIds: ['platform'],
         triageBucketIds: ['overview'],
         nextStep: 'inspect-items',
@@ -99,6 +101,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Review reference governance',
         priority: 2,
         use: 'governance',
+        appliesWhen: '当 summary 暴露出 reference、inline secret 或 unsupported-scheme 治理信号时优先使用。',
+        triggerFields: ['summary.referenceStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
         summarySectionIds: ['reference'],
         triageBucketIds: ['reference-governance'],
         nextStep: 'review-reference-details',
@@ -110,6 +114,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Assess write readiness',
         priority: 3,
         use: 'gating',
+        appliesWhen: '当只读分析需要决定是否继续进入 use 或 import apply 等写入链路时优先使用。',
+        triggerFields: ['summary.executabilityStats', 'summary.triageStats'],
         summarySectionIds: ['executability'],
         triageBucketIds: ['write-readiness'],
         nextStep: 'continue-to-write',
@@ -200,6 +206,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Repair source blockers',
         priority: 1,
         use: 'gating',
+        appliesWhen: '当导入源本身已经阻断 apply，必须先修复 source 才能继续时优先使用。',
+        triggerFields: ['summary.sourceExecutability', 'summary.triageStats', 'sourceCompatibility'],
         summarySectionIds: ['source-executability'],
         triageBucketIds: ['source-blocked'],
         nextStep: 'repair-source-input',
@@ -211,6 +219,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Assess import readiness',
         priority: 2,
         use: 'gating',
+        appliesWhen: '当 import preview 已经通过 source 检查，但仍需判断目标侧是否能进入 import apply 时优先使用。',
+        triggerFields: ['summary.executabilityStats', 'summary.triageStats', 'items.previewDecision', 'items.fidelity'],
         summarySectionIds: ['executability'],
         triageBucketIds: ['write-readiness'],
         nextStep: 'continue-to-write',
@@ -222,6 +232,8 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         title: 'Route by platform',
         priority: 3,
         use: 'routing',
+        appliesWhen: '当 mixed-batch 需要按平台拆分处理，而不是继续作为整批统一决策时优先使用。',
+        triggerFields: ['summary.platformStats', 'summary.triageStats', 'platformSummary'],
         summarySectionIds: ['platform'],
         triageBucketIds: ['platform-routing'],
         nextStep: 'group-by-platform',
@@ -233,10 +245,38 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
 ]
 
 const REFERENCE_GOVERNANCE_CODE_CATALOG: SchemaReferenceGovernanceCode[] = [
-  { code: 'REFERENCE_INPUT_CONFLICT', priority: 1, category: 'input', recommendedHandling: 'fix-reference-input' },
-  { code: 'REFERENCE_MISSING', priority: 2, category: 'reference', recommendedHandling: 'fix-reference-input' },
-  { code: 'REFERENCE_WRITE_UNSUPPORTED', priority: 3, category: 'reference', recommendedHandling: 'resolve-reference-support' },
-  { code: 'INLINE_SECRET_PRESENT', priority: 4, category: 'inline-secret', recommendedHandling: 'migrate-inline-secret' },
+  {
+    code: 'REFERENCE_INPUT_CONFLICT',
+    priority: 1,
+    category: 'input',
+    recommendedHandling: 'fix-reference-input',
+    appliesWhen: '当 reference 输入彼此冲突，必须先统一输入来源时优先使用。',
+    triggerFields: ['error.details.referenceGovernance.primaryReason', 'error.details.referenceGovernance.reasonCodes', 'error.details.referenceGovernance.referenceDetails'],
+  },
+  {
+    code: 'REFERENCE_MISSING',
+    priority: 2,
+    category: 'reference',
+    recommendedHandling: 'fix-reference-input',
+    appliesWhen: '当 reference 缺少必需值，必须先补齐缺失引用或环境来源时优先使用。',
+    triggerFields: ['error.details.referenceGovernance.primaryReason', 'error.details.referenceGovernance.reasonCodes', 'error.details.referenceGovernance.referenceDetails'],
+  },
+  {
+    code: 'REFERENCE_WRITE_UNSUPPORTED',
+    priority: 3,
+    category: 'reference',
+    recommendedHandling: 'resolve-reference-support',
+    appliesWhen: '当平台已识别 reference，但当前写入目标不支持该形态时优先使用。',
+    triggerFields: ['error.details.referenceGovernance.primaryReason', 'error.details.referenceGovernance.reasonCodes', 'error.details.referenceGovernance.referenceDetails'],
+  },
+  {
+    code: 'INLINE_SECRET_PRESENT',
+    priority: 4,
+    category: 'inline-secret',
+    recommendedHandling: 'migrate-inline-secret',
+    appliesWhen: '当写入链路检测到 inline secret，必须先迁移到受支持治理形态时优先使用。',
+    triggerFields: ['error.details.referenceGovernance.primaryReason', 'error.details.referenceGovernance.reasonCodes', 'error.details.referenceGovernance.referenceDetails'],
+  },
 ]
 
 const SCHEMA_RECOMMENDED_ACTIONS: SchemaRecommendedAction[] = [
@@ -349,7 +389,7 @@ function getPrimaryErrorFields(action: typeof COMMAND_ACTIONS[number]): string[]
 function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFailureCode[] {
   switch (action) {
     case 'add':
-      return [
+      return withFailureGuidance([
         { code: 'ADD_INPUT_REQUIRED', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ADD_INPUT_CONFLICT', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'UNSUPPORTED_PLATFORM', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
@@ -357,27 +397,27 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'DUPLICATE_PROFILE_ID', priority: 5, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 6, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'ADD_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'current':
-      return [
+      return withFailureGuidance([
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'CURRENT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'export':
-      return [
+      return withFailureGuidance([
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'EXPORT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'import':
-      return [
+      return withFailureGuidance([
         { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_SOURCE_INVALID', priority: 2, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 4, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'IMPORT_PREVIEW_FAILED', priority: 5, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'import-apply':
-      return [
+      return withFailureGuidance([
         { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_SOURCE_INVALID', priority: 2, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
@@ -391,33 +431,33 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'IMPORT_PLATFORM_NOT_SUPPORTED', priority: 11, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 12, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'IMPORT_APPLY_FAILED', priority: 13, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'list':
-      return [
+      return withFailureGuidance([
         { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'LIST_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'preview':
-      return [
+      return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 3, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'PREVIEW_FAILED', priority: 4, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'rollback':
-      return [
+      return withFailureGuidance([
         { code: 'BACKUP_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'INVALID_BACKUP_ID', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'INVALID_SCOPE', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ROLLBACK_SCOPE_MISMATCH', priority: 4, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'ROLLBACK_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'schema':
       return []
     case 'use':
-      return [
+      return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'VALIDATION_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
@@ -425,16 +465,63 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'APPLY_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
         { code: 'USE_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     case 'validate':
-      return [
+      return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'VALIDATE_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ]
+      ])
     default:
       return []
   }
+}
+
+function describeFailureCategory(category: SchemaActionFailureCode['category']): Pick<SchemaActionFailureCode, 'appliesWhen' | 'triggerFields'> {
+  switch (category) {
+    case 'input':
+      return {
+        appliesWhen: '当错误来自输入参数或命令参数不合法时优先使用。',
+        triggerFields: ['error.code'],
+      }
+    case 'state':
+      return {
+        appliesWhen: '当错误表明当前目标资源、快照或状态前提不存在时优先使用。',
+        triggerFields: ['error.code'],
+      }
+    case 'scope':
+      return {
+        appliesWhen: '当错误表明 scope 解析、可用性或匹配条件未满足时优先使用。',
+        triggerFields: ['error.code', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
+      }
+    case 'confirmation':
+      return {
+        appliesWhen: '当错误仅因缺少显式确认而阻止写入时优先使用。',
+        triggerFields: ['error.code', 'error.details.risk', 'error.details.previewDecision'],
+      }
+    case 'platform':
+      return {
+        appliesWhen: '当错误表明当前平台或适配器不可用时优先使用。',
+        triggerFields: ['error.code'],
+      }
+    case 'runtime':
+      return {
+        appliesWhen: '当错误来自运行时执行、底层异常或 validation 失败时优先使用。',
+        triggerFields: ['error.code'],
+      }
+    case 'source':
+      return {
+        appliesWhen: '当错误来自导入源文件、schema 或 profile 选择问题时优先使用。',
+        triggerFields: ['error.code', 'error.details.sourceFile'],
+      }
+  }
+}
+
+function withFailureGuidance(codes: Array<Omit<SchemaActionFailureCode, 'appliesWhen' | 'triggerFields'>>): SchemaActionFailureCode[] {
+  return codes.map((entry) => ({
+    ...entry,
+    ...describeFailureCategory(entry.category),
+  }))
 }
 
 function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionFieldPresence[] {

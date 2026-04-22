@@ -514,6 +514,8 @@ type SchemaCommandOutput = {
 - `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
 - `consumerActions`：把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，回答“现在最适合执行什么消费动作、应读哪些 section/字段、下一步走什么短码”。
+- `consumerActions[].appliesWhen / triggerFields`：补一层动作 discoverability，回答“什么情况下优先选这个动作”和“先看哪些稳定字段”。
+- `failureCodes[].appliesWhen / triggerFields`、`referenceGovernanceCodes[].appliesWhen / triggerFields`：补一层失败恢复 discoverability，回答“什么情况下优先按这个失败码处理”和“先看哪些稳定错误字段”。
 - `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
 对只读命令本身，运行时 `summary.triageStats` 会把这些分流桶实例化成当前批次的真实计数；`consumerProfiles[].triageBuckets[]` 则是 schema catalog 里的稳定目录层，回答“有哪些桶、每个桶建议读哪些字段、下一步通常走什么动作”。
@@ -554,6 +556,8 @@ const readOrder = {
 ```ts
 const actionCards = (profile?.consumerActions ?? []).map((action) => ({
   id: action.id,
+  appliesWhen: action.appliesWhen,
+  triggerFields: action.triggerFields,
   summarySections: action.summarySectionIds,
   triageBuckets: action.triageBucketIds ?? [],
   nextStep: action.nextStep,
