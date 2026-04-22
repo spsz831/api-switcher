@@ -582,7 +582,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。现在这层索引额外提供 `summarySections`，专门回答“summary 内部有哪些稳定 section，应按什么顺序消费”；同时，`data.commandCatalog.consumerProfiles[]` 又补了一层更高阶的共享消费画像，避免外部调用方继续按 action 名字硬编码共同模式。当前已公开三条共享画像：`readonly-state-audit` 负责 `current / list / validate / export` 这类只读状态审计面，`readonly-import-batch` 负责 `import / import preview` 这类只读批量导入分析面，`single-platform-write` 负责 `add / preview / use / rollback / import-apply` 这类单平台写入命令。现在每条画像还会额外公开 `sharedItemFields` 和 `optionalItemFields`，以及 `sharedFailureFields / optionalFailureFields`，分别回答“item 级先读什么 / 可能补什么”和“失败时先读什么 / 可能补什么”；只读画像还会额外公开 `summarySectionGuidance`，直接回答“同一套 summary section 更适合 overview、governance、gating 还是 routing”；`followUpHints` 则继续回答“summary 看完之后下一步该展开哪些 detail 字段，或者该走哪种处理动作”；`triageBuckets` 则把 summary 和 item explainable 再聚成稳定分流桶，便于直接做 dashboard、告警和后续流程；运行时结果里的 `summary.triageStats` 则会把这些分流桶真正实例化成当前批次的计数结果；现在只读画像还会额外公开 `consumerActions`，把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，减少外部调用方自己拼接下一步动作的成本；`consumerActions[]` 现在还会补一层 `appliesWhen` 和 `triggerFields`，直接回答“什么情况下优先选这个动作”和“先看哪些稳定字段”；同时，`commandCatalog.recommendedActions[]` 也公开了一套跨只读引导和失败恢复共用的稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 可以对齐到同一套短码目录；`failureCodes[]` 与 `referenceGovernanceCodes[]` 也同样补了 `appliesWhen` 和 `triggerFields`，让失败恢复动作不必只靠 `code` 猜测；`exampleActions` 与 `bestEntryAction` 则直接告诉接入方这一类命令应该先参考哪个 action。建议分工固定为：`primaryFields` 回答“先读哪些字段”，`readOrderGroups` 回答“先读哪一层再读哪一层”，`summarySections` 回答“summary 这一层内部再先读哪一段”，`consumerProfiles` 回答“这一整类 action 共享什么消费形状”。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。现在这层索引额外提供 `summarySections`，专门回答“summary 内部有哪些稳定 section，应按什么顺序消费”；同时，`data.commandCatalog.consumerProfiles[]` 又补了一层更高阶的共享消费画像，避免外部调用方继续按 action 名字硬编码共同模式。当前已公开三条共享画像：`readonly-state-audit` 负责 `current / list / validate / export` 这类只读状态审计面，`readonly-import-batch` 负责 `import / import preview` 这类只读批量导入分析面，`single-platform-write` 负责 `add / preview / use / rollback / import-apply` 这类单平台写入命令。现在每条画像还会额外公开 `sharedItemFields` 和 `optionalItemFields`，以及 `sharedFailureFields / optionalFailureFields`，分别回答“item 级先读什么 / 可能补什么”和“失败时先读什么 / 可能补什么”；只读画像还会额外公开 `summarySectionGuidance`，直接回答“同一套 summary section 更适合 overview、governance、gating 还是 routing”；`followUpHints` 则继续回答“summary 看完之后下一步该展开哪些 detail 字段，或者该走哪种处理动作”；`triageBuckets` 则把 summary 和 item explainable 再聚成稳定分流桶，便于直接做 dashboard、告警和后续流程；运行时结果里的 `summary.triageStats` 则会把这些分流桶真正实例化成当前批次的计数结果；现在只读画像还会额外公开 `consumerActions`，把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，减少外部调用方自己拼接下一步动作的成本；`consumerActions[]` 现在还会补一层 `appliesWhen` 和 `triggerFields`，直接回答“什么情况下优先选这个动作”和“先看哪些稳定字段”；`consumerFlow[]` 则再往前走一步，把“命中哪段 summary / 哪个 triage bucket”稳定映射到“该读哪些字段、该选哪个动作卡片、下一步短码是什么”；同时，`commandCatalog.recommendedActions[]` 也公开了一套跨只读引导和失败恢复共用的稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 可以对齐到同一套短码目录；`failureCodes[]` 与 `referenceGovernanceCodes[]` 也同样补了 `appliesWhen` 和 `triggerFields`，让失败恢复动作不必只靠 `code` 猜测；`exampleActions` 与 `bestEntryAction` 则直接告诉接入方这一类命令应该先参考哪个 action。建议分工固定为：`primaryFields` 回答“先读哪些字段”，`readOrderGroups` 回答“先读哪一层再读哪一层”，`summarySections` 回答“summary 这一层内部再先读哪一段”，`consumerProfiles` 回答“这一整类 action 共享什么消费形状”。
 
 如果你的接入层不想先按 action 名字分支，最小消费顺序可以固定为：先从 `data.commandCatalog.consumerProfiles[]` 里选中目标画像，再读取 `bestEntryAction` 找一条最适合对齐样例的代表命令，然后按 `sharedSummaryFields -> sharedItemFields -> sharedFailureFields` 建立默认读取骨架，最后再按 `optional*Fields` 做增强展示或条件绑定。对只读画像，还可以直接读取 `summarySectionGuidance[]` 判断哪一段 summary 更适合 overview、governance、gating 或 routing，再读取 `followUpHints[]` 判断 summary 看完后下一步该展开哪些字段；如果要做更自动化的分流，还可以直接读取 `triageBuckets[]`；如果想直接拿“动作级”入口而不自己拼接这些 guidance，则直接消费 `consumerActions[]`。比如要接 `import` / `import preview`，可以直接锁定 `readonly-import-batch`，先参考 `bestEntryAction` 指向的样例命令，再把 summary、item、failure 三层公共字段做成同一套读取器，而不是分别为两个 action 写两套解析逻辑。
 
@@ -605,6 +605,7 @@ const summaryGuidance = profile?.summarySectionGuidance ?? []
 const followUps = profile?.followUpHints ?? []
 const triageBuckets = profile?.triageBuckets ?? []
 const consumerActions = profile?.consumerActions ?? []
+const consumerFlow = profile?.consumerFlow ?? []
 const recommendedActions = schema.data.commandCatalog.recommendedActions ?? []
 ```
 
@@ -619,6 +620,19 @@ const nextActions = (profile?.consumerActions ?? []).map((action) => ({
   triageBuckets: action.triageBucketIds ?? [],
   nextStep: action.nextStep,
   primaryFields: action.primaryFields,
+}))
+```
+
+如果你想让接入层按“先读什么，再做什么”直接推进，而不是自己把 `summarySections / triageBuckets / consumerActions` 做三次 join，可以直接消费 `consumerFlow[]`：
+
+```ts
+const consumerFlow = (profile?.consumerFlow ?? []).map((step) => ({
+  id: step.id,
+  summarySections: step.summarySectionIds,
+  triageBuckets: step.triageBucketIds ?? [],
+  readFields: step.readFields,
+  consumerActionId: step.consumerActionId,
+  nextStep: step.nextStep,
 }))
 ```
 

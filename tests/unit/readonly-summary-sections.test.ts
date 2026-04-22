@@ -201,6 +201,41 @@ describe('readonly summary sections', () => {
         purpose: '当只读结果需要决定是否继续进入写入链路时，优先查看 executability 与 item 级 reference 证据。',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-state-audit')?.consumerFlow).toEqual([
+      {
+        id: 'overview-to-items',
+        title: 'Overview to items',
+        priority: 1,
+        summarySectionIds: ['platform'],
+        triageBucketIds: ['overview'],
+        readFields: ['summary.platformStats', 'summary.triageStats', 'detections', 'platformSummary'],
+        consumerActionId: 'inspect-overview',
+        nextStep: 'inspect-items',
+        purpose: '先通过平台级 overview 锁定值得展开的项，再进入 item 明细。',
+      },
+      {
+        id: 'reference-to-governance',
+        title: 'Reference to governance',
+        priority: 2,
+        summarySectionIds: ['reference'],
+        triageBucketIds: ['reference-governance'],
+        readFields: ['summary.referenceStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
+        consumerActionId: 'review-reference-governance',
+        nextStep: 'review-reference-details',
+        purpose: '当 summary 已暴露 secret/reference 治理信号时，把读取顺序直接映射到 governance 动作卡片。',
+      },
+      {
+        id: 'executability-to-write',
+        title: 'Executability to write',
+        priority: 3,
+        summarySectionIds: ['executability'],
+        triageBucketIds: ['write-readiness'],
+        readFields: ['summary.executabilityStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
+        consumerActionId: 'assess-write-readiness',
+        nextStep: 'continue-to-write',
+        purpose: '当只读结果已经进入 readiness 判断阶段时，先读 executability 再决定是否继续写入。',
+      },
+    ])
     expect(profiles.find((item) => item.id === 'readonly-import-batch')?.consumerActions).toEqual([
       {
         id: 'repair-source-blockers',
@@ -242,10 +277,46 @@ describe('readonly summary sections', () => {
         purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合和 item 级 platform explainable 分组。',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-import-batch')?.consumerFlow).toEqual([
+      {
+        id: 'source-to-repair',
+        title: 'Source to repair',
+        priority: 1,
+        summarySectionIds: ['source-executability'],
+        triageBucketIds: ['source-blocked'],
+        readFields: ['summary.sourceExecutability', 'summary.triageStats', 'sourceCompatibility', 'items.previewDecision'],
+        consumerActionId: 'repair-source-blockers',
+        nextStep: 'repair-source-input',
+        purpose: '当导入源已阻断 apply 时，先把 source gating 信号映射到修复动作。',
+      },
+      {
+        id: 'executability-to-apply',
+        title: 'Executability to apply',
+        priority: 2,
+        summarySectionIds: ['executability'],
+        triageBucketIds: ['write-readiness'],
+        readFields: ['summary.executabilityStats', 'summary.triageStats', 'items.previewDecision', 'items.fidelity'],
+        consumerActionId: 'assess-import-readiness',
+        nextStep: 'continue-to-write',
+        purpose: '当 source 已通过检查后，把目标侧写入 readiness 信号映射到 apply 决策动作。',
+      },
+      {
+        id: 'platform-to-routing',
+        title: 'Platform to routing',
+        priority: 3,
+        summarySectionIds: ['platform'],
+        triageBucketIds: ['platform-routing'],
+        readFields: ['summary.platformStats', 'summary.triageStats', 'platformSummary'],
+        consumerActionId: 'route-by-platform',
+        nextStep: 'group-by-platform',
+        purpose: '当 mixed-batch 需要拆平台处理时，把平台级 summary 直接映射到 routing 动作。',
+      },
+    ])
     expect(profiles.find((item) => item.id === 'single-platform-write')?.summarySectionGuidance).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.followUpHints).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.triageBuckets).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerActions).toBeUndefined()
+    expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerFlow).toBeUndefined()
   })
 
   it('public schema 为 commandCatalog.summarySections 提供稳定定义', () => {
@@ -292,6 +363,10 @@ describe('readonly summary sections', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
     })
+    expect(consumerProfile?.properties?.consumerFlow).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileFlowStep' },
+    })
     expect(consumerProfileFollowUpHint?.required).toEqual(expect.arrayContaining([
       'use',
       'nextStep',
@@ -315,6 +390,16 @@ describe('readonly summary sections', () => {
       'summarySectionIds',
       'nextStep',
       'primaryFields',
+      'purpose',
+    ]))
+    expect(schema.$defs?.SchemaConsumerProfileFlowStep?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'summarySectionIds',
+      'readFields',
+      'consumerActionId',
+      'nextStep',
       'purpose',
     ]))
   })

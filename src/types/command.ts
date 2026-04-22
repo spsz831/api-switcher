@@ -306,6 +306,7 @@ export interface SchemaConsumerProfile {
   followUpHints?: SchemaConsumerProfileFollowUpHint[]
   triageBuckets?: SchemaConsumerProfileTriageBucket[]
   consumerActions?: SchemaConsumerProfileAction[]
+  consumerFlow?: SchemaConsumerProfileFlowStep[]
 }
 
 export interface SchemaActionCapability {
@@ -385,6 +386,18 @@ export interface SchemaConsumerProfileAction {
   triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
   nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
   primaryFields: string[]
+  purpose: string
+}
+
+export interface SchemaConsumerProfileFlowStep {
+  id: string
+  title: string
+  priority: number
+  summarySectionIds: SchemaSummarySection['id'][]
+  triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
+  readFields: string[]
+  consumerActionId: SchemaConsumerProfileAction['id']
+  nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
   purpose: string
 }
 

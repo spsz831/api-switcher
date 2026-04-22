@@ -820,6 +820,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.consumerFlow).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileFlowStep' },
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.required).toEqual(expect.arrayContaining([
       'id',
       'title',
@@ -896,6 +900,41 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.triggerFields).toEqual({
       type: 'array',
       items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'summarySectionIds',
+      'readFields',
+      'consumerActionId',
+      'nextStep',
+      'purpose',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.summarySectionIds).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['platform', 'reference', 'executability', 'source-executability'],
+      },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.triageBucketIds).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['overview', 'reference-governance', 'write-readiness', 'source-blocked', 'platform-routing'],
+      },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.readFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.consumerActionId).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.nextStep).toEqual({
+      type: 'string',
+      enum: ['inspect-items', 'review-reference-details', 'repair-source-input', 'group-by-platform', 'continue-to-write'],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',

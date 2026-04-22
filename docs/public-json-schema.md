@@ -397,10 +397,23 @@ type SchemaCommandOutput = {
         title: string
         priority: number
         use: 'overview' | 'governance' | 'gating' | 'routing'
+        appliesWhen: string
+        triggerFields: string[]
         summarySectionIds: Array<'platform' | 'reference' | 'executability' | 'source-executability'>
         triageBucketIds?: Array<'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'>
         nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
         primaryFields: string[]
+        purpose: string
+      }>
+      consumerFlow?: Array<{
+        id: string
+        title: string
+        priority: number
+        summarySectionIds: Array<'platform' | 'reference' | 'executability' | 'source-executability'>
+        triageBucketIds?: Array<'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'>
+        readFields: string[]
+        consumerActionId: string
+        nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
         purpose: string
       }>
     }>
@@ -515,6 +528,7 @@ type SchemaCommandOutput = {
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
 - `consumerActions`：把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，回答“现在最适合执行什么消费动作、应读哪些 section/字段、下一步走什么短码”。
 - `consumerActions[].appliesWhen / triggerFields`：补一层动作 discoverability，回答“什么情况下优先选这个动作”和“先看哪些稳定字段”。
+- `consumerFlow`：把“命中哪段 summary / 哪个 triage bucket”稳定映射到“该读哪些字段、该选哪个动作卡片、下一步短码是什么”。
 - `failureCodes[].appliesWhen / triggerFields`、`referenceGovernanceCodes[].appliesWhen / triggerFields`：补一层失败恢复 discoverability，回答“什么情况下优先按这个失败码处理”和“先看哪些稳定错误字段”。
 - `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
@@ -547,6 +561,7 @@ const readOrder = {
   followUps: profile?.followUpHints ?? [],
   triageBuckets: profile?.triageBuckets ?? [],
   consumerActions: profile?.consumerActions ?? [],
+  consumerFlow: profile?.consumerFlow ?? [],
   recommendedActions: schema.data.commandCatalog.recommendedActions ?? [],
 }
 ```
@@ -562,6 +577,19 @@ const actionCards = (profile?.consumerActions ?? []).map((action) => ({
   triageBuckets: action.triageBucketIds ?? [],
   nextStep: action.nextStep,
   primaryFields: action.primaryFields,
+}))
+```
+
+如果外部调用方希望直接拿到“该先看什么，再走什么动作”的稳定映射，而不是自己把 section、bucket 和 action 目录再 join 一遍，可以直接消费 `consumerFlow[]`：
+
+```ts
+const flowCards = (profile?.consumerFlow ?? []).map((step) => ({
+  id: step.id,
+  summarySections: step.summarySectionIds,
+  triageBuckets: step.triageBucketIds ?? [],
+  readFields: step.readFields,
+  consumerActionId: step.consumerActionId,
+  nextStep: step.nextStep,
 }))
 ```
 
