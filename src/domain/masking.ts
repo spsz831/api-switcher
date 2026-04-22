@@ -124,6 +124,16 @@ export function collectIssueMessages(issues: ValidationIssue[] | undefined): str
   return (issues ?? []).map((item) => item.message)
 }
 
+export function mergeUniqueMessages(...groups: Array<Array<string | undefined> | undefined>): string[] {
+  return Array.from(new Set(
+    groups.flatMap((group) => (group ?? []).filter((item): item is string => typeof item === 'string' && item.length > 0)),
+  ))
+}
+
+export function collectUniqueIssueMessages(issues: ValidationIssue[] | undefined): string[] {
+  return mergeUniqueMessages(collectIssueMessages(issues))
+}
+
 export function collectManagedBoundaryNotes(boundaries: ManagedBoundary[] | undefined): string[] {
   return (boundaries ?? []).flatMap((item) => item.notes ?? [])
 }

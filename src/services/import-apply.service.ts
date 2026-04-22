@@ -1,4 +1,4 @@
-import { collectIssueMessages } from '../domain/masking'
+import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
 import {
   buildReferenceGovernanceFailureDetails,
 } from '../domain/secret-inspection'
@@ -51,10 +51,6 @@ function findScopeAvailability(
   return scopeAvailability?.find((item) => item.scope === scope)
 }
 
-function mergeWarnings(...groups: Array<string[] | undefined>): string[] {
-  return Array.from(new Set(groups.flatMap((group) => group ?? [])))
-}
-
 function buildSummary(
   sourceWarnings: string[],
   validation: ValidationResult,
@@ -63,19 +59,19 @@ function buildSummary(
   snapshotWarnings: string[],
   snapshotLimitations: string[],
 ) {
-  const warnings = Array.from(new Set([
-    ...sourceWarnings,
-    ...collectIssueMessages(validation.warnings),
-    ...collectIssueMessages(preview.warnings),
-    ...collectIssueMessages(applyResult.warnings),
-    ...snapshotWarnings,
-  ]))
-  const limitations = Array.from(new Set([
-    ...collectIssueMessages(validation.limitations),
-    ...collectIssueMessages(preview.limitations),
-    ...collectIssueMessages(applyResult.limitations),
-    ...snapshotLimitations,
-  ]))
+  const warnings = mergeUniqueMessages(
+    sourceWarnings,
+    collectIssueMessages(validation.warnings),
+    collectIssueMessages(preview.warnings),
+    collectIssueMessages(applyResult.warnings),
+    snapshotWarnings,
+  )
+  const limitations = mergeUniqueMessages(
+    collectIssueMessages(validation.limitations),
+    collectIssueMessages(preview.limitations),
+    collectIssueMessages(applyResult.limitations),
+    snapshotLimitations,
+  )
 
   return {
     platformStats: buildSinglePlatformStats({
@@ -94,10 +90,10 @@ function buildSummary(
 }
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
-  return Array.from(new Set([
-    ...collectIssueMessages(validation.warnings),
-    ...(validation.effectiveConfig?.overrides.map((override) => override.message) ?? []),
-  ]))
+  return mergeUniqueMessages(
+    collectIssueMessages(validation.warnings),
+    validation.effectiveConfig?.overrides.map((override) => override.message),
+  )
 }
 
 function supportsImportApply(platform: ImportedProfileSource['profile']['platform']): boolean {
@@ -243,8 +239,8 @@ export class ImportApplyService {
         return {
           ok: false,
           action: 'import-apply',
-          warnings: mergeWarnings(sourceWarnings, collectValidationWarnings(validation)),
-          limitations: collectIssueMessages(validation.limitations),
+          warnings: mergeUniqueMessages(sourceWarnings, collectValidationWarnings(validation)),
+          limitations: collectUniqueIssueMessages(validation.limitations),
           error: {
             code: 'VALIDATION_FAILED',
             message: '配置校验失败',
@@ -273,14 +269,14 @@ export class ImportApplyService {
           risk: {
             allowed: false,
             riskLevel: decision.riskLevel,
-            reasons: Array.from(new Set([
-              ...decision.reasons,
-              ...localConfirmationReasons,
-            ])),
-            limitations: Array.from(new Set([
-              ...decision.limitations,
-              ...localConfirmationLimitations,
-            ])),
+            reasons: mergeUniqueMessages(
+              decision.reasons,
+              localConfirmationReasons,
+            ),
+            limitations: mergeUniqueMessages(
+              decision.limitations,
+              localConfirmationLimitations,
+            ),
           },
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
             requestedScope: options.scope,
@@ -294,7 +290,7 @@ export class ImportApplyService {
         return {
           ok: false,
           action: 'import-apply',
-          warnings: mergeWarnings(sourceWarnings, details.risk.reasons),
+          warnings: mergeUniqueMessages(sourceWarnings, details.risk.reasons),
           limitations: details.risk.limitations,
           error: {
             code: 'CONFIRMATION_REQUIRED',
@@ -323,8 +319,8 @@ export class ImportApplyService {
         return {
           ok: false,
           action: 'import-apply',
-          warnings: mergeWarnings(sourceWarnings, collectIssueMessages(applyResult.warnings)),
-          limitations: collectIssueMessages(applyResult.limitations),
+          warnings: mergeUniqueMessages(sourceWarnings, collectIssueMessages(applyResult.warnings)),
+          limitations: collectUniqueIssueMessages(applyResult.limitations),
           error: {
             code: 'IMPORT_APPLY_FAILED',
             message: '导入配置写入失败',

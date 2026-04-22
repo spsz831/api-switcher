@@ -1,4 +1,4 @@
-import { collectIssueMessages } from '../domain/masking'
+import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { SnapshotStore } from '../stores/snapshot.store'
 import { StateStore } from '../stores/state.store'
@@ -109,8 +109,8 @@ export class RollbackService {
         return {
           ok: false,
           action: 'rollback',
-          warnings: collectIssueMessages(result.warnings),
-          limitations: collectIssueMessages(result.limitations),
+          warnings: collectUniqueIssueMessages(result.warnings),
+          limitations: collectUniqueIssueMessages(result.limitations),
           error: {
             code: isScopeMismatch ? 'ROLLBACK_SCOPE_MISMATCH' : 'ROLLBACK_FAILED',
             message: isScopeMismatch ? collectIssueMessages(result.warnings)[0] ?? '回滚 scope 不匹配。' : '回滚失败',
@@ -119,14 +119,14 @@ export class RollbackService {
         }
       }
 
-      const warnings = Array.from(new Set([
-        ...(snapshot.manifest.warnings ?? []),
-        ...collectIssueMessages(result.warnings),
-      ]))
-      const limitations = Array.from(new Set([
-        ...(snapshot.manifest.limitations ?? []),
-        ...collectIssueMessages(result.limitations),
-      ]))
+      const warnings = mergeUniqueMessages(
+        snapshot.manifest.warnings,
+        collectIssueMessages(result.warnings),
+      )
+      const limitations = mergeUniqueMessages(
+        snapshot.manifest.limitations,
+        collectIssueMessages(result.limitations),
+      )
       const summaryProfileId = snapshot.manifest.previousProfileId ?? snapshot.manifest.profileId
       const summaryProfile = summaryProfileId
         ? await this.profileService.resolve(summaryProfileId).catch((error: unknown) => {

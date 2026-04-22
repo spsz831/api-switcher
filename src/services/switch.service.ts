@@ -1,4 +1,4 @@
-import { collectIssueMessages } from '../domain/masking'
+import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
 import {
   buildReferenceGovernanceFailureDetails,
 } from '../domain/secret-inspection'
@@ -15,10 +15,10 @@ import { buildSingleProfileCommandSummary } from './single-profile-command-summa
 import { SnapshotService } from './snapshot.service'
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
-  return Array.from(new Set([
-    ...collectIssueMessages(validation.warnings),
-    ...(validation.effectiveConfig?.overrides.map((override) => override.message) ?? []),
-  ]))
+  return mergeUniqueMessages(
+    collectIssueMessages(validation.warnings),
+    validation.effectiveConfig?.overrides.map((override) => override.message),
+  )
 }
 
 function findScopeAvailability(scopeAvailability: ScopeAvailability[] | undefined, scope: string | undefined): ScopeAvailability | undefined {
@@ -83,7 +83,7 @@ export class SwitchService {
           ok: false,
           action: 'use',
           warnings: collectValidationWarnings(validation),
-          limitations: collectIssueMessages(validation.limitations),
+          limitations: collectUniqueIssueMessages(validation.limitations),
           error: {
             code: 'VALIDATION_FAILED',
             message: '配置校验失败',
@@ -203,8 +203,8 @@ export class SwitchService {
         return {
           ok: false,
           action: 'use',
-          warnings: collectIssueMessages(applyResult.warnings),
-          limitations: collectIssueMessages(applyResult.limitations),
+          warnings: collectUniqueIssueMessages(applyResult.warnings),
+          limitations: collectUniqueIssueMessages(applyResult.limitations),
           error: {
             code: 'APPLY_FAILED',
             message: '配置写入失败',
@@ -213,16 +213,16 @@ export class SwitchService {
         }
       }
 
-      const warnings = Array.from(new Set([
-        ...risk.reasons,
-        ...collectIssueMessages(applyResult.warnings),
-        ...backup.warnings,
-      ]))
-      const limitations = Array.from(new Set([
-        ...risk.limitations,
-        ...collectIssueMessages(applyResult.limitations),
-        ...backup.limitations,
-      ]))
+      const warnings = mergeUniqueMessages(
+        risk.reasons,
+        collectIssueMessages(applyResult.warnings),
+        backup.warnings,
+      )
+      const limitations = mergeUniqueMessages(
+        risk.limitations,
+        collectIssueMessages(applyResult.limitations),
+        backup.limitations,
+      )
 
       await this.stateStore.markCurrent(profile.platform, profile.id, backup.backupId, 'success', {
         warnings,
