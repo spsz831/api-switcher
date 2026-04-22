@@ -108,8 +108,61 @@ describe('readonly summary sections', () => {
         purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合与 item 级 platform explainable 分组。',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-state-audit')?.triageBuckets).toEqual([
+      {
+        id: 'overview',
+        title: 'Overview bucket',
+        summaryFields: ['summary.platformStats'],
+        itemFields: ['platformSummary'],
+        purpose: '先做平台级总览，判断当前批次覆盖了哪些平台、每个平台大致状态如何。',
+        recommendedNextStep: 'inspect-items',
+      },
+      {
+        id: 'reference-governance',
+        title: 'Reference governance bucket',
+        summaryFields: ['summary.referenceStats'],
+        itemFields: ['detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '把 reference / inline / unsupported-scheme / missing-value 这类 secret 治理问题归到同一桶里处理。',
+        recommendedNextStep: 'review-reference-details',
+      },
+      {
+        id: 'write-readiness',
+        title: 'Write readiness bucket',
+        summaryFields: ['summary.executabilityStats'],
+        itemFields: ['detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '把是否还能继续进入 use/import apply 的信号归到同一桶里，先判断 readiness 再决定是否继续写入。',
+        recommendedNextStep: 'continue-to-write',
+      },
+    ])
+    expect(profiles.find((item) => item.id === 'readonly-import-batch')?.triageBuckets).toEqual([
+      {
+        id: 'source-blocked',
+        title: 'Source blocked bucket',
+        summaryFields: ['summary.sourceExecutability'],
+        itemFields: ['sourceCompatibility', 'items.previewDecision'],
+        purpose: '把导入源本身已经阻断 apply 的项单独成桶，例如 redacted inline secret 或 source schema 兼容性问题。',
+        recommendedNextStep: 'repair-source-input',
+      },
+      {
+        id: 'write-readiness',
+        title: 'Write readiness bucket',
+        summaryFields: ['summary.executabilityStats'],
+        itemFields: ['items.previewDecision', 'items.fidelity'],
+        purpose: '把目标侧仍可继续 apply 与需要本地修复的项归到同一桶里，便于做 gating。',
+        recommendedNextStep: 'continue-to-write',
+      },
+      {
+        id: 'platform-routing',
+        title: 'Platform routing bucket',
+        summaryFields: ['summary.platformStats'],
+        itemFields: ['platformSummary'],
+        purpose: '把 mixed-batch 结果按平台路由拆分，便于后续分别处理不同平台。',
+        recommendedNextStep: 'group-by-platform',
+      },
+    ])
     expect(profiles.find((item) => item.id === 'single-platform-write')?.summarySectionGuidance).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.followUpHints).toBeUndefined()
+    expect(profiles.find((item) => item.id === 'single-platform-write')?.triageBuckets).toBeUndefined()
   })
 
   it('public schema 为 commandCatalog.summarySections 提供稳定定义', () => {
@@ -119,6 +172,7 @@ describe('readonly summary sections', () => {
     const consumerProfile = schema.$defs?.SchemaConsumerProfile
     const consumerProfileSummarySectionGuidance = schema.$defs?.SchemaConsumerProfileSummarySectionGuidance
     const consumerProfileFollowUpHint = schema.$defs?.SchemaConsumerProfileFollowUpHint
+    const consumerProfileTriageBucket = schema.$defs?.SchemaConsumerProfileTriageBucket
 
     expect(capability?.properties?.summarySections).toEqual({
       type: 'array',
@@ -147,11 +201,22 @@ describe('readonly summary sections', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileFollowUpHint' },
     })
+    expect(consumerProfile?.properties?.triageBuckets).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileTriageBucket' },
+    })
     expect(consumerProfileFollowUpHint?.required).toEqual(expect.arrayContaining([
       'use',
       'nextStep',
       'primaryFields',
       'purpose',
+    ]))
+    expect(consumerProfileTriageBucket?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'summaryFields',
+      'purpose',
+      'recommendedNextStep',
     ]))
   })
 })

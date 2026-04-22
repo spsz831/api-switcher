@@ -655,6 +655,10 @@
         "followUpHints": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileFollowUpHint" }
+        },
+        "triageBuckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileTriageBucket" }
         }
       },
       "additionalProperties": false
@@ -701,6 +705,31 @@
           "items": { "type": "string" }
         },
         "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileTriageBucket": {
+      "type": "object",
+      "required": ["id", "title", "summaryFields", "purpose", "recommendedNextStep"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+        },
+        "title": { "type": "string" },
+        "summaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "itemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedNextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        }
       },
       "additionalProperties": false
     },

@@ -732,6 +732,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileFollowUpHint' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.triageBuckets).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileTriageBucket' },
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.required).toEqual(expect.arrayContaining([
       'id',
       'title',
@@ -756,6 +760,17 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileFollowUpHint?.properties?.nextStep).toEqual({
       type: 'string',
       enum: ['inspect-items', 'review-reference-details', 'repair-source-input', 'group-by-platform', 'continue-to-write'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileTriageBucket?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'summaryFields',
+      'purpose',
+      'recommendedNextStep',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileTriageBucket?.properties?.id).toEqual({
+      type: 'string',
+      enum: ['overview', 'reference-governance', 'write-readiness', 'source-blocked', 'platform-routing'],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',

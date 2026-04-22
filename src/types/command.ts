@@ -287,6 +287,7 @@ export interface SchemaConsumerProfile {
   recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
   summarySectionGuidance?: SchemaConsumerProfileSummarySectionGuidance[]
   followUpHints?: SchemaConsumerProfileFollowUpHint[]
+  triageBuckets?: SchemaConsumerProfileTriageBucket[]
 }
 
 export interface SchemaActionCapability {
@@ -343,6 +344,15 @@ export interface SchemaConsumerProfileFollowUpHint {
   nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
   primaryFields: string[]
   purpose: string
+}
+
+export interface SchemaConsumerProfileTriageBucket {
+  id: 'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'
+  title: string
+  summaryFields: string[]
+  itemFields?: string[]
+  purpose: string
+  recommendedNextStep: SchemaConsumerProfileFollowUpHint['nextStep']
 }
 
 export interface SchemaActionFailureCode {

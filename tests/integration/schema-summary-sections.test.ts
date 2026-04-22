@@ -179,4 +179,38 @@ describe('schema summary sections integration', () => {
     ])
     expect(byProfile('single-platform-write')?.followUpHints).toBeUndefined()
   })
+
+  it('schema --json 只为只读 consumer profile 暴露 triageBuckets', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        consumerProfiles?: Array<{
+          id: string
+          triageBuckets?: Array<{
+            id: string
+          }>
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+
+    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.triageBuckets?.map((item) => item.id)).toEqual([
+      'overview',
+      'reference-governance',
+      'write-readiness',
+    ])
+    expect(byProfile('readonly-import-batch')?.triageBuckets?.map((item) => item.id)).toEqual([
+      'source-blocked',
+      'write-readiness',
+      'platform-routing',
+    ])
+    expect(byProfile('single-platform-write')?.triageBuckets).toBeUndefined()
+  })
 })
