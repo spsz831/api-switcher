@@ -35,6 +35,20 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
   })
 
+  it('release smoke script verifies schema consumerProfiles entry hints', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema json'")
+    expect(smokeScript).toContain("commandCatalog.consumerProfiles")
+    expect(smokeScript).toContain("readonly-state-audit")
+    expect(smokeScript).toContain("readonly-import-batch")
+    expect(smokeScript).toContain("single-platform-write")
+    expect(smokeScript).toContain("bestEntryAction -ne 'current'")
+    expect(smokeScript).toContain("bestEntryAction -ne 'import'")
+    expect(smokeScript).toContain("bestEntryAction -ne 'preview'")
+  })
+
   it('release smoke script verifies current/list json platformSummary contracts', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

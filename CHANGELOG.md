@@ -5,6 +5,7 @@
 ### Build
 
 - `smoke:release` 现在会校验 `dist` 构建产物的顶层 `--help` 关键命令面，避免安装后 CLI 可发现性漂移。
+- `smoke:release` 现在会校验 `dist` 构建产物的 `schema --json` 共享 `consumerProfiles` 目录与 `bestEntryAction` 提示。
 - `smoke:release` 现在会校验 `dist` 构建产物的 `schema --schema-version --json` 成功态 contract。
 - `smoke:release` 现在会校验 `dist` 构建产物上的稳定失败出口：未知命令保持 Commander `stderr` 失败行为。
 - `smoke:release` 现在会校验 `dist` 构建产物上的稳定 JSON 失败 envelope：`import <missing-file> --json` 返回 `schemaVersion / ok=false / action / error.code`。

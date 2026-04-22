@@ -270,7 +270,30 @@ Invoke-Step -Name 'cli help' -Action {
     }
   }
 }
-Invoke-Step -Name 'schema json' -Action { node dist/src/cli/index.js schema --json | Out-Null }
+Invoke-Step -Name 'schema json' -Action {
+  $payload = node dist/src/cli/index.js schema --json | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'schema --json returned no payload'
+  }
+  $consumerProfiles = $payload.data.commandCatalog.consumerProfiles
+  if ($null -eq $consumerProfiles) {
+    throw 'schema --json returned no commandCatalog.consumerProfiles'
+  }
+
+  $readonlyStateAudit = $consumerProfiles | Where-Object { $_.id -eq 'readonly-state-audit' } | Select-Object -First 1
+  $readonlyImportBatch = $consumerProfiles | Where-Object { $_.id -eq 'readonly-import-batch' } | Select-Object -First 1
+  $singlePlatformWrite = $consumerProfiles | Where-Object { $_.id -eq 'single-platform-write' } | Select-Object -First 1
+
+  if ($null -eq $readonlyStateAudit -or $readonlyStateAudit.bestEntryAction -ne 'current') {
+    throw 'schema --json missing readonly-state-audit bestEntryAction=current'
+  }
+  if ($null -eq $readonlyImportBatch -or $readonlyImportBatch.bestEntryAction -ne 'import') {
+    throw 'schema --json missing readonly-import-batch bestEntryAction=import'
+  }
+  if ($null -eq $singlePlatformWrite -or $singlePlatformWrite.bestEntryAction -ne 'preview') {
+    throw 'schema --json missing single-platform-write bestEntryAction=preview'
+  }
+}
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
   if ($null -eq $payload) {
