@@ -348,6 +348,14 @@ type SchemaCommandOutput = {
       optionalFailureFields: string[]
       optionalArtifactFields: string[]
       recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
+      summarySectionGuidance?: Array<{
+        id: 'platform' | 'reference' | 'executability' | 'source-executability'
+        title: string
+        priority: number
+        fields: string[]
+        purpose: string
+        recommendedUses: Array<'overview' | 'governance' | 'gating' | 'routing'>
+      }>
     }>
     actions: Array<{
       action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
@@ -440,8 +448,9 @@ type SchemaCommandOutput = {
 - `optionalFailureFields`：不同 action 可能额外补充的失败态 explainable。
 - `exampleActions`：这一类画像有哪些代表命令。
 - `bestEntryAction`：第一次接入这类画像时优先参考哪个 action。
+- `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
 
-如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。最小接入流程建议固定为：
+如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating。最小接入流程建议固定为：
 
 1. 从 `data.commandCatalog.consumerProfiles[]` 里选中目标产品面，例如 `readonly-import-batch`。
 2. 读取 `bestEntryAction`，先用这条 action 的成功/失败样例校准解析器。
@@ -464,6 +473,7 @@ const readOrder = {
     failure: profile?.optionalFailureFields ?? [],
     artifacts: profile?.optionalArtifactFields ?? [],
   },
+  summaryGuidance: profile?.summarySectionGuidance ?? [],
 }
 ```
 

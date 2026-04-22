@@ -1,4 +1,7 @@
-import type { SchemaSummarySection } from '../types/command'
+import type {
+  SchemaConsumerProfileSummarySectionGuidance,
+  SchemaSummarySection,
+} from '../types/command'
 
 export type ReadonlySummarySectionAction = 'current' | 'list' | 'validate' | 'export' | 'import'
 
@@ -65,5 +68,36 @@ export function getReadonlySummarySections(action: ReadonlySummarySectionAction)
       return CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS
     case 'import':
       return IMPORT_SUMMARY_SECTIONS
+  }
+}
+
+export function getReadonlyConsumerProfileSummarySectionGuidance(
+  profileId: 'readonly-state-audit' | 'readonly-import-batch',
+): SchemaConsumerProfileSummarySectionGuidance[] {
+  switch (profileId) {
+    case 'readonly-state-audit':
+      return CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS.map((section) => ({
+        id: section.id,
+        title: section.title,
+        priority: section.priority,
+        fields: section.fields,
+        purpose: section.purpose,
+        recommendedUses: section.id === 'platform'
+          ? ['overview']
+          : section.id === 'reference'
+            ? ['governance']
+            : ['gating'],
+      }))
+    case 'readonly-import-batch':
+      return IMPORT_SUMMARY_SECTIONS.map((section) => ({
+        id: section.id,
+        title: section.title,
+        priority: section.priority,
+        fields: section.fields,
+        purpose: section.purpose,
+        recommendedUses: section.id === 'platform'
+          ? ['routing', 'overview']
+          : ['gating'],
+      }))
   }
 }

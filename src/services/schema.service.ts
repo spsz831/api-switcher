@@ -1,5 +1,8 @@
 import publicJsonSchema from '../../docs/public-json-output.schema.json'
-import { getReadonlySummarySections } from '../constants/readonly-summary-sections'
+import {
+  getReadonlyConsumerProfileSummarySectionGuidance,
+  getReadonlySummarySections,
+} from '../constants/readonly-summary-sections'
 import { PUBLIC_JSON_SCHEMA_VERSION } from '../constants/public-json-schema'
 import {
   COMMAND_ACTIONS,
@@ -31,6 +34,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalFailureFields: [],
     optionalArtifactFields: [],
     recommendedStages: ['summary', 'items', 'detail'],
+    summarySectionGuidance: getReadonlyConsumerProfileSummarySectionGuidance('readonly-state-audit'),
   },
   {
     id: 'single-platform-write',
@@ -61,6 +65,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalFailureFields: [],
     optionalArtifactFields: [],
     recommendedStages: ['summary', 'items', 'detail'],
+    summarySectionGuidance: getReadonlyConsumerProfileSummarySectionGuidance('readonly-import-batch'),
   },
 ]
 

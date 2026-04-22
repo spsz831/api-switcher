@@ -450,6 +450,14 @@ describe('cli commands integration', () => {
           optionalFailureFields: string[]
           optionalArtifactFields: string[]
           recommendedStages: string[]
+          summarySectionGuidance?: Array<{
+            id: string
+            title: string
+            priority: number
+            fields: string[]
+            purpose: string
+            recommendedUses: string[]
+          }>
         }>
         actions: Array<{
           action: string
@@ -548,6 +556,32 @@ describe('cli commands integration', () => {
         optionalFailureFields: [],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
+        summarySectionGuidance: [
+          {
+            id: 'platform',
+            title: 'Platform summary',
+            priority: 1,
+            fields: ['summary.platformStats'],
+            purpose: '先看平台级聚合，快速判断结果覆盖了哪些平台以及各平台状态分布。',
+            recommendedUses: ['overview'],
+          },
+          {
+            id: 'reference',
+            title: 'Reference summary',
+            priority: 2,
+            fields: ['summary.referenceStats'],
+            purpose: '看 secret/reference 解析形态，判断是否存在未解析 env、受支持但不写入、或不支持 scheme 的输入。',
+            recommendedUses: ['governance'],
+          },
+          {
+            id: 'executability',
+            title: 'Executability summary',
+            priority: 3,
+            fields: ['summary.executabilityStats'],
+            purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。',
+            recommendedUses: ['gating'],
+          },
+        ],
       },
       {
         id: 'single-platform-write',
@@ -578,6 +612,32 @@ describe('cli commands integration', () => {
         optionalFailureFields: [],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
+        summarySectionGuidance: [
+          {
+            id: 'source-executability',
+            title: 'Source executability summary',
+            priority: 1,
+            fields: ['summary.sourceExecutability'],
+            purpose: '先看导入源本身是否还能继续进入 apply，用于识别 redacted inline secret 等源侧阻塞。',
+            recommendedUses: ['gating'],
+          },
+          {
+            id: 'executability',
+            title: 'Executability summary',
+            priority: 2,
+            fields: ['summary.executabilityStats'],
+            purpose: '再看目标平台侧是否具备写入可执行条件，用于区分可继续 apply 和需本地修复的项。',
+            recommendedUses: ['gating'],
+          },
+          {
+            id: 'platform',
+            title: 'Platform summary',
+            priority: 3,
+            fields: ['summary.platformStats'],
+            purpose: '最后看 mixed-batch 在各平台上的分布，便于按平台分批处理。',
+            recommendedUses: ['routing', 'overview'],
+          },
+        ],
       },
     ])
 

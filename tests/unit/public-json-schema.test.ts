@@ -724,6 +724,25 @@ describe('public JSON contract types', () => {
       'optionalArtifactFields',
       'recommendedStages',
     ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.summarySectionGuidance).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileSummarySectionGuidance' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'fields',
+      'purpose',
+      'recommendedUses',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.properties?.recommendedUses).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['overview', 'governance', 'gating', 'routing'],
+      },
+    })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',
       'priority',

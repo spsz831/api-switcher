@@ -285,6 +285,7 @@ export interface SchemaConsumerProfile {
   optionalFailureFields: string[]
   optionalArtifactFields: string[]
   recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
+  summarySectionGuidance?: SchemaConsumerProfileSummarySectionGuidance[]
 }
 
 export interface SchemaActionCapability {
@@ -325,6 +326,15 @@ export interface SchemaSummarySection {
   fields: string[]
   purpose: string
   recommendedWhen?: string[]
+}
+
+export interface SchemaConsumerProfileSummarySectionGuidance {
+  id: SchemaSummarySection['id']
+  title: string
+  priority: number
+  fields: string[]
+  purpose: string
+  recommendedUses: Array<'overview' | 'governance' | 'gating' | 'routing'>
 }
 
 export interface SchemaActionFailureCode {

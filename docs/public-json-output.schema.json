@@ -647,6 +647,35 @@
             "type": "string",
             "enum": ["summary", "selection", "items", "detail", "artifacts"]
           }
+        },
+        "summarySectionGuidance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileSummarySectionGuidance" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileSummarySectionGuidance": {
+      "type": "object",
+      "required": ["id", "title", "priority", "fields", "purpose", "recommendedUses"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["platform", "reference", "executability", "source-executability"]
+        },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedUses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overview", "governance", "gating", "routing"]
+          }
         }
       },
       "additionalProperties": false

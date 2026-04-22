@@ -111,4 +111,38 @@ describe('schema summary sections integration', () => {
     expect(byAction('import-apply')?.summarySections).toBeUndefined()
     expect(byAction('schema')?.summarySections).toBeUndefined()
   })
+
+  it('schema --json 只为只读 consumer profile 暴露 summarySectionGuidance', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        consumerProfiles?: Array<{
+          id: string
+          summarySectionGuidance?: Array<{
+            id: string
+          }>
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+
+    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.summarySectionGuidance?.map((item) => item.id)).toEqual([
+      'platform',
+      'reference',
+      'executability',
+    ])
+    expect(byProfile('readonly-import-batch')?.summarySectionGuidance?.map((item) => item.id)).toEqual([
+      'source-executability',
+      'executability',
+      'platform',
+    ])
+    expect(byProfile('single-platform-write')?.summarySectionGuidance).toBeUndefined()
+  })
 })
