@@ -441,6 +441,32 @@ type SchemaCommandOutput = {
 - `exampleActions`：这一类画像有哪些代表命令。
 - `bestEntryAction`：第一次接入这类画像时优先参考哪个 action。
 
+如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。最小接入流程建议固定为：
+
+1. 从 `data.commandCatalog.consumerProfiles[]` 里选中目标产品面，例如 `readonly-import-batch`。
+2. 读取 `bestEntryAction`，先用这条 action 的成功/失败样例校准解析器。
+3. 按 `sharedSummaryFields -> sharedItemFields -> sharedFailureFields` 建立默认读取顺序。
+4. 仅在需要更细 explainable 时，再按 `optionalScopeFields / optionalItemFields / optionalFailureFields / optionalArtifactFields` 做条件绑定。
+
+```ts
+const profile = schema.data.commandCatalog.consumerProfiles.find(
+  (item) => item.id === 'readonly-import-batch',
+)
+
+const readOrder = {
+  entryAction: profile?.bestEntryAction,
+  summary: profile?.sharedSummaryFields ?? [],
+  items: profile?.sharedItemFields ?? [],
+  failure: profile?.sharedFailureFields ?? [],
+  optional: {
+    scope: profile?.optionalScopeFields ?? [],
+    item: profile?.optionalItemFields ?? [],
+    failure: profile?.optionalFailureFields ?? [],
+    artifacts: profile?.optionalArtifactFields ?? [],
+  },
+}
+```
+
 这条“只读 summary 导航”当前只覆盖五个只读命令：
 
 | Action | 固定 `summarySections` 顺序 | 语义 |
