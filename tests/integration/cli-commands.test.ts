@@ -436,6 +436,13 @@ describe('cli commands integration', () => {
       schemaVersion: string
       schemaId: string
       commandCatalog: {
+        recommendedActions?: Array<{
+          code: string
+          title: string
+          family: string
+          availability: string[]
+          purpose: string
+        }>
         consumerProfiles?: Array<{
           id: string
           title: string
@@ -553,6 +560,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
     const actions = payload.data?.commandCatalog.actions ?? []
+    const recommendedActions = payload.data?.commandCatalog.recommendedActions ?? []
     const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
     const addAction = actions.find((action) => action.action === 'add')
     const currentAction = actions.find((action) => action.action === 'current')
@@ -565,6 +573,38 @@ describe('cli commands integration', () => {
     const schemaAction = actions.find((action) => action.action === 'schema')
     const useAction = actions.find((action) => action.action === 'use')
     const validateAction = actions.find((action) => action.action === 'validate')
+
+    expect(recommendedActions.map((item) => item.code)).toEqual([
+      'inspect-items',
+      'review-reference-details',
+      'repair-source-input',
+      'group-by-platform',
+      'continue-to-write',
+      'fix-input-and-retry',
+      'select-existing-resource',
+      'resolve-scope-before-retry',
+      'confirm-before-write',
+      'check-platform-support',
+      'inspect-runtime-details',
+      'check-import-source',
+      'fix-reference-input',
+      'resolve-reference-support',
+      'migrate-inline-secret',
+    ])
+    expect(recommendedActions.find((item) => item.code === 'continue-to-write')).toEqual({
+      code: 'continue-to-write',
+      title: 'Continue to write',
+      family: 'execute',
+      availability: ['readonly'],
+      purpose: '在只读分析确认条件满足后，继续进入后续写入链路。',
+    })
+    expect(recommendedActions.find((item) => item.code === 'resolve-scope-before-retry')).toEqual({
+      code: 'resolve-scope-before-retry',
+      title: 'Resolve scope before retry',
+      family: 'repair',
+      availability: ['failure'],
+      purpose: '先修复或切换 scope 相关条件，再重新执行命令。',
+    })
 
     expect(consumerProfiles).toEqual([
       {

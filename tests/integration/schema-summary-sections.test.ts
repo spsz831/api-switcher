@@ -130,7 +130,7 @@ describe('schema summary sections integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('schema')
 
-    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
     const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
 
     expect(byProfile('readonly-state-audit')?.summarySectionGuidance?.map((item) => item.id)).toEqual([
@@ -164,7 +164,7 @@ describe('schema summary sections integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('schema')
 
-    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
     const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
 
     expect(byProfile('readonly-state-audit')?.followUpHints?.map((item) => item.nextStep)).toEqual([
@@ -198,7 +198,7 @@ describe('schema summary sections integration', () => {
     expect(payload.ok).toBe(true)
     expect(payload.action).toBe('schema')
 
-    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
     const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
 
     expect(byProfile('readonly-state-audit')?.triageBuckets?.map((item) => item.id)).toEqual([
@@ -217,21 +217,19 @@ describe('schema summary sections integration', () => {
   it('schema --json 只为只读 consumer profile 暴露 consumerActions', async () => {
     const result = await runCli(['schema', '--json'])
     const payload = parseJsonResult<{
-      data?: {
-        commandCatalog?: {
-          consumerProfiles?: Array<{
+      commandCatalog?: {
+        consumerProfiles?: Array<{
+          id: string
+          consumerActions?: Array<{
             id: string
-            consumerActions?: Array<{
-              id: string
-              use: string
-              nextStep: string
-            }>
+            use: string
+            nextStep: string
           }>
-        }
+        }>
       }
     }>(result.stdout)
 
-    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
     const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
 
     expect(byProfile('readonly-state-audit')?.consumerActions?.map((item) => item.id)).toEqual([

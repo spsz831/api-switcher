@@ -332,6 +332,7 @@ export interface SchemaActionCapability {
 export interface SchemaCommandCatalog {
   actions: SchemaActionCapability[]
   consumerProfiles?: SchemaConsumerProfile[]
+  recommendedActions?: SchemaRecommendedAction[]
 }
 
 export interface SchemaFieldSemanticBinding {
@@ -359,7 +360,7 @@ export interface SchemaConsumerProfileSummarySectionGuidance {
 
 export interface SchemaConsumerProfileFollowUpHint {
   use: 'overview' | 'governance' | 'gating' | 'routing'
-  nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+  nextStep: SchemaRecommendedActionCode
   primaryFields: string[]
   purpose: string
 }
@@ -389,24 +390,39 @@ export interface SchemaActionFailureCode {
   code: string
   priority: number
   category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
-  recommendedHandling:
-    | 'fix-input-and-retry'
-    | 'select-existing-resource'
-    | 'resolve-scope-before-retry'
-    | 'confirm-before-write'
-    | 'check-platform-support'
-    | 'inspect-runtime-details'
-    | 'check-import-source'
+  recommendedHandling: SchemaRecommendedActionCode
 }
 
 export interface SchemaReferenceGovernanceCode {
   code: ReferenceGovernanceReasonCode
   priority: number
   category: 'reference' | 'inline-secret' | 'input'
-  recommendedHandling:
-    | 'resolve-reference-support'
-    | 'migrate-inline-secret'
-    | 'fix-reference-input'
+  recommendedHandling: SchemaRecommendedActionCode
+}
+
+export type SchemaRecommendedActionCode =
+  | 'inspect-items'
+  | 'review-reference-details'
+  | 'repair-source-input'
+  | 'group-by-platform'
+  | 'continue-to-write'
+  | 'fix-input-and-retry'
+  | 'select-existing-resource'
+  | 'resolve-scope-before-retry'
+  | 'confirm-before-write'
+  | 'check-platform-support'
+  | 'inspect-runtime-details'
+  | 'check-import-source'
+  | 'fix-reference-input'
+  | 'resolve-reference-support'
+  | 'migrate-inline-secret'
+
+export interface SchemaRecommendedAction {
+  code: SchemaRecommendedActionCode
+  title: string
+  family: 'inspect' | 'repair' | 'route' | 'execute'
+  availability: Array<'readonly' | 'failure'>
+  purpose: string
 }
 
 export interface SchemaReadOrderGroups {

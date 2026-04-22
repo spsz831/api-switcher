@@ -16,6 +16,7 @@ import {
   type SchemaCommandOutput,
   type SchemaFieldSemanticBinding,
   type SchemaReadOrderGroups,
+  type SchemaRecommendedAction,
   type SchemaReferenceGovernanceCode,
 } from '../types/command'
 
@@ -236,6 +237,24 @@ const REFERENCE_GOVERNANCE_CODE_CATALOG: SchemaReferenceGovernanceCode[] = [
   { code: 'REFERENCE_MISSING', priority: 2, category: 'reference', recommendedHandling: 'fix-reference-input' },
   { code: 'REFERENCE_WRITE_UNSUPPORTED', priority: 3, category: 'reference', recommendedHandling: 'resolve-reference-support' },
   { code: 'INLINE_SECRET_PRESENT', priority: 4, category: 'inline-secret', recommendedHandling: 'migrate-inline-secret' },
+]
+
+const SCHEMA_RECOMMENDED_ACTIONS: SchemaRecommendedAction[] = [
+  { code: 'inspect-items', title: 'Inspect items', family: 'inspect', availability: ['readonly'], purpose: '展开 item 级明细，确认当前 summary 命中的具体对象与 explainable。' },
+  { code: 'review-reference-details', title: 'Review reference details', family: 'inspect', availability: ['readonly'], purpose: '继续展开 reference 相关 explainable，确认缺失、未支持或未写入的具体原因。' },
+  { code: 'repair-source-input', title: 'Repair source input', family: 'repair', availability: ['readonly'], purpose: '先修复导入源自身的问题，再重新执行只读分析或写入链路。' },
+  { code: 'group-by-platform', title: 'Group by platform', family: 'route', availability: ['readonly'], purpose: '把 mixed-batch 结果按平台拆分，便于分别处理。' },
+  { code: 'continue-to-write', title: 'Continue to write', family: 'execute', availability: ['readonly'], purpose: '在只读分析确认条件满足后，继续进入后续写入链路。' },
+  { code: 'fix-input-and-retry', title: 'Fix input and retry', family: 'repair', availability: ['failure'], purpose: '修正当前命令参数或输入内容后重新执行。' },
+  { code: 'select-existing-resource', title: 'Select existing resource', family: 'repair', availability: ['failure'], purpose: '重新选择现有 profile、backup 或其他可用资源后再执行。' },
+  { code: 'resolve-scope-before-retry', title: 'Resolve scope before retry', family: 'repair', availability: ['failure'], purpose: '先修复或切换 scope 相关条件，再重新执行命令。' },
+  { code: 'confirm-before-write', title: 'Confirm before write', family: 'execute', availability: ['failure'], purpose: '确认高风险写入意图后，再继续执行写入操作。' },
+  { code: 'check-platform-support', title: 'Check platform support', family: 'repair', availability: ['failure'], purpose: '先确认平台或适配器是否受支持，再继续执行。' },
+  { code: 'inspect-runtime-details', title: 'Inspect runtime details', family: 'inspect', availability: ['failure'], purpose: '查看运行时细节、底层异常或 validation 结果，再决定修复动作。' },
+  { code: 'check-import-source', title: 'Check import source', family: 'repair', availability: ['failure'], purpose: '先检查导入源文件、schema 或 profile 选择是否正确。' },
+  { code: 'fix-reference-input', title: 'Fix reference input', family: 'repair', availability: ['failure'], purpose: '修正 reference 输入、缺失值或冲突配置后再继续。' },
+  { code: 'resolve-reference-support', title: 'Resolve reference support', family: 'repair', availability: ['failure'], purpose: '先确认当前平台是否支持 reference 写入，或改用支持的输入形态。' },
+  { code: 'migrate-inline-secret', title: 'Migrate inline secret', family: 'repair', availability: ['failure'], purpose: '把 inline secret 迁移到受支持的 reference 或其他治理形态。' },
 ]
 
 const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map((action) => ({
@@ -1158,6 +1177,7 @@ function buildCommandCatalog() {
   return {
     actions: SCHEMA_ACTION_CAPABILITIES,
     consumerProfiles: SCHEMA_CONSUMER_PROFILES,
+    recommendedActions: SCHEMA_RECOMMENDED_ACTIONS,
   }
 }
 

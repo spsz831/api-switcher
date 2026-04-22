@@ -334,6 +334,28 @@ type SchemaCommandOutput = {
   schemaVersion: '2026-04-15.public-json.v1'
   schemaId: 'https://api-switcher.local/schemas/public-json-output.schema.json'
   commandCatalog?: {
+    recommendedActions?: Array<{
+      code:
+        | 'inspect-items'
+        | 'review-reference-details'
+        | 'repair-source-input'
+        | 'group-by-platform'
+        | 'continue-to-write'
+        | 'fix-input-and-retry'
+        | 'select-existing-resource'
+        | 'resolve-scope-before-retry'
+        | 'confirm-before-write'
+        | 'check-platform-support'
+        | 'inspect-runtime-details'
+        | 'check-import-source'
+        | 'fix-reference-input'
+        | 'resolve-reference-support'
+        | 'migrate-inline-secret'
+      title: string
+      family: 'inspect' | 'repair' | 'route' | 'execute'
+      availability: Array<'readonly' | 'failure'>
+      purpose: string
+    }>
     consumerProfiles?: Array<{
       id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
       title: string
@@ -453,7 +475,22 @@ type SchemaCommandOutput = {
         code: 'REFERENCE_INPUT_CONFLICT' | 'REFERENCE_MISSING' | 'REFERENCE_WRITE_UNSUPPORTED' | 'INLINE_SECRET_PRESENT'
         priority: number
         category: 'reference' | 'inline-secret' | 'input'
-        recommendedHandling: 'resolve-reference-support' | 'migrate-inline-secret' | 'fix-reference-input'
+        recommendedHandling:
+          | 'inspect-items'
+          | 'review-reference-details'
+          | 'repair-source-input'
+          | 'group-by-platform'
+          | 'continue-to-write'
+          | 'fix-input-and-retry'
+          | 'select-existing-resource'
+          | 'resolve-scope-before-retry'
+          | 'confirm-before-write'
+          | 'check-platform-support'
+          | 'inspect-runtime-details'
+          | 'check-import-source'
+          | 'fix-reference-input'
+          | 'resolve-reference-support'
+          | 'migrate-inline-secret'
       }>
     }>
   }
@@ -477,6 +514,7 @@ type SchemaCommandOutput = {
 - `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
 - `consumerActions`：把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，回答“现在最适合执行什么消费动作、应读哪些 section/字段、下一步走什么短码”。
+- `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
 对只读命令本身，运行时 `summary.triageStats` 会把这些分流桶实例化成当前批次的真实计数；`consumerProfiles[].triageBuckets[]` 则是 schema catalog 里的稳定目录层，回答“有哪些桶、每个桶建议读哪些字段、下一步通常走什么动作”。
 
@@ -507,6 +545,7 @@ const readOrder = {
   followUps: profile?.followUpHints ?? [],
   triageBuckets: profile?.triageBuckets ?? [],
   consumerActions: profile?.consumerActions ?? [],
+  recommendedActions: schema.data.commandCatalog.recommendedActions ?? [],
 }
 ```
 

@@ -813,6 +813,46 @@
       },
       "additionalProperties": false
     },
+    "SchemaRecommendedAction": {
+      "type": "object",
+      "required": ["code", "title", "family", "availability", "purpose"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
+          ]
+        },
+        "title": { "type": "string" },
+        "family": {
+          "type": "string",
+          "enum": ["inspect", "repair", "route", "execute"]
+        },
+        "availability": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["readonly", "failure"]
+          }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "SchemaActionFailureCode": {
       "type": "object",
       "required": ["code", "priority", "category", "recommendedHandling"],
@@ -826,13 +866,21 @@
         "recommendedHandling": {
           "type": "string",
           "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
             "fix-input-and-retry",
             "select-existing-resource",
             "resolve-scope-before-retry",
             "confirm-before-write",
             "check-platform-support",
             "inspect-runtime-details",
-            "check-import-source"
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
           ]
         }
       },
@@ -859,6 +907,18 @@
         "recommendedHandling": {
           "type": "string",
           "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
             "resolve-reference-support",
             "migrate-inline-secret",
             "fix-reference-input"
@@ -1012,6 +1072,10 @@
         "consumerProfiles": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfile" }
+        },
+        "recommendedActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaRecommendedAction" }
         }
       },
       "additionalProperties": false

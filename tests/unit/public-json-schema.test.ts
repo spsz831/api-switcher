@@ -103,7 +103,7 @@ describe('public JSON contract types', () => {
         warnings: string[]
         limitations: string[]
       }
-    }>()
+    } | undefined>()
   })
 
   it('暴露 import apply 最小 error detail shapes', () => {
@@ -223,8 +223,29 @@ describe('public JSON contract types', () => {
   })
 
   it('用类型断言定义 schema commandCatalog 的最小公共 contract', () => {
-    expectTypeOf<SchemaCommandOutput>().toMatchTypeOf<{
-      commandCatalog?: {
+    expectTypeOf<NonNullable<SchemaCommandOutput['commandCatalog']>>().toMatchTypeOf<{
+        recommendedActions?: Array<{
+          code:
+            | 'inspect-items'
+            | 'review-reference-details'
+            | 'repair-source-input'
+            | 'group-by-platform'
+            | 'continue-to-write'
+            | 'fix-input-and-retry'
+            | 'select-existing-resource'
+            | 'resolve-scope-before-retry'
+            | 'confirm-before-write'
+            | 'check-platform-support'
+            | 'inspect-runtime-details'
+            | 'check-import-source'
+            | 'fix-reference-input'
+            | 'resolve-reference-support'
+            | 'migrate-inline-secret'
+          title: string
+          family: 'inspect' | 'repair' | 'route' | 'execute'
+          availability: Array<'readonly' | 'failure'>
+          purpose: string
+        }>
         actions: Array<{
           action: string
           hasPlatformSummary: boolean
@@ -239,6 +260,11 @@ describe('public JSON contract types', () => {
             priority: number
             category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
             recommendedHandling:
+              | 'inspect-items'
+              | 'review-reference-details'
+              | 'repair-source-input'
+              | 'group-by-platform'
+              | 'continue-to-write'
               | 'fix-input-and-retry'
               | 'select-existing-resource'
               | 'resolve-scope-before-retry'
@@ -246,6 +272,9 @@ describe('public JSON contract types', () => {
               | 'check-platform-support'
               | 'inspect-runtime-details'
               | 'check-import-source'
+              | 'fix-reference-input'
+              | 'resolve-reference-support'
+              | 'migrate-inline-secret'
           }>
           fieldPresence: Array<{
             path: string
@@ -300,12 +329,23 @@ describe('public JSON contract types', () => {
             priority: number
             category: 'reference' | 'inline-secret' | 'input'
             recommendedHandling:
+              | 'inspect-items'
+              | 'review-reference-details'
+              | 'repair-source-input'
+              | 'group-by-platform'
+              | 'continue-to-write'
+              | 'fix-input-and-retry'
+              | 'select-existing-resource'
+              | 'resolve-scope-before-retry'
+              | 'confirm-before-write'
+              | 'check-platform-support'
+              | 'inspect-runtime-details'
+              | 'check-import-source'
+              | 'fix-reference-input'
               | 'resolve-reference-support'
               | 'migrate-inline-secret'
-              | 'fix-reference-input'
           }>
         }>
-      }
     }>()
   })
 
@@ -681,6 +721,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfile' },
     })
+    expect(publicJsonSchema.$defs?.SchemaCommandCatalog?.properties?.recommendedActions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaRecommendedAction' },
+    })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.required).toEqual(expect.arrayContaining([
       'action',
       'hasPlatformSummary',
@@ -864,6 +908,11 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.recommendedHandling).toEqual({
       type: 'string',
       enum: [
+        'inspect-items',
+        'review-reference-details',
+        'repair-source-input',
+        'group-by-platform',
+        'continue-to-write',
         'fix-input-and-retry',
         'select-existing-resource',
         'resolve-scope-before-retry',
@@ -871,6 +920,9 @@ describe('public JSON contract types', () => {
         'check-platform-support',
         'inspect-runtime-details',
         'check-import-source',
+        'fix-reference-input',
+        'resolve-reference-support',
+        'migrate-inline-secret',
       ],
     })
     expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.required).toEqual(expect.arrayContaining([
@@ -899,9 +951,48 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.properties?.recommendedHandling).toEqual({
       type: 'string',
       enum: [
+        'inspect-items',
+        'review-reference-details',
+        'repair-source-input',
+        'group-by-platform',
+        'continue-to-write',
+        'fix-input-and-retry',
+        'select-existing-resource',
+        'resolve-scope-before-retry',
+        'confirm-before-write',
+        'check-platform-support',
+        'inspect-runtime-details',
+        'check-import-source',
         'resolve-reference-support',
         'migrate-inline-secret',
         'fix-reference-input',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaRecommendedAction?.required).toEqual(expect.arrayContaining([
+      'code',
+      'title',
+      'family',
+      'availability',
+      'purpose',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaRecommendedAction?.properties?.code).toEqual({
+      type: 'string',
+      enum: [
+        'inspect-items',
+        'review-reference-details',
+        'repair-source-input',
+        'group-by-platform',
+        'continue-to-write',
+        'fix-input-and-retry',
+        'select-existing-resource',
+        'resolve-scope-before-retry',
+        'confirm-before-write',
+        'check-platform-support',
+        'inspect-runtime-details',
+        'check-import-source',
+        'fix-reference-input',
+        'resolve-reference-support',
+        'migrate-inline-secret',
       ],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFieldPresence?.required).toEqual(expect.arrayContaining([
