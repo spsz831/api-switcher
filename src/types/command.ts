@@ -272,13 +272,13 @@ export interface SchemaCommandOutput {
 }
 
 export interface SchemaConsumerProfile {
-  id: 'single-platform-write' | 'readonly-import-batch'
+  id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
   title: string
-  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import' | 'import-apply'>
+  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
   sharedSummaryFields: string[]
   optionalScopeFields: string[]
   optionalArtifactFields: string[]
-  recommendedStages: Array<'summary' | 'detail' | 'artifacts'>
+  recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
 }
 
 export interface SchemaActionCapability {

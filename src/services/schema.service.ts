@@ -18,6 +18,15 @@ import {
 
 const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
   {
+    id: 'readonly-state-audit',
+    title: 'Readonly state audit',
+    appliesToActions: ['current', 'list', 'validate', 'export'],
+    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+    optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
+    optionalArtifactFields: [],
+    recommendedStages: ['summary', 'items', 'detail'],
+  },
+  {
     id: 'single-platform-write',
     title: 'Single-platform write',
     appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
@@ -33,7 +42,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
     optionalScopeFields: [],
     optionalArtifactFields: [],
-    recommendedStages: ['summary', 'detail'],
+    recommendedStages: ['summary', 'items', 'detail'],
   },
 ]
 
@@ -66,6 +75,9 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
 }))
 
 function getConsumerProfileIds(action: typeof COMMAND_ACTIONS[number]): SchemaConsumerProfile['id'][] | undefined {
+  if (action === 'current' || action === 'list' || action === 'validate' || action === 'export') {
+    return ['readonly-state-audit']
+  }
   if (action === 'add' || action === 'preview' || action === 'use' || action === 'rollback' || action === 'import-apply') {
     return ['single-platform-write']
   }

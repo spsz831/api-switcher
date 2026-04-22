@@ -540,7 +540,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["single-platform-write", "readonly-import-batch"]
+            "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
           }
         },
         "primaryFields": {
@@ -595,14 +595,14 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["single-platform-write", "readonly-import-batch"]
+          "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
         },
         "title": { "type": "string" },
         "appliesToActions": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["add", "preview", "use", "rollback", "import", "import-apply"]
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
           }
         },
         "sharedSummaryFields": {
@@ -621,7 +621,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["summary", "detail", "artifacts"]
+            "enum": ["summary", "selection", "items", "detail", "artifacts"]
           }
         }
       },

@@ -529,6 +529,15 @@ describe('cli commands integration', () => {
 
     expect(consumerProfiles).toEqual([
       {
+        id: 'readonly-state-audit',
+        title: 'Readonly state audit',
+        appliesToActions: ['current', 'list', 'validate', 'export'],
+        sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+        optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
+        optionalArtifactFields: [],
+        recommendedStages: ['summary', 'items', 'detail'],
+      },
+      {
         id: 'single-platform-write',
         title: 'Single-platform write',
         appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
@@ -544,7 +553,7 @@ describe('cli commands integration', () => {
         sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
         optionalScopeFields: [],
         optionalArtifactFields: [],
-        recommendedStages: ['summary', 'detail'],
+        recommendedStages: ['summary', 'items', 'detail'],
       },
     ])
 
@@ -621,6 +630,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: true,
       hasScopePolicy: false,
+      consumerProfileIds: ['readonly-state-audit'],
       primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
@@ -696,6 +706,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
+      consumerProfileIds: ['readonly-state-audit'],
       primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
@@ -765,6 +776,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: false,
       hasScopePolicy: false,
+      consumerProfileIds: ['readonly-state-audit'],
       primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
@@ -906,6 +918,10 @@ describe('cli commands integration', () => {
       { id: 'platform', title: 'Platform summary', priority: 3, fields: ['summary.platformStats'], purpose: '最后看 mixed-batch 在各平台上的分布，便于按平台分批处理。', recommendedWhen: ['mixed-batch routing', 'platform-level distribution review'] },
     ])
     expect(importAction?.consumerProfileIds).toEqual(['readonly-import-batch'])
+    expect(currentAction?.consumerProfileIds).toEqual(['readonly-state-audit'])
+    expect(listAction?.consumerProfileIds).toEqual(['readonly-state-audit'])
+    expect(validateAction?.consumerProfileIds).toEqual(['readonly-state-audit'])
+    expect(exportAction?.consumerProfileIds).toEqual(['readonly-state-audit'])
     expect(previewAction?.summarySections).toBeUndefined()
     expect(useAction?.summarySections).toBeUndefined()
     expect(rollbackAction?.summarySections).toBeUndefined()
@@ -1021,6 +1037,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
+      consumerProfileIds: ['readonly-state-audit'],
       primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'items', 'items.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
