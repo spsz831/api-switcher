@@ -715,8 +715,10 @@ describe('public JSON contract types', () => {
       'appliesToActions',
       'sharedSummaryFields',
       'sharedItemFields',
+      'sharedFailureFields',
       'optionalScopeFields',
       'optionalItemFields',
+      'optionalFailureFields',
       'optionalArtifactFields',
       'recommendedStages',
     ]))

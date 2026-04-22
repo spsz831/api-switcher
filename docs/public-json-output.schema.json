@@ -591,7 +591,7 @@
     },
     "SchemaConsumerProfile": {
       "type": "object",
-      "required": ["id", "title", "appliesToActions", "sharedSummaryFields", "sharedItemFields", "optionalScopeFields", "optionalItemFields", "optionalArtifactFields", "recommendedStages"],
+      "required": ["id", "title", "appliesToActions", "sharedSummaryFields", "sharedItemFields", "sharedFailureFields", "optionalScopeFields", "optionalItemFields", "optionalFailureFields", "optionalArtifactFields", "recommendedStages"],
       "properties": {
         "id": {
           "type": "string",
@@ -613,11 +613,19 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "sharedFailureFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "optionalScopeFields": {
           "type": "array",
           "items": { "type": "string" }
         },
         "optionalItemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalFailureFields": {
           "type": "array",
           "items": { "type": "string" }
         },

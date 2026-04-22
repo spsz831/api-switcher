@@ -442,8 +442,10 @@ describe('cli commands integration', () => {
           appliesToActions: string[]
           sharedSummaryFields: string[]
           sharedItemFields: string[]
+          sharedFailureFields: string[]
           optionalScopeFields: string[]
           optionalItemFields: string[]
+          optionalFailureFields: string[]
           optionalArtifactFields: string[]
           recommendedStages: string[]
         }>
@@ -536,8 +538,10 @@ describe('cli commands integration', () => {
         appliesToActions: ['current', 'list', 'validate', 'export'],
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
         sharedItemFields: ['platformSummary'],
+        sharedFailureFields: ['error.code', 'error.message'],
         optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
         optionalItemFields: ['referenceSummary', 'secretExportSummary', 'currentScope'],
+        optionalFailureFields: [],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
       },
@@ -547,8 +551,10 @@ describe('cli commands integration', () => {
         appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
         sharedItemFields: ['platformSummary', 'preview'],
+        sharedFailureFields: ['error.code', 'error.message'],
         optionalScopeFields: ['scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
         optionalItemFields: ['risk', 'rollback'],
+        optionalFailureFields: ['error.details.referenceGovernance', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability', 'error.details.previewDecision', 'error.details.risk'],
         optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
         recommendedStages: ['summary', 'detail', 'artifacts'],
       },
@@ -558,8 +564,10 @@ describe('cli commands integration', () => {
         appliesToActions: ['import'],
         sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
         sharedItemFields: ['platformSummary', 'previewDecision'],
+        sharedFailureFields: ['error.code', 'error.message'],
         optionalScopeFields: [],
         optionalItemFields: ['fidelity', 'exportedObservation', 'localObservation'],
+        optionalFailureFields: [],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
       },
