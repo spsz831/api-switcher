@@ -1,7 +1,5 @@
 import { evaluateRisk } from '../domain/risk-engine'
 import {
-  buildExecutabilityStats,
-  buildSecretReferenceStats,
   withProfileSecretReferenceContract,
 } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
@@ -11,7 +9,7 @@ import type { Profile } from '../types/profile'
 import { DuplicateProfileIdError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 import { buildPlatformSummary } from './platform-summary'
-import { buildSinglePlatformStats } from './single-platform-summary'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 
 type AddServiceInput = {
   platform: string
@@ -72,25 +70,22 @@ export class AddService {
         limitations: Array.from(new Set(decision.limitations)),
       }
 
-      const summary = {
-        platformStats: buildSinglePlatformStats({
-          platform: profile.platform,
-          profileId: profile.id,
-          warningCount: risk.reasons.length,
-          limitationCount: risk.limitations.length,
-          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
-          backupCreated: preview.backupPlanned,
-          noChanges: preview.noChanges,
-          platformSummary: buildPlatformSummary(profile.platform, {
-            composedFiles: preview.targetFiles.map((item) => item.path),
-            listMode: true,
-          }),
+      const summary = buildSingleProfileCommandSummary({
+        platform: profile.platform,
+        profileId: profile.id,
+        profile,
+        warningCount: risk.reasons.length,
+        limitationCount: risk.limitations.length,
+        changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+        backupCreated: preview.backupPlanned,
+        noChanges: preview.noChanges,
+        platformSummary: buildPlatformSummary(profile.platform, {
+          composedFiles: preview.targetFiles.map((item) => item.path),
+          listMode: true,
         }),
-        referenceStats: buildSecretReferenceStats([profile]),
-        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
-      }
+      })
 
       await this.profileService.add(profile)
 

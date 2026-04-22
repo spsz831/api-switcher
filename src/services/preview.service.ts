@@ -1,12 +1,12 @@
 import { evaluateRisk } from '../domain/risk-engine'
-import { buildExecutabilityStats, buildSecretReferenceStats, withProfileSecretReferenceContract } from '../domain/secret-inspection'
+import { withProfileSecretReferenceContract } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import type { ScopeAvailability } from '../types/capabilities'
 import type { CommandResult, PreviewCommandOutput } from '../types/command'
 import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
 import { buildPlatformSummary } from './platform-summary'
-import { buildSinglePlatformStats } from './single-platform-summary'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 
 function findScopeAvailability(scopeAvailability: ScopeAvailability[] | undefined, scope: string | undefined): ScopeAvailability | undefined {
   if (!scope) {
@@ -67,27 +67,24 @@ export class PreviewService {
         reasons: Array.from(new Set(decision.reasons)),
         limitations: Array.from(new Set(decision.limitations)),
       }
-      const summary = {
-        platformStats: buildSinglePlatformStats({
-          platform: profile.platform,
-          profileId: profile.id,
-          targetScope: resolvedScope,
-          warningCount: risk.reasons.length,
-          limitationCount: risk.limitations.length,
-          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
-          backupCreated: preview.backupPlanned,
-          noChanges: preview.noChanges,
-          platformSummary: buildPlatformSummary(profile.platform, {
-            currentScope: resolvedScope,
-            composedFiles: preview.targetFiles.map((item) => item.path),
-            listMode: true,
-          }),
+      const summary = buildSingleProfileCommandSummary({
+        platform: profile.platform,
+        profileId: profile.id,
+        profile,
+        targetScope: resolvedScope,
+        warningCount: risk.reasons.length,
+        limitationCount: risk.limitations.length,
+        changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+        backupCreated: preview.backupPlanned,
+        noChanges: preview.noChanges,
+        platformSummary: buildPlatformSummary(profile.platform, {
+          currentScope: resolvedScope,
+          composedFiles: preview.targetFiles.map((item) => item.path),
+          listMode: true,
         }),
-        referenceStats: buildSecretReferenceStats([profile]),
-        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
-      }
+      })
 
       return {
         ok: validation.ok,

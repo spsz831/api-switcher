@@ -1,5 +1,4 @@
 import { collectIssueMessages } from '../domain/masking'
-import { buildExecutabilityStats, buildSecretReferenceStats } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { SnapshotStore } from '../stores/snapshot.store'
 import { StateStore } from '../stores/state.store'
@@ -8,7 +7,7 @@ import type { CommandResult, RollbackCommandOutput, RollbackErrorDetails } from 
 import type { PlatformName } from '../types/platform'
 import { buildPlatformSummary } from './platform-summary'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
-import { buildSinglePlatformStats } from './single-platform-summary'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 import {
   assertTargetScope,
   buildSnapshotScopePolicy,
@@ -166,30 +165,23 @@ export class RollbackService {
           scopePolicy: snapshot.manifest.scopePolicy,
           scopeCapabilities,
           scopeAvailability,
-          summary: {
-            platformStats: buildSinglePlatformStats({
-              platform,
-              profileId: summaryProfileId,
-              targetScope: resolvedScope,
-              warningCount: warnings.length,
-              limitationCount: limitations.length,
-              restoredFileCount: result.restoredFiles.length,
-              noChanges: result.restoredFiles.length === 0,
-              platformSummary: buildPlatformSummary(platform, {
-                currentScope: resolvedScope,
-                composedFiles: result.restoredFiles,
-                listMode: true,
-              }),
+          summary: buildSingleProfileCommandSummary({
+            platform,
+            profileId: summaryProfileId,
+            profile: summaryProfile,
+            targetScope: resolvedScope,
+            warningCount: warnings.length,
+            limitationCount: limitations.length,
+            restoredFileCount: result.restoredFiles.length,
+            noChanges: result.restoredFiles.length === 0,
+            platformSummary: buildPlatformSummary(platform, {
+              currentScope: resolvedScope,
+              composedFiles: result.restoredFiles,
+              listMode: true,
             }),
-            referenceStats: summaryProfile
-              ? buildSecretReferenceStats([summaryProfile])
-              : undefined,
-            executabilityStats: summaryProfile
-              ? buildExecutabilityStats([{ profile: summaryProfile }])
-              : undefined,
             warnings,
             limitations,
-          },
+          }),
         },
         warnings,
         limitations,

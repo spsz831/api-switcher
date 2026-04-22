@@ -1,8 +1,6 @@
 import { collectIssueMessages } from '../domain/masking'
 import {
-  buildExecutabilityStats,
   buildReferenceGovernanceFailureDetails,
-  buildSecretReferenceStats,
 } from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
@@ -13,7 +11,7 @@ import type { CommandResult, ConfirmationRequiredDetails, UseCommandOutput, Vali
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { buildPlatformSummary } from './platform-summary'
 import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
-import { buildSinglePlatformStats } from './single-platform-summary'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 import { SnapshotService } from './snapshot.service'
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
@@ -102,27 +100,24 @@ export class SwitchService {
         reasons: Array.from(new Set(decision.reasons)),
         limitations: Array.from(new Set(decision.limitations)),
       }
-      const summary = {
-        platformStats: buildSinglePlatformStats({
-          platform: profile.platform,
-          profileId: profile.id,
-          targetScope: resolvedScope,
-          warningCount: risk.reasons.length,
-          limitationCount: risk.limitations.length,
-          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
-          backupCreated: preview.backupPlanned,
-          noChanges: preview.noChanges,
-          platformSummary: buildPlatformSummary(profile.platform, {
-            currentScope: resolvedScope,
-            composedFiles: preview.targetFiles.map((item) => item.path),
-            listMode: true,
-          }),
+      const summary = buildSingleProfileCommandSummary({
+        platform: profile.platform,
+        profileId: profile.id,
+        profile,
+        targetScope: resolvedScope,
+        warningCount: risk.reasons.length,
+        limitationCount: risk.limitations.length,
+        changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+        backupCreated: preview.backupPlanned,
+        noChanges: preview.noChanges,
+        platformSummary: buildPlatformSummary(profile.platform, {
+          currentScope: resolvedScope,
+          composedFiles: preview.targetFiles.map((item) => item.path),
+          listMode: true,
         }),
-        referenceStats: buildSecretReferenceStats([profile]),
-        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
-      }
+      })
       if (!decision.allowed) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
         const details: ConfirmationRequiredDetails = {
@@ -252,27 +247,24 @@ export class SwitchService {
             reasons: warnings,
             limitations,
           },
-          summary: {
-            platformStats: buildSinglePlatformStats({
-              platform: profile.platform,
-              profileId: profile.id,
-              targetScope: resolvedScope,
-              warningCount: warnings.length,
-              limitationCount: limitations.length,
-              changedFileCount: applyResult.changedFiles.length,
-              backupCreated: true,
-              noChanges: applyResult.noChanges,
-              platformSummary: buildPlatformSummary(profile.platform, {
-                currentScope: resolvedScope,
-                composedFiles: preview.targetFiles.map((item) => item.path),
-                listMode: true,
-              }),
+          summary: buildSingleProfileCommandSummary({
+            platform: profile.platform,
+            profileId: profile.id,
+            profile,
+            targetScope: resolvedScope,
+            warningCount: warnings.length,
+            limitationCount: limitations.length,
+            changedFileCount: applyResult.changedFiles.length,
+            backupCreated: true,
+            noChanges: applyResult.noChanges,
+            platformSummary: buildPlatformSummary(profile.platform, {
+              currentScope: resolvedScope,
+              composedFiles: preview.targetFiles.map((item) => item.path),
+              listMode: true,
             }),
-            referenceStats: buildSecretReferenceStats([profile]),
-            executabilityStats: buildExecutabilityStats([{ profile }]),
             warnings,
             limitations,
-          },
+          }),
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
           scopeCapabilities,

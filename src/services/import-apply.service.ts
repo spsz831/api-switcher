@@ -1,8 +1,6 @@
 import { collectIssueMessages } from '../domain/masking'
 import {
-  buildExecutabilityStats,
   buildReferenceGovernanceFailureDetails,
-  buildSecretReferenceStats,
 } from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
@@ -26,6 +24,7 @@ import {
 } from './scope-options'
 import { ImportFidelityService } from './import-fidelity.service'
 import { buildSinglePlatformStats } from './single-platform-summary'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 import {
   type ImportedProfileSource,
   ImportSourceError,
@@ -371,28 +370,24 @@ export class ImportApplyService {
           backupId: backup.backupId,
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
-          summary: {
-            ...summary,
-            platformStats: buildSinglePlatformStats({
-              platform: importedSource.profile.platform,
-              profileId: importedSource.profile.id,
-              targetScope: appliedScope,
-              warningCount: summary.warnings.length,
-              limitationCount: summary.limitations.length,
-              changedFileCount: applyResult.changedFiles.length,
-              backupCreated: true,
-              noChanges: applyResult.noChanges,
-              platformSummary: buildPlatformSummary(importedSource.profile.platform, {
-                currentScope: appliedScope,
-                composedFiles: preview.targetFiles.map((item) => item.path),
-                listMode: true,
-              }),
+          summary: buildSingleProfileCommandSummary({
+            platform: importedSource.profile.platform,
+            profileId: importedSource.profile.id,
+            profile: importedSource.profile,
+            targetScope: appliedScope,
+            warningCount: summary.warnings.length,
+            limitationCount: summary.limitations.length,
+            changedFileCount: applyResult.changedFiles.length,
+            backupCreated: true,
+            noChanges: applyResult.noChanges,
+            platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+              currentScope: appliedScope,
+              composedFiles: preview.targetFiles.map((item) => item.path),
+              listMode: true,
             }),
-            referenceStats: buildSecretReferenceStats([importedSource.profile]),
-            executabilityStats: buildExecutabilityStats([{
-              profile: importedSource.profile,
-            }]),
-          },
+            warnings: summary.warnings,
+            limitations: summary.limitations,
+          }),
         },
         warnings: summary.warnings,
         limitations: summary.limitations,
