@@ -160,9 +160,80 @@ describe('readonly summary sections', () => {
         recommendedNextStep: 'group-by-platform',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-state-audit')?.consumerActions).toEqual([
+      {
+        id: 'inspect-overview',
+        title: 'Inspect overview',
+        priority: 1,
+        use: 'overview',
+        summarySectionIds: ['platform'],
+        triageBucketIds: ['overview'],
+        nextStep: 'inspect-items',
+        primaryFields: ['summary.platformStats', 'detections', 'platformSummary'],
+        purpose: '先看平台概览，再展开 detection 或 profile 明细，确认具体命中与平台 explainable。',
+      },
+      {
+        id: 'review-reference-governance',
+        title: 'Review reference governance',
+        priority: 2,
+        use: 'governance',
+        summarySectionIds: ['reference'],
+        triageBucketIds: ['reference-governance'],
+        nextStep: 'review-reference-details',
+        primaryFields: ['summary.referenceStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '当 summary 暴露出 reference 治理信号时，继续展开 item 级 reference explainable。',
+      },
+      {
+        id: 'assess-write-readiness',
+        title: 'Assess write readiness',
+        priority: 3,
+        use: 'gating',
+        summarySectionIds: ['executability'],
+        triageBucketIds: ['write-readiness'],
+        nextStep: 'continue-to-write',
+        primaryFields: ['summary.executabilityStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '当只读结果需要决定是否继续进入写入链路时，优先查看 executability 与 item 级 reference 证据。',
+      },
+    ])
+    expect(profiles.find((item) => item.id === 'readonly-import-batch')?.consumerActions).toEqual([
+      {
+        id: 'repair-source-blockers',
+        title: 'Repair source blockers',
+        priority: 1,
+        use: 'gating',
+        summarySectionIds: ['source-executability'],
+        triageBucketIds: ['source-blocked'],
+        nextStep: 'repair-source-input',
+        primaryFields: ['summary.sourceExecutability', 'sourceCompatibility', 'items.previewDecision'],
+        purpose: '当导入源本身已经阻断 apply 时，先回到 source 侧修复再继续。',
+      },
+      {
+        id: 'assess-import-readiness',
+        title: 'Assess import readiness',
+        priority: 2,
+        use: 'gating',
+        summarySectionIds: ['executability'],
+        triageBucketIds: ['write-readiness'],
+        nextStep: 'continue-to-write',
+        primaryFields: ['summary.executabilityStats', 'items.previewDecision', 'items.fidelity'],
+        purpose: '当需要决定是否继续进入 import apply 时，先查看 executability、previewDecision 与 fidelity 证据。',
+      },
+      {
+        id: 'route-by-platform',
+        title: 'Route by platform',
+        priority: 3,
+        use: 'routing',
+        summarySectionIds: ['platform'],
+        triageBucketIds: ['platform-routing'],
+        nextStep: 'group-by-platform',
+        primaryFields: ['summary.platformStats', 'platformSummary'],
+        purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合和 item 级 platform explainable 分组。',
+      },
+    ])
     expect(profiles.find((item) => item.id === 'single-platform-write')?.summarySectionGuidance).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.followUpHints).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.triageBuckets).toBeUndefined()
+    expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerActions).toBeUndefined()
   })
 
   it('public schema 为 commandCatalog.summarySections 提供稳定定义', () => {
@@ -205,6 +276,10 @@ describe('readonly summary sections', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileTriageBucket' },
     })
+    expect(consumerProfile?.properties?.consumerActions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
+    })
     expect(consumerProfileFollowUpHint?.required).toEqual(expect.arrayContaining([
       'use',
       'nextStep',
@@ -217,6 +292,16 @@ describe('readonly summary sections', () => {
       'summaryFields',
       'purpose',
       'recommendedNextStep',
+    ]))
+    expect(schema.$defs?.SchemaConsumerProfileAction?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'use',
+      'summarySectionIds',
+      'nextStep',
+      'primaryFields',
+      'purpose',
     ]))
   })
 })

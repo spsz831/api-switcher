@@ -370,6 +370,17 @@ type SchemaCommandOutput = {
         purpose: string
         recommendedNextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
       }>
+      consumerActions?: Array<{
+        id: string
+        title: string
+        priority: number
+        use: 'overview' | 'governance' | 'gating' | 'routing'
+        summarySectionIds: Array<'platform' | 'reference' | 'executability' | 'source-executability'>
+        triageBucketIds?: Array<'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'>
+        nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+        primaryFields: string[]
+        purpose: string
+      }>
     }>
     actions: Array<{
       action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
@@ -465,10 +476,11 @@ type SchemaCommandOutput = {
 - `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
 - `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
+- `consumerActions`：把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，回答“现在最适合执行什么消费动作、应读哪些 section/字段、下一步走什么短码”。
 
 对只读命令本身，运行时 `summary.triageStats` 会把这些分流桶实例化成当前批次的真实计数；`consumerProfiles[].triageBuckets[]` 则是 schema catalog 里的稳定目录层，回答“有哪些桶、每个桶建议读哪些字段、下一步通常走什么动作”。
 
-如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段；如果需要更偏自动化的接入，再读取 `triageBuckets[]`，直接按稳定桶做分流。最小接入流程建议固定为：
+如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段；如果需要更偏自动化的接入，再读取 `triageBuckets[]`，直接按稳定桶做分流；如果想直接拿一层已经拼好的动作目录，则直接读取 `consumerActions[]`。最小接入流程建议固定为：
 
 1. 从 `data.commandCatalog.consumerProfiles[]` 里选中目标产品面，例如 `readonly-import-batch`。
 2. 读取 `bestEntryAction`，先用这条 action 的成功/失败样例校准解析器。
@@ -494,7 +506,20 @@ const readOrder = {
   summaryGuidance: profile?.summarySectionGuidance ?? [],
   followUps: profile?.followUpHints ?? [],
   triageBuckets: profile?.triageBuckets ?? [],
+  consumerActions: profile?.consumerActions ?? [],
 }
+```
+
+如果外部调用方不想自己把 section、bucket 和 next step 再拼装一次，可以直接消费 `consumerActions[]`：
+
+```ts
+const actionCards = (profile?.consumerActions ?? []).map((action) => ({
+  id: action.id,
+  summarySections: action.summarySectionIds,
+  triageBuckets: action.triageBucketIds ?? [],
+  nextStep: action.nextStep,
+  primaryFields: action.primaryFields,
+}))
 ```
 
 这条“只读 summary 导航”当前只覆盖五个只读命令：

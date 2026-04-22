@@ -772,6 +772,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileTriageBucket' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.consumerActions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.required).toEqual(expect.arrayContaining([
       'id',
       'title',
@@ -807,6 +811,38 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileTriageBucket?.properties?.id).toEqual({
       type: 'string',
       enum: ['overview', 'reference-governance', 'write-readiness', 'source-blocked', 'platform-routing'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'use',
+      'summarySectionIds',
+      'nextStep',
+      'primaryFields',
+      'purpose',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.use).toEqual({
+      type: 'string',
+      enum: ['overview', 'governance', 'gating', 'routing'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.summarySectionIds).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['platform', 'reference', 'executability', 'source-executability'],
+      },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.triageBucketIds).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['overview', 'reference-governance', 'write-readiness', 'source-blocked', 'platform-routing'],
+      },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.nextStep).toEqual({
+      type: 'string',
+      enum: ['inspect-items', 'review-reference-details', 'repair-source-input', 'group-by-platform', 'continue-to-write'],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',

@@ -698,6 +698,10 @@
         "triageBuckets": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileTriageBucket" }
+        },
+        "consumerActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileAction" }
         }
       },
       "additionalProperties": false
@@ -769,6 +773,43 @@
           "type": "string",
           "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
         }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileAction": {
+      "type": "object",
+      "required": ["id", "title", "priority", "use", "summarySectionIds", "nextStep", "primaryFields", "purpose"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "use": {
+          "type": "string",
+          "enum": ["overview", "governance", "gating", "routing"]
+        },
+        "summarySectionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["platform", "reference", "executability", "source-executability"]
+          }
+        },
+        "triageBucketIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+          }
+        },
+        "nextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
       },
       "additionalProperties": false
     },

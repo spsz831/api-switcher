@@ -213,4 +213,47 @@ describe('schema summary sections integration', () => {
     ])
     expect(byProfile('single-platform-write')?.triageBuckets).toBeUndefined()
   })
+
+  it('schema --json 只为只读 consumer profile 暴露 consumerActions', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      data?: {
+        commandCatalog?: {
+          consumerProfiles?: Array<{
+            id: string
+            consumerActions?: Array<{
+              id: string
+              use: string
+              nextStep: string
+            }>
+          }>
+        }
+      }
+    }>(result.stdout)
+
+    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.consumerActions?.map((item) => item.id)).toEqual([
+      'inspect-overview',
+      'review-reference-governance',
+      'assess-write-readiness',
+    ])
+    expect(byProfile('readonly-import-batch')?.consumerActions?.map((item) => item.id)).toEqual([
+      'repair-source-blockers',
+      'assess-import-readiness',
+      'route-by-platform',
+    ])
+    expect(byProfile('readonly-state-audit')?.consumerActions?.map((item) => item.nextStep)).toEqual([
+      'inspect-items',
+      'review-reference-details',
+      'continue-to-write',
+    ])
+    expect(byProfile('readonly-import-batch')?.consumerActions?.map((item) => item.use)).toEqual([
+      'gating',
+      'gating',
+      'routing',
+    ])
+    expect(byProfile('single-platform-write')?.consumerActions).toBeUndefined()
+  })
 })
