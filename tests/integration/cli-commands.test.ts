@@ -537,6 +537,15 @@ describe('cli commands integration', () => {
         optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
         recommendedStages: ['summary', 'detail', 'artifacts'],
       },
+      {
+        id: 'readonly-import-batch',
+        title: 'Readonly import batch analysis',
+        appliesToActions: ['import'],
+        sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
+        optionalScopeFields: [],
+        optionalArtifactFields: [],
+        recommendedStages: ['summary', 'detail'],
+      },
     ])
 
     expect(addAction).toEqual({
@@ -896,6 +905,7 @@ describe('cli commands integration', () => {
       { id: 'executability', title: 'Executability summary', priority: 2, fields: ['summary.executabilityStats'], purpose: '再看目标平台侧是否具备写入可执行条件，用于区分可继续 apply 和需本地修复的项。', recommendedWhen: ['pre-apply readiness', 'target-side write readiness'] },
       { id: 'platform', title: 'Platform summary', priority: 3, fields: ['summary.platformStats'], purpose: '最后看 mixed-batch 在各平台上的分布，便于按平台分批处理。', recommendedWhen: ['mixed-batch routing', 'platform-level distribution review'] },
     ])
+    expect(importAction?.consumerProfileIds).toEqual(['readonly-import-batch'])
     expect(previewAction?.summarySections).toBeUndefined()
     expect(useAction?.summarySections).toBeUndefined()
     expect(rollbackAction?.summarySections).toBeUndefined()

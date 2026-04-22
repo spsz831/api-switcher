@@ -668,7 +668,7 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.consumerProfileIds).toEqual({
       type: 'array',
-      items: { type: 'string', enum: ['single-platform-write'] },
+      items: { type: 'string', enum: ['single-platform-write', 'readonly-import-batch'] },
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFields).toEqual({
       type: 'array',

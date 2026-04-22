@@ -26,6 +26,15 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
     recommendedStages: ['summary', 'detail', 'artifacts'],
   },
+  {
+    id: 'readonly-import-batch',
+    title: 'Readonly import batch analysis',
+    appliesToActions: ['import'],
+    sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
+    optionalScopeFields: [],
+    optionalArtifactFields: [],
+    recommendedStages: ['summary', 'detail'],
+  },
 ]
 
 const REFERENCE_GOVERNANCE_CODE_CATALOG: SchemaReferenceGovernanceCode[] = [
@@ -59,6 +68,9 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
 function getConsumerProfileIds(action: typeof COMMAND_ACTIONS[number]): SchemaConsumerProfile['id'][] | undefined {
   if (action === 'add' || action === 'preview' || action === 'use' || action === 'rollback' || action === 'import-apply') {
     return ['single-platform-write']
+  }
+  if (action === 'import') {
+    return ['readonly-import-batch']
   }
 
   return undefined

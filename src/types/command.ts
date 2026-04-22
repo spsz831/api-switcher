@@ -272,9 +272,9 @@ export interface SchemaCommandOutput {
 }
 
 export interface SchemaConsumerProfile {
-  id: 'single-platform-write'
+  id: 'single-platform-write' | 'readonly-import-batch'
   title: string
-  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import-apply'>
+  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import' | 'import-apply'>
   sharedSummaryFields: string[]
   optionalScopeFields: string[]
   optionalArtifactFields: string[]

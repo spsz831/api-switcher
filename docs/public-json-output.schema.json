@@ -540,7 +540,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["single-platform-write"]
+            "enum": ["single-platform-write", "readonly-import-batch"]
           }
         },
         "primaryFields": {
@@ -595,14 +595,14 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["single-platform-write"]
+          "enum": ["single-platform-write", "readonly-import-batch"]
         },
         "title": { "type": "string" },
         "appliesToActions": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["add", "preview", "use", "rollback", "import-apply"]
+            "enum": ["add", "preview", "use", "rollback", "import", "import-apply"]
           }
         },
         "sharedSummaryFields": {

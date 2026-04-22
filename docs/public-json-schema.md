@@ -335,9 +335,9 @@ type SchemaCommandOutput = {
   schemaId: 'https://api-switcher.local/schemas/public-json-output.schema.json'
   commandCatalog?: {
     consumerProfiles?: Array<{
-      id: 'single-platform-write'
+      id: 'single-platform-write' | 'readonly-import-batch'
       title: string
-      appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import-apply'>
+      appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import' | 'import-apply'>
       sharedSummaryFields: string[]
       optionalScopeFields: string[]
       optionalArtifactFields: string[]
@@ -350,7 +350,7 @@ type SchemaCommandOutput = {
       hasScopeCapabilities: boolean
       hasScopeAvailability: boolean
       hasScopePolicy: boolean
-      consumerProfileIds?: Array<'single-platform-write'>
+      consumerProfileIds?: Array<'single-platform-write' | 'readonly-import-batch'>
       primaryFields: string[]
       primaryErrorFields: string[]
       failureCodes: Array<{
@@ -422,7 +422,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前首个共享画像是 `single-platform-write`，把 `add / preview / use / rollback / import-apply` 统一归到同一条单平台写入消费面。建议固定分工如下：
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开两条画像：`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面。建议固定分工如下：
 
 - `primaryFields`：先读哪些字段。
 - `readOrderGroups`：先读哪一层，再读哪一层。
