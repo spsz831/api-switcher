@@ -651,6 +651,10 @@
         "summarySectionGuidance": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileSummarySectionGuidance" }
+        },
+        "followUpHints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileFollowUpHint" }
         }
       },
       "additionalProperties": false
@@ -677,6 +681,26 @@
             "enum": ["overview", "governance", "gating", "routing"]
           }
         }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileFollowUpHint": {
+      "type": "object",
+      "required": ["use", "nextStep", "primaryFields", "purpose"],
+      "properties": {
+        "use": {
+          "type": "string",
+          "enum": ["overview", "governance", "gating", "routing"]
+        },
+        "nextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
       },
       "additionalProperties": false
     },

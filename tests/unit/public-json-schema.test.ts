@@ -728,6 +728,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileSummarySectionGuidance' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.followUpHints).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileFollowUpHint' },
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileSummarySectionGuidance?.required).toEqual(expect.arrayContaining([
       'id',
       'title',
@@ -742,6 +746,16 @@ describe('public JSON contract types', () => {
         type: 'string',
         enum: ['overview', 'governance', 'gating', 'routing'],
       },
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFollowUpHint?.required).toEqual(expect.arrayContaining([
+      'use',
+      'nextStep',
+      'primaryFields',
+      'purpose',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFollowUpHint?.properties?.nextStep).toEqual({
+      type: 'string',
+      enum: ['inspect-items', 'review-reference-details', 'repair-source-input', 'group-by-platform', 'continue-to-write'],
     })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',

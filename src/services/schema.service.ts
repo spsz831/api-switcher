@@ -35,6 +35,26 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalArtifactFields: [],
     recommendedStages: ['summary', 'items', 'detail'],
     summarySectionGuidance: getReadonlyConsumerProfileSummarySectionGuidance('readonly-state-audit'),
+    followUpHints: [
+      {
+        use: 'overview',
+        nextStep: 'inspect-items',
+        primaryFields: ['detections', 'platformSummary'],
+        purpose: '看完平台级概览后，继续展开检测项或 profile 项，确认具体命中与平台 explainable。',
+      },
+      {
+        use: 'governance',
+        nextStep: 'review-reference-details',
+        primaryFields: ['detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '当 summary 暴露出 reference / inline / unsupported 治理信号后，继续展开 item 级 reference explainable。',
+      },
+      {
+        use: 'gating',
+        nextStep: 'continue-to-write',
+        primaryFields: ['summary.executabilityStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
+        purpose: '当只读结果需要决定能否继续进入 use/import apply 时，先结合 executability 聚合与 item 级 reference 细节判断。',
+      },
+    ],
   },
   {
     id: 'single-platform-write',
@@ -66,6 +86,26 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalArtifactFields: [],
     recommendedStages: ['summary', 'items', 'detail'],
     summarySectionGuidance: getReadonlyConsumerProfileSummarySectionGuidance('readonly-import-batch'),
+    followUpHints: [
+      {
+        use: 'gating',
+        nextStep: 'repair-source-input',
+        primaryFields: ['summary.sourceExecutability', 'sourceCompatibility', 'items.previewDecision'],
+        purpose: '当导入源本身被 redacted inline secret 或 schema 兼容性阻断时，先回到 source 侧修复。',
+      },
+      {
+        use: 'gating',
+        nextStep: 'continue-to-write',
+        primaryFields: ['summary.executabilityStats', 'items.previewDecision', 'items.fidelity'],
+        purpose: '当需要决定是否继续进入 import apply 时，继续展开 item 级 previewDecision 与 fidelity 证据。',
+      },
+      {
+        use: 'routing',
+        nextStep: 'group-by-platform',
+        primaryFields: ['summary.platformStats', 'platformSummary'],
+        purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合与 item 级 platform explainable 分组。',
+      },
+    ],
   },
 ]
 

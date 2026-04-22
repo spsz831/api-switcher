@@ -356,6 +356,12 @@ type SchemaCommandOutput = {
         purpose: string
         recommendedUses: Array<'overview' | 'governance' | 'gating' | 'routing'>
       }>
+      followUpHints?: Array<{
+        use: 'overview' | 'governance' | 'gating' | 'routing'
+        nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+        primaryFields: string[]
+        purpose: string
+      }>
     }>
     actions: Array<{
       action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
@@ -449,8 +455,9 @@ type SchemaCommandOutput = {
 - `exampleActions`：这一类画像有哪些代表命令。
 - `bestEntryAction`：第一次接入这类画像时优先参考哪个 action。
 - `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
+- `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 
-如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating。最小接入流程建议固定为：
+如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段。最小接入流程建议固定为：
 
 1. 从 `data.commandCatalog.consumerProfiles[]` 里选中目标产品面，例如 `readonly-import-batch`。
 2. 读取 `bestEntryAction`，先用这条 action 的成功/失败样例校准解析器。
@@ -474,6 +481,7 @@ const readOrder = {
     artifacts: profile?.optionalArtifactFields ?? [],
   },
   summaryGuidance: profile?.summarySectionGuidance ?? [],
+  followUps: profile?.followUpHints ?? [],
 }
 ```
 

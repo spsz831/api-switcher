@@ -145,4 +145,38 @@ describe('schema summary sections integration', () => {
     ])
     expect(byProfile('single-platform-write')?.summarySectionGuidance).toBeUndefined()
   })
+
+  it('schema --json 只为只读 consumer profile 暴露 followUpHints', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        consumerProfiles?: Array<{
+          id: string
+          followUpHints?: Array<{
+            nextStep: string
+          }>
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+
+    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.followUpHints?.map((item) => item.nextStep)).toEqual([
+      'inspect-items',
+      'review-reference-details',
+      'continue-to-write',
+    ])
+    expect(byProfile('readonly-import-batch')?.followUpHints?.map((item) => item.nextStep)).toEqual([
+      'repair-source-input',
+      'continue-to-write',
+      'group-by-platform',
+    ])
+    expect(byProfile('single-platform-write')?.followUpHints).toBeUndefined()
+  })
 })

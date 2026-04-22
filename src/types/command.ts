@@ -286,6 +286,7 @@ export interface SchemaConsumerProfile {
   optionalArtifactFields: string[]
   recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
   summarySectionGuidance?: SchemaConsumerProfileSummarySectionGuidance[]
+  followUpHints?: SchemaConsumerProfileFollowUpHint[]
 }
 
 export interface SchemaActionCapability {
@@ -335,6 +336,13 @@ export interface SchemaConsumerProfileSummarySectionGuidance {
   fields: string[]
   purpose: string
   recommendedUses: Array<'overview' | 'governance' | 'gating' | 'routing'>
+}
+
+export interface SchemaConsumerProfileFollowUpHint {
+  use: 'overview' | 'governance' | 'gating' | 'routing'
+  nextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+  primaryFields: string[]
+  purpose: string
 }
 
 export interface SchemaActionFailureCode {
