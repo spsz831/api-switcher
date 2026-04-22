@@ -14,9 +14,11 @@ import type {
   ConfirmationRequiredDetails,
   CurrentCommandOutput,
   ExportCommandOutput,
+  ExecutabilityStats,
   ImportObservation,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
+  ImportApplyRedactedSecretDetails,
   ImportPreviewCommandOutput,
   ListCommandOutput,
   PreviewCommandOutput,
@@ -29,6 +31,7 @@ import type {
   UseCommandOutput,
   ValidateCommandOutput,
 } from '../types/command'
+import { getReadonlySummarySections } from '../constants/readonly-summary-sections'
 import type { PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from '../types/capabilities'
 import type { SnapshotScopePolicy } from '../types/snapshot'
 import { renderCurrentScopeSummary, renderPreviewScopeSummary } from './scope-renderer'
@@ -137,6 +140,113 @@ function renderReferenceStats(stats?: SecretReferenceStats): string[] {
   }
 
   return lines
+}
+
+function renderExecutabilityStats(stats?: ExecutabilityStats): string[] {
+  if (!stats) {
+    return []
+  }
+
+  const lines = [
+    'executabilityStats 摘要:',
+    `  - profiles=${stats.profileCount}, inlineReady=${stats.inlineReadyProfileCount}, referenceReady=${stats.referenceReadyProfileCount}, referenceMissing=${stats.referenceMissingProfileCount}, writeUnsupported=${stats.writeUnsupportedProfileCount}, sourceRedacted=${stats.sourceRedactedProfileCount}`,
+    `  - hasInlineReadyProfiles=${stats.hasInlineReadyProfiles ? 'yes' : 'no'}, hasReferenceReadyProfiles=${stats.hasReferenceReadyProfiles ? 'yes' : 'no'}, hasReferenceMissingProfiles=${stats.hasReferenceMissingProfiles ? 'yes' : 'no'}, hasWriteUnsupportedProfiles=${stats.hasWriteUnsupportedProfiles ? 'yes' : 'no'}, hasSourceRedactedProfiles=${stats.hasSourceRedactedProfiles ? 'yes' : 'no'}`,
+  ]
+
+  if (stats.hasReferenceMissingProfiles) {
+    lines.push('  - 提示: 当前存在未解析或不受支持的 reference profiles，后续写入不可直接执行。')
+  }
+
+  if (stats.hasWriteUnsupportedProfiles) {
+    lines.push('  - 提示: 当前有 write unsupported profiles，现有写入链路仍不会直接消费这些 profiles。')
+  }
+
+  if (stats.hasSourceRedactedProfiles) {
+    lines.push('  - 提示: 当前存在 redacted 导入源 profiles，后续 import apply 不可直接执行。')
+  }
+
+  return lines
+}
+
+function renderImportSourceExecutability(summary: ImportPreviewCommandOutput['summary']['sourceExecutability']): string[] {
+  return [
+    '导入源可执行性:',
+    `  - total=${summary.totalItems}, apply-ready=${summary.applyReadyCount}, preview-only=${summary.previewOnlyCount}, blocked=${summary.blockedCount}`,
+    ...summary.blockedByCodeStats.map((item) => `  - ${item.code}: total=${item.totalCount}`),
+  ]
+}
+
+function renderImportPreviewPlatformStats(stats: ImportPreviewCommandOutput['summary']['platformStats']): string[] {
+  if (!stats || stats.length === 0) {
+    return []
+  }
+
+  return [
+    '按平台汇总:',
+    ...stats.map((item) => `  - ${item.platform}: total=${item.totalItems}, match=${item.matchCount}, mismatch=${item.mismatchCount}, partial=${item.partialCount}, insufficient-data=${item.insufficientDataCount}`),
+  ]
+}
+
+function renderReadonlySummarySections(
+  action: 'current' | 'list' | 'validate' | 'export' | 'import',
+  renderers: Partial<Record<'platform' | 'reference' | 'executability' | 'source-executability', () => string[]>>,
+): string[] {
+  return getReadonlySummarySections(action).flatMap((section) => {
+    const renderer = renderers[section.id]
+    return renderer ? renderer() : []
+  })
+}
+
+function renderSecretExportPolicy(stats?: ExportCommandOutput['summary']['secretExportPolicy']): string[] {
+  if (!stats) {
+    return []
+  }
+
+  return [
+    'secret 导出策略:',
+    `  - mode=${stats.mode}`,
+    `  - inline secrets: redacted=${stats.inlineSecretsRedacted}, exported=${stats.inlineSecretsExported}`,
+    `  - reference secrets: preserved=${stats.referenceSecretsPreserved}`,
+    `  - profiles with redacted secrets: ${stats.profilesWithRedactedSecrets}`,
+  ]
+}
+
+function renderSecretExportSummary(summary?: ExportCommandOutput['profiles'][number]['secretExportSummary'], indent = '  '): string[] {
+  if (!summary) {
+    return []
+  }
+
+  const lines = [
+    `${indent}secret 导出摘要:`,
+    `${indent}- hasInlineSecrets=${summary.hasInlineSecrets ? 'yes' : 'no'}, hasRedactedInlineSecrets=${summary.hasRedactedInlineSecrets ? 'yes' : 'no'}, hasReferenceSecrets=${summary.hasReferenceSecrets ? 'yes' : 'no'}`,
+    `${indent}- redacted=${summary.redactedFieldCount}, referencePreserved=${summary.preservedReferenceCount}`,
+  ]
+
+  if (!summary.details || summary.details.length === 0) {
+    return lines
+  }
+
+  const redacted = summary.details.filter((item) => item.kind === 'inline-secret-redacted')
+  const exported = summary.details.filter((item) => item.kind === 'inline-secret-exported')
+  const preserved = summary.details.filter((item) => item.kind === 'reference-preserved')
+
+  const renderDetails = (title: string, items: typeof summary.details): string[] => {
+    if (!items || items.length === 0) {
+      return []
+    }
+
+    return [
+      `${indent}- ${title}:`,
+      ...items.map((item) => `${indent}  - ${item.field}`),
+    ]
+  }
+
+  return [
+    ...lines,
+    ...renderDetails('inline secrets 已脱敏导出', redacted),
+    ...renderDetails('inline secrets 已按原值导出', exported),
+    ...renderDetails('reference 已保留', preserved),
+  ]
 }
 
 function renderSinglePlatformStats(
@@ -594,6 +704,22 @@ function parseImportApplyNotReadyDetails(details: unknown): ImportApplyNotReadyD
   }
 }
 
+function parseImportApplyRedactedSecretDetails(details: unknown): ImportApplyRedactedSecretDetails | undefined {
+  if (!isRecord(details) || typeof details.sourceFile !== 'string' || typeof details.profileId !== 'string') {
+    return undefined
+  }
+
+  if (!Array.isArray(details.redactedInlineSecretFields) || !details.redactedInlineSecretFields.every((item) => typeof item === 'string')) {
+    return undefined
+  }
+
+  return {
+    sourceFile: details.sourceFile,
+    profileId: details.profileId,
+    redactedInlineSecretFields: details.redactedInlineSecretFields,
+  }
+}
+
 function renderFailureScopePolicy(scopePolicy?: SnapshotScopePolicy): string[] {
   if (!scopePolicy) {
     return []
@@ -798,8 +924,11 @@ function renderCurrent(data: CurrentCommandOutput): string {
     lines.push(`最近切换: ${data.lastSwitch.platform} / ${data.lastSwitch.profileId} / ${data.lastSwitch.status}`)
   }
 
-  lines.push(...renderCurrentListPlatformStats(data.summary.platformStats))
-  lines.push(...renderReferenceStats(data.summary.referenceStats))
+  lines.push(...renderReadonlySummarySections('current', {
+    platform: () => renderCurrentListPlatformStats(data.summary.platformStats),
+    reference: () => renderReferenceStats(data.summary.referenceStats),
+    executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+  }))
 
   if (data.detections.length > 0) {
     lines.push('检测结果:')
@@ -922,8 +1051,12 @@ function renderRollback(data: RollbackCommandOutput): string {
 
 function renderExport(data: ExportCommandOutput): string {
   return [
-    ...renderValidateExportPlatformStats(data.summary.platformStats),
-    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderReadonlySummarySections('export', {
+      platform: () => renderValidateExportPlatformStats(data.summary.platformStats),
+      reference: () => renderReferenceStats(data.summary.referenceStats),
+      executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+    }),
+    ...renderSecretExportPolicy(data.summary.secretExportPolicy),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
@@ -931,6 +1064,7 @@ function renderExport(data: ExportCommandOutput): string {
       ...renderScopeCapabilities(item.scopeCapabilities),
       ...renderScopeAvailability(item.scopeAvailability),
       ...renderReferenceSummary(item.referenceSummary),
+      ...renderSecretExportSummary(item.secretExportSummary),
       ...(item.validation ? [
         `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
         ...item.validation.errors.map((error) => `  错误: ${error.message}`),
@@ -1085,12 +1219,11 @@ function renderImportPreview(data: ImportPreviewCommandOutput): string {
     `源兼容性: ${data.sourceCompatibility.mode}`,
     ...data.sourceCompatibility.warnings.map((warning) => `  - ${warning}`),
     `汇总: total=${data.summary.totalItems}, match=${data.summary.matchCount}, mismatch=${data.summary.mismatchCount}, partial=${data.summary.partialCount}, insufficient-data=${data.summary.insufficientDataCount}`,
-    ...(data.summary.platformStats.length > 0
-      ? [
-          '按平台汇总:',
-          ...data.summary.platformStats.map((item) => `  - ${item.platform}: total=${item.totalItems}, match=${item.matchCount}, mismatch=${item.mismatchCount}, partial=${item.partialCount}, insufficient-data=${item.insufficientDataCount}`),
-        ]
-      : []),
+    ...renderReadonlySummarySections('import', {
+      'source-executability': () => renderImportSourceExecutability(data.summary.sourceExecutability),
+      executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+      platform: () => renderImportPreviewPlatformStats(data.summary.platformStats),
+    }),
     ...(data.summary.decisionCodeStats.length > 0
       ? [
           '决策代码汇总:',
@@ -1131,8 +1264,11 @@ function renderImportPreview(data: ImportPreviewCommandOutput): string {
 
 function renderValidate(data: ValidateCommandOutput): string {
   return [
-    ...renderValidateExportPlatformStats(data.summary.platformStats),
-    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderReadonlySummarySections('validate', {
+      platform: () => renderValidateExportPlatformStats(data.summary.platformStats),
+      reference: () => renderReferenceStats(data.summary.referenceStats),
+      executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+    }),
     data.items.map((item) => [
       `- ${item.profileId} (${item.platform})`,
       `  校验结果: ${item.validation.ok ? '通过' : '失败'}`,
@@ -1152,8 +1288,11 @@ function renderValidate(data: ValidateCommandOutput): string {
 
 function renderList(data: ListCommandOutput): string {
   return [
-    ...renderCurrentListPlatformStats(data.summary.platformStats),
-    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderReadonlySummarySections('list', {
+      platform: () => renderCurrentListPlatformStats(data.summary.platformStats),
+      reference: () => renderReferenceStats(data.summary.referenceStats),
+      executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+    }),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,
       `  名称: ${item.profile.name}`,
@@ -1476,6 +1615,7 @@ function renderFailure(result: CommandResult): string {
   const scopeCapabilityDetails = parseScopeCapabilityDetails(result.error?.details)
   const scopeAvailabilityDetails = parseScopeAvailabilityDetails(result.error?.details)
   const importApplyNotReadyDetails = parseImportApplyNotReadyDetails(result.error?.details)
+  const importApplyRedactedSecretDetails = parseImportApplyRedactedSecretDetails(result.error?.details)
   const referenceGovernanceDetails = isRecord(result.error?.details)
     ? parseReferenceGovernanceFailureDetails(result.error.details.referenceGovernance)
     : undefined
@@ -1489,6 +1629,21 @@ function renderFailure(result: CommandResult): string {
       ...renderImportObservation('导出时观察', importApplyNotReadyDetails.exportedObservation),
       ...renderImportPreviewDecision(importApplyNotReadyDetails.previewDecision),
       ...renderImportFidelity(importApplyNotReadyDetails.fidelity),
+      ...renderWarnings('附加提示:', result.warnings),
+      ...renderCommandLimitations(result.limitations),
+    ].join('\n')
+  }
+
+  if (result.action === 'import-apply' && importApplyRedactedSecretDetails) {
+    return [
+      result.error?.message ?? '未知错误',
+      `导入文件: ${importApplyRedactedSecretDetails.sourceFile}`,
+      `导入配置: ${importApplyRedactedSecretDetails.profileId}`,
+      '阻断原因:',
+      '  - 导入源中的 inline secret 只有 redacted placeholder，没有可执行明文。',
+      '  - 当前 import apply 不会从 redacted export 反推真实 secret。',
+      'redacted 字段:',
+      ...importApplyRedactedSecretDetails.redactedInlineSecretFields.map((field) => `  - ${field}`),
       ...renderWarnings('附加提示:', result.warnings),
       ...renderCommandLimitations(result.limitations),
     ].join('\n')

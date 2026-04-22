@@ -135,6 +135,20 @@ export interface SecretReferenceStats {
   hasWriteUnsupportedProfiles: boolean
 }
 
+export interface ExecutabilityStats {
+  profileCount: number
+  inlineReadyProfileCount: number
+  referenceReadyProfileCount: number
+  referenceMissingProfileCount: number
+  writeUnsupportedProfileCount: number
+  sourceRedactedProfileCount: number
+  hasInlineReadyProfiles: boolean
+  hasReferenceReadyProfiles: boolean
+  hasReferenceMissingProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+  hasSourceRedactedProfiles: boolean
+}
+
 export type ReferenceGovernanceReasonCode =
   | 'REFERENCE_WRITE_UNSUPPORTED'
   | 'INLINE_SECRET_PRESENT'
@@ -190,6 +204,7 @@ export interface CurrentListPlatformStat {
 export interface CurrentSummary {
   platformStats?: CurrentListPlatformStat[]
   referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -197,6 +212,7 @@ export interface CurrentSummary {
 export interface ListSummary {
   platformStats?: CurrentListPlatformStat[]
   referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -214,8 +230,32 @@ export interface ValidateExportPlatformStat {
 export interface ExportSummary {
   platformStats?: ValidateExportPlatformStat[]
   referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
+  secretExportPolicy?: SecretExportPolicySummary
   warnings: string[]
   limitations: string[]
+}
+
+export interface SecretExportPolicySummary {
+  mode: 'redacted-by-default' | 'include-secrets'
+  inlineSecretsExported: number
+  inlineSecretsRedacted: number
+  referenceSecretsPreserved: number
+  profilesWithRedactedSecrets: number
+}
+
+export interface SecretExportItemDetail {
+  field: string
+  kind: 'inline-secret-redacted' | 'inline-secret-exported' | 'reference-preserved'
+}
+
+export interface SecretExportItemSummary {
+  hasInlineSecrets: boolean
+  hasRedactedInlineSecrets: boolean
+  hasReferenceSecrets: boolean
+  redactedFieldCount: number
+  preservedReferenceCount: number
+  details?: SecretExportItemDetail[]
 }
 
 export interface SchemaCommandOutput {
@@ -239,6 +279,7 @@ export interface SchemaActionCapability {
   fieldSources: SchemaActionFieldSource[]
   fieldStability: SchemaActionFieldStability[]
   readOrderGroups: SchemaReadOrderGroups
+  summarySections?: SchemaSummarySection[]
   primaryFieldSemantics: SchemaFieldSemanticBinding[]
   primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
   referenceGovernanceCodes?: SchemaReferenceGovernanceCode[]
@@ -251,6 +292,15 @@ export interface SchemaCommandCatalog {
 export interface SchemaFieldSemanticBinding {
   path: string
   semantic: string
+}
+
+export interface SchemaSummarySection {
+  id: 'platform' | 'reference' | 'executability' | 'source-executability'
+  title: string
+  priority: number
+  fields: string[]
+  purpose: string
+  recommendedWhen?: string[]
 }
 
 export interface SchemaActionFailureCode {
@@ -347,6 +397,7 @@ export interface CurrentCommandOutput {
 export interface ValidateSummary {
   platformStats?: ValidateExportPlatformStat[]
   referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -374,6 +425,7 @@ export interface ExportedProfileItem {
   defaultWriteScope?: string
   observedAt?: string
   referenceSummary?: ReferenceSummary
+  secretExportSummary?: SecretExportItemSummary
 }
 
 export interface ExportCommandOutput {
@@ -387,6 +439,8 @@ export interface ImportPreviewSummary {
   mismatchCount: number
   partialCount: number
   insufficientDataCount: number
+  sourceExecutability: ImportSourceExecutabilitySummary
+  executabilityStats?: ExecutabilityStats
   platformStats: ImportPreviewPlatformStat[]
   decisionCodeStats: ImportPreviewDecisionCodeStat[]
   driftKindStats: ImportPreviewDriftKindStat[]
@@ -408,6 +462,22 @@ export interface ImportPreviewDecisionCodeStat {
   totalCount: number
   blockingCount: number
   nonBlockingCount: number
+}
+
+export type ImportSourceExecutabilityCode =
+  | 'REDACTED_INLINE_SECRET'
+
+export interface ImportSourceExecutabilityCodeStat {
+  code: ImportSourceExecutabilityCode
+  totalCount: number
+}
+
+export interface ImportSourceExecutabilitySummary {
+  totalItems: number
+  applyReadyCount: number
+  previewOnlyCount: number
+  blockedCount: number
+  blockedByCodeStats: ImportSourceExecutabilityCodeStat[]
 }
 
 export interface ImportPreviewDriftKindStat {
@@ -506,6 +576,12 @@ export interface ImportSourceCompatibility {
 export interface ImportApplySourceDetails {
   sourceFile: string
   profileId?: string
+}
+
+export interface ImportApplyRedactedSecretDetails {
+  sourceFile: string
+  profileId: string
+  redactedInlineSecretFields: string[]
 }
 
 export interface ImportApplyNotReadyDetails {

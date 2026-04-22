@@ -332,6 +332,36 @@
       },
       "additionalProperties": false
     },
+    "ExecutabilityStats": {
+      "type": "object",
+      "required": [
+        "profileCount",
+        "inlineReadyProfileCount",
+        "referenceReadyProfileCount",
+        "referenceMissingProfileCount",
+        "writeUnsupportedProfileCount",
+        "sourceRedactedProfileCount",
+        "hasInlineReadyProfiles",
+        "hasReferenceReadyProfiles",
+        "hasReferenceMissingProfiles",
+        "hasWriteUnsupportedProfiles",
+        "hasSourceRedactedProfiles"
+      ],
+      "properties": {
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "inlineReadyProfileCount": { "type": "integer", "minimum": 0 },
+        "referenceReadyProfileCount": { "type": "integer", "minimum": 0 },
+        "referenceMissingProfileCount": { "type": "integer", "minimum": 0 },
+        "writeUnsupportedProfileCount": { "type": "integer", "minimum": 0 },
+        "sourceRedactedProfileCount": { "type": "integer", "minimum": 0 },
+        "hasInlineReadyProfiles": { "type": "boolean" },
+        "hasReferenceReadyProfiles": { "type": "boolean" },
+        "hasReferenceMissingProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" },
+        "hasSourceRedactedProfiles": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "ReferenceGovernanceFailureDetails": {
       "type": "object",
       "required": [
@@ -431,6 +461,7 @@
           "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -451,6 +482,7 @@
           "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -522,6 +554,10 @@
         },
         "readOrderGroups": {
           "$ref": "#/$defs/SchemaReadOrderGroups"
+        },
+        "summarySections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaSummarySection" }
         },
         "primaryFieldSemantics": {
           "type": "array",
@@ -659,6 +695,28 @@
         "failure": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaFailureReadOrderGroup" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSummarySection": {
+      "type": "object",
+      "required": ["id", "title", "priority", "fields", "purpose"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["platform", "reference", "executability", "source-executability"]
+        },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedWhen": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "additionalProperties": false
@@ -879,6 +937,7 @@
           "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -899,6 +958,8 @@
           "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "secretExportPolicy": { "$ref": "#/$defs/SecretExportPolicySummary" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -968,12 +1029,68 @@
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
         "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
+        "secretExportSummary": { "$ref": "#/$defs/SecretExportItemSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
         }
       },
       "additionalProperties": true
+    },
+    "SecretExportPolicySummary": {
+      "type": "object",
+      "required": [
+        "mode",
+        "inlineSecretsExported",
+        "inlineSecretsRedacted",
+        "referenceSecretsPreserved",
+        "profilesWithRedactedSecrets"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["redacted-by-default", "include-secrets"]
+        },
+        "inlineSecretsExported": { "type": "integer", "minimum": 0 },
+        "inlineSecretsRedacted": { "type": "integer", "minimum": 0 },
+        "referenceSecretsPreserved": { "type": "integer", "minimum": 0 },
+        "profilesWithRedactedSecrets": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "SecretExportItemDetail": {
+      "type": "object",
+      "required": ["field", "kind"],
+      "properties": {
+        "field": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["inline-secret-redacted", "inline-secret-exported", "reference-preserved"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecretExportItemSummary": {
+      "type": "object",
+      "required": [
+        "hasInlineSecrets",
+        "hasRedactedInlineSecrets",
+        "hasReferenceSecrets",
+        "redactedFieldCount",
+        "preservedReferenceCount"
+      ],
+      "properties": {
+        "hasInlineSecrets": { "type": "boolean" },
+        "hasRedactedInlineSecrets": { "type": "boolean" },
+        "hasReferenceSecrets": { "type": "boolean" },
+        "redactedFieldCount": { "type": "integer", "minimum": 0 },
+        "preservedReferenceCount": { "type": "integer", "minimum": 0 },
+        "details": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SecretExportItemDetail" }
+        }
+      },
+      "additionalProperties": false
     },
     "ImportObservation": {
       "type": "object",
@@ -1117,6 +1234,33 @@
       },
       "additionalProperties": false
     },
+    "ImportSourceExecutabilityCodeStat": {
+      "type": "object",
+      "required": ["code", "totalCount"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["REDACTED_INLINE_SECRET"]
+        },
+        "totalCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportSourceExecutabilitySummary": {
+      "type": "object",
+      "required": ["totalItems", "applyReadyCount", "previewOnlyCount", "blockedCount", "blockedByCodeStats"],
+      "properties": {
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "applyReadyCount": { "type": "integer", "minimum": 0 },
+        "previewOnlyCount": { "type": "integer", "minimum": 0 },
+        "blockedCount": { "type": "integer", "minimum": 0 },
+        "blockedByCodeStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportSourceExecutabilityCodeStat" }
+        }
+      },
+      "additionalProperties": false
+    },
     "ImportPreviewDriftKindStat": {
       "type": "object",
       "required": ["driftKind", "totalCount", "blockingCount", "warningCount", "infoCount"],
@@ -1134,13 +1278,15 @@
     },
     "ImportPreviewSummary": {
       "type": "object",
-      "required": ["totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount", "platformStats", "decisionCodeStats", "driftKindStats", "warnings", "limitations"],
+      "required": ["totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount", "sourceExecutability", "platformStats", "decisionCodeStats", "driftKindStats", "warnings", "limitations"],
       "properties": {
         "totalItems": { "type": "integer", "minimum": 0 },
         "matchCount": { "type": "integer", "minimum": 0 },
         "mismatchCount": { "type": "integer", "minimum": 0 },
         "partialCount": { "type": "integer", "minimum": 0 },
         "insufficientDataCount": { "type": "integer", "minimum": 0 },
+        "sourceExecutability": { "$ref": "#/$defs/ImportSourceExecutabilitySummary" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "platformStats": {
           "type": "array",
           "items": { "$ref": "#/$defs/ImportPreviewPlatformStat" }
@@ -1329,6 +1475,19 @@
       },
       "additionalProperties": true
     },
+    "ImportApplyRedactedSecretDetails": {
+      "type": "object",
+      "required": ["sourceFile", "profileId", "redactedInlineSecretFields"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "profileId": { "type": "string" },
+        "redactedInlineSecretFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
     "ImportApplyNotReadyDetails": {
       "type": "object",
       "required": ["sourceFile", "profileId", "previewDecision"],
@@ -1365,6 +1524,7 @@
     "ImportApplyFailureDetails": {
       "anyOf": [
         { "$ref": "#/$defs/ImportApplySourceDetails" },
+        { "$ref": "#/$defs/ImportApplyRedactedSecretDetails" },
         { "$ref": "#/$defs/ImportApplyNotReadyDetails" },
         { "$ref": "#/$defs/ImportScopeUnavailableDetails" },
         { "$ref": "#/$defs/ConfirmationRequiredDetails" },
