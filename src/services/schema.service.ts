@@ -61,7 +61,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'import':
       return ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'items', 'sourceCompatibility']
     case 'import-apply':
-      return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'list':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
@@ -71,7 +71,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'schema':
       return ['commandCatalog', 'schemaVersion', 'schemaId', 'schema']
     case 'use':
-      return ['summary.platformStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'validate':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'items', 'items.referenceSummary']
     default:
@@ -230,6 +230,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'import-apply':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'platformSummary', channel: 'success', presence: 'always' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopePolicy', channel: 'success', presence: 'always' },
@@ -286,6 +288,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'use':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'platformSummary', channel: 'success', presence: 'always' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
@@ -355,6 +359,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'import-apply':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
@@ -411,6 +417,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'use':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
@@ -480,6 +488,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'import-apply':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
@@ -536,6 +546,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'use':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
@@ -611,7 +623,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'import-apply':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看 apply 的平台级聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看 apply 的平台级聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义和 scope 决策。' },
           { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费落盘产物。' },
         ],
@@ -668,7 +680,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'use':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看写入平台的聚合结果。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看写入平台的聚合结果、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义、预览和 scope 上下文。' },
           { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费备份和落盘产物。' },
         ],
@@ -751,6 +763,8 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'import-apply':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'platformSummary', semantic: 'platform-explainable' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },
@@ -797,6 +811,8 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'use':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'platformSummary', semantic: 'platform-explainable' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },

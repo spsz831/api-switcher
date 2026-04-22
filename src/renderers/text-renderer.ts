@@ -979,6 +979,8 @@ function renderPreview(data: PreviewCommandOutput): string {
 function renderUse(data: UseCommandOutput): string {
   const lines = [
     ...renderSinglePlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderExecutabilityStats(data.summary.executabilityStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  备份ID: ${data.backupId ?? '未创建'}`,
     `  无变更: ${data.noChanges ? '是' : '否'}`,
@@ -1579,6 +1581,8 @@ function renderImportApply(data: ImportApplyCommandOutput): string {
   return [
     `导入文件: ${data.sourceFile}`,
     ...renderSinglePlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderExecutabilityStats(data.summary.executabilityStats),
     `导入配置: ${data.importedProfile.id} (${data.importedProfile.platform})`,
     ...(data.appliedScope ? [`应用作用域: ${data.appliedScope} scope`] : []),
     `备份ID: ${data.backupId}`,

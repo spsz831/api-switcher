@@ -253,6 +253,8 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SinglePlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -1412,6 +1414,8 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SinglePlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -1634,7 +1638,7 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/UseRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "summary": { "$ref": "#/$defs/UseSummary" },
         "changedFiles": {
           "type": "array",
           "items": { "type": "string" }

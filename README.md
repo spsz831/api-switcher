@@ -1258,7 +1258,7 @@ api-switcher import preview exported.json --json
 - 当前支持 Gemini / Codex / Claude 导入应用。
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
 - `import apply --json` 成功态也会返回 `platformSummary`，用于把平台 precedence / 多文件组合语义与本次 apply 结果一起交给机器消费方。
-- `import apply --json` 成功态也会在 `data.summary.platformStats[]` 中提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 拿平台、scope、warning/limitation、变更文件计数，再决定是否展开 `platformSummary` 与 `preview`。
+- `import apply --json` 成功态会把 `data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 一起暴露成稳定 summary 入口。推荐先读 `summary.platformStats[0]` 拿平台、scope、warning/limitation、变更文件计数，再读 `summary.referenceStats` 和 `summary.executabilityStats` 做 secret 形态与写入可执行性判断，最后再展开 `platformSummary` 与 `preview`。
 - `import apply --json` 失败态如果涉及 secret/reference 治理，会在 `error.details.referenceGovernance` 给出机器可读原因；失败态不要读取 `summary.referenceStats`，推荐顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节。`referenceDetails[]` 会进一步暴露字段级 resolver explainable，例如 `REFERENCE_ENV_UNRESOLVED`、`REFERENCE_SCHEME_UNSUPPORTED`、`REFERENCE_ENV_RESOLVED`。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判断 `scopeAvailability`，再判断是否需要 `--force`。
@@ -3084,7 +3084,7 @@ redacted 字段:
 }
 ```
 
-`use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]` 也会给出单平台聚合入口，推荐机器消费方先读 `summary.platformStats[0]`，再展开 `platformSummary` 与 `preview` 细节。
+`use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 也会一起给出稳定 summary 入口。推荐机器消费方先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 和 `summary.executabilityStats` 做 secret 形态与写入可执行性判断，最后再展开 `platformSummary` 与 `preview` 细节。文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后再进入写入细节。
 
 `use --json` 需要区分成功态和确认门槛失败态。成功时会把平台 precedence / 多文件组合语义和本次写入结果一起交给机器消费方；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`。如果失败同时涉及 secret/reference 治理，机器消费方应读取 `error.details.referenceGovernance`，不要从失败 envelope 里寻找 `summary.referenceStats`。推荐失败读取顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节：
 

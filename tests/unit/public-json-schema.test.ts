@@ -1447,6 +1447,12 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
     })
+    expect(publicJsonSchema.$defs?.UseSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
+    expect(publicJsonSchema.$defs?.UseSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
     expect(publicJsonSchema.$defs?.RollbackSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
@@ -1455,8 +1461,17 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
     })
+    expect(publicJsonSchema.$defs?.ImportApplySummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplySummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
     expect(publicJsonSchema.$defs?.AddCommandOutput?.properties?.summary).toEqual({
       $ref: '#/$defs/AddSummary',
+    })
+    expect(publicJsonSchema.$defs?.UseCommandOutput?.properties?.summary).toEqual({
+      $ref: '#/$defs/UseSummary',
     })
   })
 

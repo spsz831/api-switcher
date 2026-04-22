@@ -802,6 +802,72 @@ describe('cli commands integration', () => {
     expect(rollbackAction?.summarySections).toBeUndefined()
     expect(importApplyAction?.summarySections).toBeUndefined()
     expect(schemaAction?.summarySections).toBeUndefined()
+    expect(useAction?.primaryFields).toEqual([
+      'summary.platformStats',
+      'summary.referenceStats',
+      'summary.executabilityStats',
+      'platformSummary',
+      'preview',
+      'scopePolicy',
+      'scopeCapabilities',
+      'scopeAvailability',
+      'changedFiles',
+      'backupId',
+    ])
+    expect(useAction?.fieldPresence).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+      { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+    ]))
+    expect(useAction?.fieldSources).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+      { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+    ]))
+    expect(useAction?.fieldStability).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+      { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+    ]))
+    expect(useAction?.readOrderGroups.success.find((group) => group.stage === 'summary')).toEqual({
+      stage: 'summary',
+      fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+      purpose: '先看写入平台的聚合结果、reference 聚合和写入可执行性聚合。',
+    })
+    expect(useAction?.primaryFieldSemantics).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+      { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+    ]))
+    expect(importApplyAction?.primaryFields).toEqual([
+      'summary.platformStats',
+      'summary.referenceStats',
+      'summary.executabilityStats',
+      'platformSummary',
+      'preview',
+      'scopePolicy',
+      'scopeCapabilities',
+      'scopeAvailability',
+      'changedFiles',
+      'backupId',
+    ])
+    expect(importApplyAction?.fieldPresence).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+      { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+    ]))
+    expect(importApplyAction?.fieldSources).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+      { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+    ]))
+    expect(importApplyAction?.fieldStability).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+      { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+    ]))
+    expect(importApplyAction?.readOrderGroups.success.find((group) => group.stage === 'summary')).toEqual({
+      stage: 'summary',
+      fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+      purpose: '先看 apply 的平台级聚合、reference 聚合和写入可执行性聚合。',
+    })
+    expect(importApplyAction?.primaryFieldSemantics).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+      { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+    ]))
 
     expect(validateAction).toEqual({
       action: 'validate',
@@ -2413,7 +2479,7 @@ describe('cli commands integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
-    expect(payload.data?.summary).toEqual({
+    expect(payload.data?.summary).toEqual(expect.objectContaining({
       platformStats: expect.arrayContaining([
         expect.objectContaining({
           platform: 'codex',
@@ -2428,7 +2494,7 @@ describe('cli commands integration', () => {
       ]),
       warnings: payload.data?.risk.reasons ?? [],
       limitations: payload.data?.risk.limitations ?? [],
-    })
+    }))
     expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -2625,6 +2691,20 @@ describe('cli commands integration', () => {
           restoredFileCount?: number
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -2647,7 +2727,7 @@ describe('cli commands integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
-    expect(payload.data?.summary).toEqual({
+    expect(payload.data?.summary).toEqual(expect.objectContaining({
       platformStats: expect.arrayContaining([
         expect.objectContaining({
           platform: 'codex',
@@ -2660,9 +2740,23 @@ describe('cli commands integration', () => {
           noChanges: false,
         }),
       ]),
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+        referenceProfileCount: 0,
+        inlineProfileCount: 1,
+        writeUnsupportedProfileCount: 0,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+      }),
       warnings: payload.data?.risk.reasons ?? [],
       limitations: payload.data?.risk.limitations ?? [],
-    })
+    }))
     expect(payload.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(payload.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(payload.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')

@@ -923,6 +923,34 @@ const usePayload: UseCommandOutput = {
         },
       },
     ],
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -2085,6 +2113,34 @@ const importApplyPayload: ImportApplyCommandOutput = {
         },
       },
     ],
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。'],
     limitations: ['GEMINI_API_KEY 仍需通过环境变量生效。'],
   },
@@ -3086,6 +3142,10 @@ describe('text renderer', () => {
     expect(outputUse).toContain('按平台汇总:')
     expect(outputUse).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=user, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
     expect(outputUse).toContain('    - use 汇总 Gemini precedence 摘要。')
+    expect(outputUse).toContain('referenceStats 摘要:')
+    expect(outputUse).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputUse).toContain('executabilityStats 摘要:')
+    expect(outputUse).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputUse).toContain('- 配置: gemini-prod (gemini)')
     expect(outputUse).toContain('  备份ID: snapshot-gemini-001')
     expect(outputUse).toContain('  无变更: 否')
@@ -3113,6 +3173,10 @@ describe('text renderer', () => {
     expect(outputUse).toContain('  - Gemini API key 仍需通过环境变量 GEMINI_API_KEY 生效。')
     expect(outputUse).toContain('限制说明:')
     expect(outputUse).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('use 成功文本先读 summary 聚合，再进入写入细节', () => {
+    expectOrderedSections(outputUse, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:', '- 配置: gemini-prod (gemini)'])
   })
 
   it('渲染 use 结果时会为 Gemini success 输出 project 覆盖与回滚约束摘要', () => {
@@ -3378,6 +3442,10 @@ describe('text renderer', () => {
     expect(outputImportApply).toContain('按平台汇总:')
     expect(outputImportApply).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=project, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
     expect(outputImportApply).toContain('    - import apply 汇总 Gemini precedence 摘要。')
+    expect(outputImportApply).toContain('referenceStats 摘要:')
+    expect(outputImportApply).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputImportApply).toContain('executabilityStats 摘要:')
+    expect(outputImportApply).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputImportApply).toContain('导入文件: E:/tmp/export.json')
     expect(outputImportApply).toContain('导入配置: gemini-prod (gemini)')
     expect(outputImportApply).toContain('应用作用域: project scope')
@@ -3401,6 +3469,10 @@ describe('text renderer', () => {
     expect(outputImportApply).toContain('  - 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
     expect(outputImportApply).toContain('限制说明:')
     expect(outputImportApply).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('import apply 成功文本先读 summary 聚合，再进入 apply 细节', () => {
+    expectOrderedSections(outputImportApply, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:', '导入配置: gemini-prod (gemini)'])
   })
 
   it('渲染 import apply 结果时会为 Gemini success 输出 project 回滚约束与目标作用域语义', () => {

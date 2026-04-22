@@ -73,6 +73,8 @@ export interface UseRiskSummary {
 
 export interface UseSummary {
   platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -599,6 +601,8 @@ export interface ValidationFailureDetails extends ValidationResult {
 
 export interface ImportApplySummary {
   platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }

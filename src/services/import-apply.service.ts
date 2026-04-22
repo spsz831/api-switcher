@@ -1,5 +1,9 @@
 import { collectIssueMessages } from '../domain/masking'
-import { buildReferenceGovernanceFailureDetails } from '../domain/secret-inspection'
+import {
+  buildExecutabilityStats,
+  buildReferenceGovernanceFailureDetails,
+  buildSecretReferenceStats,
+} from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CurrentProfileResult, PreviewResult, ValidationResult } from '../types/adapter'
@@ -384,6 +388,10 @@ export class ImportApplyService {
                 listMode: true,
               }),
             }),
+            referenceStats: buildSecretReferenceStats([importedSource.profile]),
+            executabilityStats: buildExecutabilityStats([{
+              profile: importedSource.profile,
+            }]),
           },
         },
         warnings: summary.warnings,

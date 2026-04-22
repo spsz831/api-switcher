@@ -528,6 +528,19 @@ describe('switch service', () => {
     expect(result.ok).toBe(true)
     expect(result.action).toBe('use')
     expect(result.data?.summary).toEqual(expect.objectContaining({
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+        inlineProfileCount: 1,
+        referenceProfileCount: 0,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+      }),
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
     }))

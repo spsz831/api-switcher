@@ -1568,6 +1568,19 @@ describe('import apply service', () => {
     expect(result.warnings).toContain('apply warning')
     expect(result.limitations).toContain('apply limitation')
     expect(result.data?.summary).toEqual(expect.objectContaining({
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+        inlineProfileCount: 1,
+        referenceProfileCount: 0,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+      }),
       warnings: ['apply warning'],
       limitations: ['apply limitation'],
     }))

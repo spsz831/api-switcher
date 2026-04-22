@@ -1,5 +1,9 @@
 import { collectIssueMessages } from '../domain/masking'
-import { buildReferenceGovernanceFailureDetails } from '../domain/secret-inspection'
+import {
+  buildExecutabilityStats,
+  buildReferenceGovernanceFailureDetails,
+  buildSecretReferenceStats,
+} from '../domain/secret-inspection'
 import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
@@ -114,6 +118,8 @@ export class SwitchService {
             listMode: true,
           }),
         }),
+        referenceStats: buildSecretReferenceStats([profile]),
+        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
       }
@@ -262,6 +268,8 @@ export class SwitchService {
                 listMode: true,
               }),
             }),
+            referenceStats: buildSecretReferenceStats([profile]),
+            executabilityStats: buildExecutabilityStats([{ profile }]),
             warnings,
             limitations,
           },
