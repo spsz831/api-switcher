@@ -591,7 +591,7 @@
     },
     "SchemaConsumerProfile": {
       "type": "object",
-      "required": ["id", "title", "appliesToActions", "sharedSummaryFields", "sharedItemFields", "sharedFailureFields", "optionalScopeFields", "optionalItemFields", "optionalFailureFields", "optionalArtifactFields", "recommendedStages"],
+      "required": ["id", "title", "appliesToActions", "exampleActions", "bestEntryAction", "sharedSummaryFields", "sharedItemFields", "sharedFailureFields", "optionalScopeFields", "optionalItemFields", "optionalFailureFields", "optionalArtifactFields", "recommendedStages"],
       "properties": {
         "id": {
           "type": "string",
@@ -604,6 +604,17 @@
             "type": "string",
             "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
           }
+        },
+        "exampleActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+          }
+        },
+        "bestEntryAction": {
+          "type": "string",
+          "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
         },
         "sharedSummaryFields": {
           "type": "array",

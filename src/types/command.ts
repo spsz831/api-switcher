@@ -275,6 +275,8 @@ export interface SchemaConsumerProfile {
   id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
   title: string
   appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
+  exampleActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
+  bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
   sharedSummaryFields: string[]
   sharedItemFields: string[]
   sharedFailureFields: string[]

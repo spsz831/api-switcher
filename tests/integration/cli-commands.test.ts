@@ -440,6 +440,8 @@ describe('cli commands integration', () => {
           id: string
           title: string
           appliesToActions: string[]
+          exampleActions: string[]
+          bestEntryAction: string
           sharedSummaryFields: string[]
           sharedItemFields: string[]
           sharedFailureFields: string[]
@@ -536,6 +538,8 @@ describe('cli commands integration', () => {
         id: 'readonly-state-audit',
         title: 'Readonly state audit',
         appliesToActions: ['current', 'list', 'validate', 'export'],
+        exampleActions: ['current', 'export'],
+        bestEntryAction: 'current',
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
         sharedItemFields: ['platformSummary'],
         sharedFailureFields: ['error.code', 'error.message'],
@@ -549,6 +553,8 @@ describe('cli commands integration', () => {
         id: 'single-platform-write',
         title: 'Single-platform write',
         appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
+        exampleActions: ['preview', 'use', 'import-apply'],
+        bestEntryAction: 'preview',
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
         sharedItemFields: ['platformSummary', 'preview'],
         sharedFailureFields: ['error.code', 'error.message'],
@@ -562,6 +568,8 @@ describe('cli commands integration', () => {
         id: 'readonly-import-batch',
         title: 'Readonly import batch analysis',
         appliesToActions: ['import'],
+        exampleActions: ['import'],
+        bestEntryAction: 'import',
         sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
         sharedItemFields: ['platformSummary', 'previewDecision'],
         sharedFailureFields: ['error.code', 'error.message'],
