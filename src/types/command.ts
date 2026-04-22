@@ -276,7 +276,9 @@ export interface SchemaConsumerProfile {
   title: string
   appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
   sharedSummaryFields: string[]
+  sharedItemFields: string[]
   optionalScopeFields: string[]
+  optionalItemFields: string[]
   optionalArtifactFields: string[]
   recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
 }

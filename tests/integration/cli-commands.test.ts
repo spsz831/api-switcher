@@ -441,7 +441,9 @@ describe('cli commands integration', () => {
           title: string
           appliesToActions: string[]
           sharedSummaryFields: string[]
+          sharedItemFields: string[]
           optionalScopeFields: string[]
+          optionalItemFields: string[]
           optionalArtifactFields: string[]
           recommendedStages: string[]
         }>
@@ -533,7 +535,9 @@ describe('cli commands integration', () => {
         title: 'Readonly state audit',
         appliesToActions: ['current', 'list', 'validate', 'export'],
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+        sharedItemFields: ['platformSummary'],
         optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
+        optionalItemFields: ['referenceSummary', 'secretExportSummary', 'currentScope'],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
       },
@@ -542,7 +546,9 @@ describe('cli commands integration', () => {
         title: 'Single-platform write',
         appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
         sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+        sharedItemFields: ['platformSummary', 'preview'],
         optionalScopeFields: ['scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+        optionalItemFields: ['risk', 'rollback'],
         optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
         recommendedStages: ['summary', 'detail', 'artifacts'],
       },
@@ -551,7 +557,9 @@ describe('cli commands integration', () => {
         title: 'Readonly import batch analysis',
         appliesToActions: ['import'],
         sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
+        sharedItemFields: ['platformSummary', 'previewDecision'],
         optionalScopeFields: [],
+        optionalItemFields: ['fidelity', 'exportedObservation', 'localObservation'],
         optionalArtifactFields: [],
         recommendedStages: ['summary', 'items', 'detail'],
       },

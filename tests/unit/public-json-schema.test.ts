@@ -714,7 +714,9 @@ describe('public JSON contract types', () => {
       'title',
       'appliesToActions',
       'sharedSummaryFields',
+      'sharedItemFields',
       'optionalScopeFields',
+      'optionalItemFields',
       'optionalArtifactFields',
       'recommendedStages',
     ]))
