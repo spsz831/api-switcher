@@ -103,6 +103,8 @@ export interface UseCommandOutput {
 
 export interface RollbackSummary {
   platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }

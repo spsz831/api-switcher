@@ -1148,6 +1148,34 @@ const rollbackPayload: RollbackCommandOutput = {
     ],
   },
   summary: {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'gemini',
@@ -2423,6 +2451,34 @@ const codexRollbackPayload: RollbackCommandOutput = {
     ],
   },
   summary: {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['已按快照同时恢复 Codex 双文件。'],
     limitations: ['回滚仅恢复快照覆盖的双文件。'],
   },
@@ -2476,6 +2532,34 @@ const claudeRollbackPayload: RollbackCommandOutput = {
     ],
   },
   summary: {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['已恢复 Claude local scope 快照。'],
     limitations: ['回滚仅恢复该 scope 下的托管字段。'],
   },
@@ -3217,6 +3301,10 @@ describe('text renderer', () => {
     expect(outputRollback).toContain('按平台汇总:')
     expect(outputRollback).toContain('  - gemini: profiles=1, scope=project, warnings=1, limitations=1, restoredFiles=1, noChanges=no')
     expect(outputRollback).toContain('    - rollback 汇总 Gemini precedence 摘要。')
+    expect(outputRollback).toContain('referenceStats 摘要:')
+    expect(outputRollback).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputRollback).toContain('executabilityStats 摘要:')
+    expect(outputRollback).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputRollback).toContain('- 备份ID: snapshot-gemini-001')
     expect(outputRollback).toContain('  已恢复文件:')
     expect(outputRollback).toContain('  - C:/Users/test/.gemini/settings.json')
@@ -3279,6 +3367,10 @@ describe('text renderer', () => {
   it('rollback 无恢复文件时输出无', () => {
     expect(outputRollbackEmpty).toContain('- 备份ID: snapshot-gemini-002')
     expect(outputRollbackEmpty).toContain('  已恢复文件: 无')
+  })
+
+  it('rollback 成功文本先读 summary 聚合，再进入恢复细节', () => {
+    expectOrderedSections(outputRollback, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:', '- 备份ID: snapshot-gemini-001'])
   })
 
   it('渲染 validate 结果时输出 explainable 校验细节与平台限制', () => {

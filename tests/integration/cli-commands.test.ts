@@ -835,6 +835,39 @@ describe('cli commands integration', () => {
       { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
       { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
     ]))
+    expect(rollbackAction?.primaryFields).toEqual([
+      'summary.platformStats',
+      'summary.referenceStats',
+      'summary.executabilityStats',
+      'platformSummary',
+      'rollback',
+      'scopePolicy',
+      'scopeCapabilities',
+      'scopeAvailability',
+      'restoredFiles',
+      'backupId',
+    ])
+    expect(rollbackAction?.fieldPresence).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
+      { path: 'summary.executabilityStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
+    ]))
+    expect(rollbackAction?.fieldSources).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+      { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+    ]))
+    expect(rollbackAction?.fieldStability).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'bounded' },
+      { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'bounded' },
+    ]))
+    expect(rollbackAction?.readOrderGroups.success.find((group) => group.stage === 'summary')).toEqual({
+      stage: 'summary',
+      fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+      purpose: '先看恢复的平台聚合，以及快照上一版 profile 的 reference 聚合和写入可执行性聚合。',
+    })
+    expect(rollbackAction?.primaryFieldSemantics).toEqual(expect.arrayContaining([
+      { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+      { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+    ]))
     expect(importApplyAction?.primaryFields).toEqual([
       'summary.platformStats',
       'summary.referenceStats',
@@ -2454,6 +2487,20 @@ describe('cli commands integration', () => {
           backupCreated?: boolean
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -2924,6 +2971,20 @@ describe('cli commands integration', () => {
           backupCreated?: boolean
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -2954,6 +3015,20 @@ describe('cli commands integration', () => {
         noChanges: false,
       }),
     ]))
+    expect(payload.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+    })
     expect(payload.data?.platformSummary).toEqual({
       kind: 'multi-file-composition',
       composedFiles: [codexConfigPath, codexAuthPath],

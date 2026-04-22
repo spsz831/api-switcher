@@ -3259,7 +3259,7 @@ reference 解析摘要:
       引用 env://GEMINI_SECONDARY_API_KEY 可在当前环境解析，但写入链路不会直接写入真实 secret。
 ```
 
-`rollback --json` 成功时也会返回 `platformSummary`。同时，`data.summary.platformStats[]` 会提供单平台聚合入口，推荐先读 `summary.platformStats[0]` 理解本次恢复涉及的平台、scope 与 warning/limitation 计数，再决定是否展开 `rollback` 明细。
+`rollback --json` 成功时也会返回 `platformSummary`。同时，`data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 也会一起给出稳定 summary 入口。推荐先读 `summary.platformStats[0]` 理解本次恢复涉及的平台、scope 与 warning/limitation 计数，再读 `summary.referenceStats` 与 `summary.executabilityStats` 理解快照上一版 profile 的 secret 形态与写入可执行性，再决定是否展开 `rollback` 明细。文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后再进入恢复细节。
 
 `rollback --json` 也分成功和失败两类。成功时会同时带上快照里的 `scopePolicy`、当前平台 `scopeCapabilities` 和当前环境里的 `scopeAvailability`；如果 Gemini 请求 scope 与快照 scope 不匹配，或 project scope 当前不可解析，则返回结构化失败对象：
 

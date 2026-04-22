@@ -1036,6 +1036,8 @@ function renderAdd(data: AddCommandOutput): string {
 function renderRollback(data: RollbackCommandOutput): string {
   return [
     ...renderSinglePlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderExecutabilityStats(data.summary.executabilityStats),
     `- 备份ID: ${data.backupId}`,
     ...(data.restoredFiles.length > 0 ? ['  已恢复文件:', ...data.restoredFiles.map((item) => `  - ${item}`)] : ['  已恢复文件: 无']),
     ...renderRollbackPlatformSummary(data),

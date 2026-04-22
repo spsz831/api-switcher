@@ -274,6 +274,8 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SinglePlatformStat" }
         },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }

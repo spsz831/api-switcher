@@ -1397,6 +1397,20 @@ describe('public JSON contract types', () => {
           warningCount: number
           limitationCount: number
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
       }
     }>()
 
@@ -1456,6 +1470,12 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.RollbackSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SinglePlatformStat' },
+    })
+    expect(publicJsonSchema.$defs?.RollbackSummary?.properties?.referenceStats).toEqual({
+      $ref: '#/$defs/SecretReferenceStats',
+    })
+    expect(publicJsonSchema.$defs?.RollbackSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
     })
     expect(publicJsonSchema.$defs?.ImportApplySummary?.properties?.platformStats).toEqual({
       type: 'array',

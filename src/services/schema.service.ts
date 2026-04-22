@@ -67,7 +67,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'preview':
       return ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
-      return ['summary.platformStats', 'platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'restoredFiles', 'backupId']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'restoredFiles', 'backupId']
     case 'schema':
       return ['commandCatalog', 'schemaVersion', 'schemaId', 'schema']
     case 'use':
@@ -267,6 +267,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'rollback':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
         { path: 'platformSummary', channel: 'success', presence: 'always' },
         { path: 'rollback', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ROLLBACK_RESULT_IS_AVAILABLE' },
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
@@ -396,6 +398,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'rollback':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'platformSummary', channel: 'success', source: 'platform-adapter' },
         { path: 'rollback', channel: 'success', source: 'write-pipeline' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
@@ -525,6 +529,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'rollback':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'bounded' },
         { path: 'platformSummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'rollback', channel: 'success', stabilityTier: 'bounded' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
@@ -657,7 +663,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'rollback':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看恢复的单平台聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看恢复的平台聚合，以及快照上一版 profile 的 reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开恢复结果和 scope 上下文。' },
           { stage: 'artifacts', fields: ['restoredFiles', 'backupId'], purpose: '最后消费恢复产物。' },
         ],
@@ -793,6 +799,8 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'rollback':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'platformSummary', semantic: 'platform-explainable' },
         { path: 'rollback', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },

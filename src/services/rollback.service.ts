@@ -1,4 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
+import { buildExecutabilityStats, buildSecretReferenceStats } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { SnapshotStore } from '../stores/snapshot.store'
 import { StateStore } from '../stores/state.store'
@@ -6,6 +7,7 @@ import type { ScopeAvailability } from '../types/capabilities'
 import type { CommandResult, RollbackCommandOutput, RollbackErrorDetails } from '../types/command'
 import type { PlatformName } from '../types/platform'
 import { buildPlatformSummary } from './platform-summary'
+import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { buildSinglePlatformStats } from './single-platform-summary'
 import {
   assertTargetScope,
@@ -44,6 +46,7 @@ export class RollbackService {
     private readonly registry = new AdapterRegistry(),
     private readonly snapshotStore = new SnapshotStore(),
     private readonly stateStore = new StateStore(),
+    private readonly profileService = new ProfileService(),
   ) {}
 
   async rollback(backupId?: string, options: { scope?: string } = {}): Promise<CommandResult<RollbackCommandOutput>> {
@@ -125,6 +128,16 @@ export class RollbackService {
         ...(snapshot.manifest.limitations ?? []),
         ...collectIssueMessages(result.limitations),
       ]))
+      const summaryProfileId = snapshot.manifest.previousProfileId ?? snapshot.manifest.profileId
+      const summaryProfile = summaryProfileId
+        ? await this.profileService.resolve(summaryProfileId).catch((error: unknown) => {
+            if (error instanceof ProfileNotFoundError) {
+              return undefined
+            }
+
+            throw error
+          })
+        : undefined
 
       if (snapshot.manifest.previousProfileId) {
         await this.stateStore.markCurrent(platform, snapshot.manifest.previousProfileId, targetBackupId, 'rolled-back', {
@@ -156,6 +169,7 @@ export class RollbackService {
           summary: {
             platformStats: buildSinglePlatformStats({
               platform,
+              profileId: summaryProfileId,
               targetScope: resolvedScope,
               warningCount: warnings.length,
               limitationCount: limitations.length,
@@ -167,6 +181,12 @@ export class RollbackService {
                 listMode: true,
               }),
             }),
+            referenceStats: summaryProfile
+              ? buildSecretReferenceStats([summaryProfile])
+              : undefined,
+            executabilityStats: summaryProfile
+              ? buildExecutabilityStats([{ profile: summaryProfile }])
+              : undefined,
             warnings,
             limitations,
           },
