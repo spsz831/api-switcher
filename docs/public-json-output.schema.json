@@ -536,6 +536,13 @@
         "hasScopeCapabilities": { "type": "boolean" },
         "hasScopeAvailability": { "type": "boolean" },
         "hasScopePolicy": { "type": "boolean" },
+        "consumerProfileIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["single-platform-write"]
+          }
+        },
         "primaryFields": {
           "type": "array",
           "items": { "type": "string" }
@@ -578,6 +585,44 @@
         "referenceGovernanceCodes": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaReferenceGovernanceCode" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfile": {
+      "type": "object",
+      "required": ["id", "title", "appliesToActions", "sharedSummaryFields", "optionalScopeFields", "optionalArtifactFields", "recommendedStages"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["single-platform-write"]
+        },
+        "title": { "type": "string" },
+        "appliesToActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "import-apply"]
+          }
+        },
+        "sharedSummaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalScopeFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalArtifactFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommendedStages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["summary", "detail", "artifacts"]
+          }
         }
       },
       "additionalProperties": false
@@ -777,6 +822,10 @@
         "actions": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaActionCapability" }
+        },
+        "consumerProfiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfile" }
         }
       },
       "additionalProperties": false

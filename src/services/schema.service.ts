@@ -6,6 +6,7 @@ import {
   type CommandResult,
   type SchemaActionCapability,
   type SchemaActionFailureCode,
+  type SchemaConsumerProfile,
   type SchemaActionFieldPresence,
   type SchemaActionFieldSource,
   type SchemaActionFieldStability,
@@ -14,6 +15,18 @@ import {
   type SchemaReadOrderGroups,
   type SchemaReferenceGovernanceCode,
 } from '../types/command'
+
+const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
+  {
+    id: 'single-platform-write',
+    title: 'Single-platform write',
+    appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
+    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+    optionalScopeFields: ['scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+    optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
+    recommendedStages: ['summary', 'detail', 'artifacts'],
+  },
+]
 
 const REFERENCE_GOVERNANCE_CODE_CATALOG: SchemaReferenceGovernanceCode[] = [
   { code: 'REFERENCE_INPUT_CONFLICT', priority: 1, category: 'input', recommendedHandling: 'fix-reference-input' },
@@ -29,6 +42,7 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   hasScopeCapabilities: ['add', 'current', 'list', 'preview', 'use', 'rollback', 'import', 'import-apply'].includes(action),
   hasScopeAvailability: ['current', 'preview', 'use', 'rollback', 'import', 'import-apply'].includes(action),
   hasScopePolicy: ['preview', 'use', 'rollback', 'import-apply'].includes(action),
+  consumerProfileIds: getConsumerProfileIds(action),
   primaryFields: getPrimaryFields(action),
   primaryErrorFields: getPrimaryErrorFields(action),
   failureCodes: getFailureCodes(action),
@@ -41,6 +55,14 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   primaryErrorFieldSemantics: getPrimaryErrorFieldSemantics(action),
   ...getReferenceGovernanceCodeCatalog(action),
 }))
+
+function getConsumerProfileIds(action: typeof COMMAND_ACTIONS[number]): SchemaConsumerProfile['id'][] | undefined {
+  if (action === 'add' || action === 'preview' || action === 'use' || action === 'rollback' || action === 'import-apply') {
+    return ['single-platform-write']
+  }
+
+  return undefined
+}
 
 function getReferenceGovernanceCodeCatalog(action: typeof COMMAND_ACTIONS[number]): { referenceGovernanceCodes?: SchemaReferenceGovernanceCode[] } {
   if (action !== 'use' && action !== 'import-apply') {
@@ -65,7 +87,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'list':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
-      return ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'restoredFiles', 'backupId']
     case 'schema':
@@ -258,6 +280,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'preview':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'risk', channel: 'success', presence: 'always' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
@@ -391,6 +415,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'preview':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'risk', channel: 'success', source: 'command-service' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
@@ -524,6 +550,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'preview':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'risk', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
@@ -658,7 +686,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'preview':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看目标 scope 的平台级聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看目标 scope 的平台聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开预览、风险和 scope 元信息。' },
         ],
         failure: [
@@ -798,6 +826,8 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'preview':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'risk', semantic: 'risk' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },
@@ -898,6 +928,7 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
 function buildCommandCatalog() {
   return {
     actions: SCHEMA_ACTION_CAPABILITIES,
+    consumerProfiles: SCHEMA_CONSUMER_PROFILES,
   }
 }
 

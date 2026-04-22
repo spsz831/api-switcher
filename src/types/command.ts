@@ -271,6 +271,16 @@ export interface SchemaCommandOutput {
   schema?: Record<string, unknown>
 }
 
+export interface SchemaConsumerProfile {
+  id: 'single-platform-write'
+  title: string
+  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'import-apply'>
+  sharedSummaryFields: string[]
+  optionalScopeFields: string[]
+  optionalArtifactFields: string[]
+  recommendedStages: Array<'summary' | 'detail' | 'artifacts'>
+}
+
 export interface SchemaActionCapability {
   action: typeof COMMAND_ACTIONS[number]
   hasPlatformSummary: boolean
@@ -278,6 +288,7 @@ export interface SchemaActionCapability {
   hasScopeCapabilities: boolean
   hasScopeAvailability: boolean
   hasScopePolicy: boolean
+  consumerProfileIds?: SchemaConsumerProfile['id'][]
   primaryFields: string[]
   primaryErrorFields: string[]
   failureCodes: SchemaActionFailureCode[]
@@ -293,6 +304,7 @@ export interface SchemaActionCapability {
 
 export interface SchemaCommandCatalog {
   actions: SchemaActionCapability[]
+  consumerProfiles?: SchemaConsumerProfile[]
 }
 
 export interface SchemaFieldSemanticBinding {

@@ -436,6 +436,15 @@ describe('cli commands integration', () => {
       schemaVersion: string
       schemaId: string
       commandCatalog: {
+        consumerProfiles?: Array<{
+          id: string
+          title: string
+          appliesToActions: string[]
+          sharedSummaryFields: string[]
+          optionalScopeFields: string[]
+          optionalArtifactFields: string[]
+          recommendedStages: string[]
+        }>
         actions: Array<{
           action: string
           hasPlatformSummary: boolean
@@ -443,6 +452,7 @@ describe('cli commands integration', () => {
           hasScopeCapabilities: boolean
           hasScopeAvailability: boolean
           hasScopePolicy: boolean
+          consumerProfileIds?: string[]
           primaryFields: string[]
           primaryErrorFields: string[]
           failureCodes: Array<{
@@ -504,6 +514,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
     const actions = payload.data?.commandCatalog.actions ?? []
+    const consumerProfiles = payload.data?.commandCatalog.consumerProfiles ?? []
     const addAction = actions.find((action) => action.action === 'add')
     const currentAction = actions.find((action) => action.action === 'current')
     const exportAction = actions.find((action) => action.action === 'export')
@@ -516,6 +527,18 @@ describe('cli commands integration', () => {
     const useAction = actions.find((action) => action.action === 'use')
     const validateAction = actions.find((action) => action.action === 'validate')
 
+    expect(consumerProfiles).toEqual([
+      {
+        id: 'single-platform-write',
+        title: 'Single-platform write',
+        appliesToActions: ['add', 'preview', 'use', 'rollback', 'import-apply'],
+        sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+        optionalScopeFields: ['scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+        optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
+        recommendedStages: ['summary', 'detail', 'artifacts'],
+      },
+    ])
+
     expect(addAction).toEqual({
       action: 'add',
       hasPlatformSummary: false,
@@ -523,6 +546,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: false,
       hasScopePolicy: false,
+      consumerProfileIds: ['single-platform-write'],
       primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopeCapabilities'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
@@ -794,7 +818,8 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: true,
       hasScopePolicy: true,
-      primaryFields: ['summary.platformStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
+      consumerProfileIds: ['single-platform-write'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message', 'error.details.scopePolicy', 'error.details.scopeAvailability'],
       failureCodes: [
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -804,6 +829,8 @@ describe('cli commands integration', () => {
       ],
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'risk', channel: 'success', presence: 'always' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
@@ -814,6 +841,8 @@ describe('cli commands integration', () => {
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'risk', channel: 'success', source: 'command-service' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
@@ -824,6 +853,8 @@ describe('cli commands integration', () => {
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'risk', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
@@ -834,7 +865,7 @@ describe('cli commands integration', () => {
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看目标 scope 的平台级聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看目标 scope 的平台聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开预览、风险和 scope 元信息。' },
         ],
         failure: [
@@ -844,6 +875,8 @@ describe('cli commands integration', () => {
       },
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'risk', semantic: 'risk' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },
@@ -880,6 +913,7 @@ describe('cli commands integration', () => {
       'changedFiles',
       'backupId',
     ])
+    expect(useAction?.consumerProfileIds).toEqual(['single-platform-write'])
     expect(useAction?.fieldPresence).toEqual(expect.arrayContaining([
       { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
       { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
@@ -913,6 +947,7 @@ describe('cli commands integration', () => {
       'restoredFiles',
       'backupId',
     ])
+    expect(rollbackAction?.consumerProfileIds).toEqual(['single-platform-write'])
     expect(rollbackAction?.fieldPresence).toEqual(expect.arrayContaining([
       { path: 'summary.referenceStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
       { path: 'summary.executabilityStats', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SNAPSHOT_PREVIOUS_PROFILE_IS_AVAILABLE' },
@@ -946,6 +981,7 @@ describe('cli commands integration', () => {
       'changedFiles',
       'backupId',
     ])
+    expect(importApplyAction?.consumerProfileIds).toEqual(['single-platform-write'])
     expect(importApplyAction?.fieldPresence).toEqual(expect.arrayContaining([
       { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
       { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },

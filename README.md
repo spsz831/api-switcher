@@ -582,7 +582,7 @@ api-switcher schema --json
 }
 ```
 
-`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。现在这层索引额外提供 `summarySections`，专门回答“summary 内部有哪些稳定 section，应按什么顺序消费”。建议分工固定为：`primaryFields` 回答“先读哪些字段”，`readOrderGroups` 回答“先读哪一层再读哪一层”，`summarySections` 回答“summary 这一层内部再先读哪一段”。
+`schema --json` 的 `data.commandCatalog.actions[]` 是命令级能力索引。外部接入方如果只想先判断某个 action 是否会暴露 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`，以及应该优先读取哪些 success / failure 字段，可以先消费这层，再按需展开整份 schema。现在这层索引额外提供 `summarySections`，专门回答“summary 内部有哪些稳定 section，应按什么顺序消费”；同时，`data.commandCatalog.consumerProfiles[]` 又补了一层更高阶的共享消费画像，避免外部调用方继续按 action 名字硬编码共同模式。当前首个共享画像是 `single-platform-write`，把 `add / preview / use / rollback / import-apply` 这五个命令统一归到同一条消费骨架下。建议分工固定为：`primaryFields` 回答“先读哪些字段”，`readOrderGroups` 回答“先读哪一层再读哪一层”，`summarySections` 回答“summary 这一层内部再先读哪一段”，`consumerProfiles` 回答“这一整类 action 共享什么消费形状”。
 
 当前这条“只读 summary 导航”只覆盖五个只读命令：
 

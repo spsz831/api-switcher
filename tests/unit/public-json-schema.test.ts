@@ -641,6 +641,10 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaActionCapability' },
     })
+    expect(publicJsonSchema.$defs?.SchemaCommandCatalog?.properties?.consumerProfiles).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfile' },
+    })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.required).toEqual(expect.arrayContaining([
       'action',
       'hasPlatformSummary',
@@ -661,6 +665,10 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFields).toEqual({
       type: 'array',
       items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.consumerProfileIds).toEqual({
+      type: 'array',
+      items: { type: 'string', enum: ['single-platform-write'] },
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryErrorFields).toEqual({
       type: 'array',
@@ -701,6 +709,15 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaReferenceGovernanceCode' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'appliesToActions',
+      'sharedSummaryFields',
+      'optionalScopeFields',
+      'optionalArtifactFields',
+      'recommendedStages',
+    ]))
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.required).toEqual(expect.arrayContaining([
       'code',
       'priority',
