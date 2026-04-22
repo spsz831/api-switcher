@@ -200,6 +200,19 @@ describe('current state service', () => {
         hasInlineProfiles: false,
         hasWriteUnsupportedProfiles: false,
       },
+      executabilityStats: {
+        profileCount: 2,
+        inlineReadyProfileCount: 0,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: false,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
     })
     expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -478,6 +491,19 @@ describe('current state service', () => {
         hasInlineProfiles: false,
         hasWriteUnsupportedProfiles: false,
       },
+      executabilityStats: {
+        profileCount: 3,
+        inlineReadyProfileCount: 0,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: false,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
     })
     expect(result.data?.summary.platformStats).toMatchObject([
       {
@@ -608,6 +634,19 @@ describe('current state service', () => {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: true,
     })
+    expect(currentResult.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 2,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(currentResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
@@ -658,6 +697,19 @@ describe('current state service', () => {
       hasReferenceProfiles: true,
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: true,
+    })
+    expect(listResult.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 2,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     })
     expect(listResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({

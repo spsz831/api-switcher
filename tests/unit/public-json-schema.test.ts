@@ -10,6 +10,7 @@ import type {
   ExportCommandOutput,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
+  ImportApplyRedactedSecretDetails,
   ImportApplySourceDetails,
   ImportFidelityReport,
   ImportObservation,
@@ -111,6 +112,12 @@ describe('public JSON contract types', () => {
       profileId?: string
     }>()
 
+    expectTypeOf<ImportApplyRedactedSecretDetails>().toMatchTypeOf<{
+      sourceFile: string
+      profileId: string
+      redactedInlineSecretFields: string[]
+    }>()
+
     expectTypeOf<ImportApplyNotReadyDetails>().toMatchTypeOf<{
       sourceFile: string
       profileId: string
@@ -152,12 +159,38 @@ describe('public JSON contract types', () => {
 
     expectTypeOf<{
       sourceCompatibility: ImportPreviewCommandOutput['sourceCompatibility']
+      summary: ImportPreviewCommandOutput['summary']
       items: ImportPreviewCommandOutput['items']
     }>().toMatchTypeOf<{
       sourceCompatibility: {
         mode: 'strict' | 'schema-version-missing'
         schemaVersion?: string
         warnings: string[]
+      }
+      summary: {
+        sourceExecutability: {
+          totalItems: number
+          applyReadyCount: number
+          previewOnlyCount: number
+          blockedCount: number
+          blockedByCodeStats: Array<{
+            code: 'REDACTED_INLINE_SECRET'
+            totalCount: number
+          }>
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+          hasInlineReadyProfiles: boolean
+          hasReferenceReadyProfiles: boolean
+          hasReferenceMissingProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+          hasSourceRedactedProfiles: boolean
+        }
       }
       items: Array<{
         platformSummary?: {
@@ -237,6 +270,14 @@ describe('public JSON contract types', () => {
               purpose?: string
             }>
           }
+          summarySections?: Array<{
+            id: 'platform' | 'reference' | 'executability' | 'source-executability'
+            title: string
+            priority: number
+            fields: string[]
+            purpose: string
+            recommendedWhen?: string[]
+          }>
           primaryFieldSemantics: Array<{ path: string; semantic: string }>
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
           referenceGovernanceCodes?: Array<{
@@ -306,6 +347,15 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/ScopeAvailability' },
     })
+    expect(publicJsonSchema.$defs?.ImportSourceExecutabilityCodeStat).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportSourceExecutabilitySummary).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportSourceExecutabilitySummary?.required).toEqual(expect.arrayContaining([
+      'totalItems',
+      'applyReadyCount',
+      'previewOnlyCount',
+      'blockedCount',
+      'blockedByCodeStats',
+    ]))
 
     expect(publicJsonSchema.$defs?.ImportPreviewItem).toBeDefined()
     expect(publicJsonSchema.$defs?.ImportPreviewItem?.required).toEqual(expect.arrayContaining([
@@ -339,6 +389,12 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportPreviewCommandOutput?.properties?.sourceCompatibility).toEqual({
       $ref: '#/$defs/ImportSourceCompatibility',
     })
+    expect(publicJsonSchema.$defs?.ImportPreviewSummary?.properties?.sourceExecutability).toEqual({
+      $ref: '#/$defs/ImportSourceExecutabilitySummary',
+    })
+    expect(publicJsonSchema.$defs?.ImportPreviewSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
   })
 
   it('machine-readable schema 冻结 import-apply 稳定 failure detail defs', () => {
@@ -346,6 +402,17 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportApplySourceDetails?.required).toEqual(expect.arrayContaining([
       'sourceFile',
     ]))
+
+    expect(publicJsonSchema.$defs?.ImportApplyRedactedSecretDetails).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportApplyRedactedSecretDetails?.required).toEqual(expect.arrayContaining([
+      'sourceFile',
+      'profileId',
+      'redactedInlineSecretFields',
+    ]))
+    expect(publicJsonSchema.$defs?.ImportApplyRedactedSecretDetails?.properties?.redactedInlineSecretFields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
 
     expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails).toBeDefined()
     expect(publicJsonSchema.$defs?.ImportApplyNotReadyDetails?.required).toEqual(expect.arrayContaining([
@@ -445,6 +512,19 @@ describe('public JSON contract types', () => {
         hasInlineProfiles: boolean
         hasWriteUnsupportedProfiles: boolean
       }
+      executabilityStats?: {
+        profileCount: number
+        inlineReadyProfileCount: number
+        referenceReadyProfileCount: number
+        referenceMissingProfileCount: number
+        writeUnsupportedProfileCount: number
+        sourceRedactedProfileCount: number
+        hasInlineReadyProfiles: boolean
+        hasReferenceReadyProfiles: boolean
+        hasReferenceMissingProfiles: boolean
+        hasWriteUnsupportedProfiles: boolean
+        hasSourceRedactedProfiles: boolean
+      }
       platformStats?: Array<{
         platform: string
         profileCount: number
@@ -483,6 +563,19 @@ describe('public JSON contract types', () => {
         hasReferenceProfiles: boolean
         hasInlineProfiles: boolean
         hasWriteUnsupportedProfiles: boolean
+      }
+      executabilityStats?: {
+        profileCount: number
+        inlineReadyProfileCount: number
+        referenceReadyProfileCount: number
+        referenceMissingProfileCount: number
+        writeUnsupportedProfileCount: number
+        sourceRedactedProfileCount: number
+        hasInlineReadyProfiles: boolean
+        hasReferenceReadyProfiles: boolean
+        hasReferenceMissingProfiles: boolean
+        hasWriteUnsupportedProfiles: boolean
+        hasSourceRedactedProfiles: boolean
       }
       platformStats?: Array<{
         platform: string
@@ -591,6 +684,10 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.readOrderGroups).toEqual({
       $ref: '#/$defs/SchemaReadOrderGroups',
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.summarySections).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaSummarySection' },
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.primaryFieldSemantics).toEqual({
       type: 'array',
@@ -734,6 +831,35 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaFailureReadOrderGroup' },
     })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.required).toEqual(expect.arrayContaining([
+      'id',
+      'title',
+      'priority',
+      'fields',
+      'purpose',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.id).toEqual({
+      type: 'string',
+      enum: ['platform', 'reference', 'executability', 'source-executability'],
+    })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.title).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.priority).toEqual({
+      type: 'integer',
+      minimum: 1,
+    })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.fields).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.purpose).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaSummarySection?.properties?.recommendedWhen).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
     expect(publicJsonSchema.$defs?.SchemaSuccessReadOrderGroup?.required).toEqual(expect.arrayContaining([
       'stage',
       'fields',
@@ -753,6 +879,7 @@ describe('public JSON contract types', () => {
   })
 
   it('machine-readable schema 覆盖 current/list summary.platformStats def', () => {
+    expect(publicJsonSchema.$defs?.ExecutabilityStats).toBeDefined()
     expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/CurrentListPlatformStat' },
@@ -760,12 +887,18 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.referenceStats).toEqual({
       $ref: '#/$defs/SecretReferenceStats',
     })
+    expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
     expect(publicJsonSchema.$defs?.ListSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/CurrentListPlatformStat' },
     })
     expect(publicJsonSchema.$defs?.ListSummary?.properties?.referenceStats).toEqual({
       $ref: '#/$defs/SecretReferenceStats',
+    })
+    expect(publicJsonSchema.$defs?.ListSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
     })
     expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.required).toEqual(expect.arrayContaining([
       'platform',
@@ -826,6 +959,17 @@ describe('public JSON contract types', () => {
           currentScope?: string
           composedFiles?: string[]
         }
+        secretExportSummary?: {
+          hasInlineSecrets: boolean
+          hasRedactedInlineSecrets: boolean
+          hasReferenceSecrets: boolean
+          redactedFieldCount: number
+          preservedReferenceCount: number
+          details?: Array<{
+            field: string
+            kind: 'inline-secret-redacted' | 'inline-secret-exported' | 'reference-preserved'
+          }>
+        }
       }>
     }>()
 
@@ -839,6 +983,19 @@ describe('public JSON contract types', () => {
           hasReferenceProfiles: boolean
           hasInlineProfiles: boolean
           hasWriteUnsupportedProfiles: boolean
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+          hasInlineReadyProfiles: boolean
+          hasReferenceReadyProfiles: boolean
+          hasReferenceMissingProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+          hasSourceRedactedProfiles: boolean
         }
         platformStats?: Array<{
           platform: string
@@ -880,6 +1037,19 @@ describe('public JSON contract types', () => {
           hasInlineProfiles: boolean
           hasWriteUnsupportedProfiles: boolean
         }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+          hasInlineReadyProfiles: boolean
+          hasReferenceReadyProfiles: boolean
+          hasReferenceMissingProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+          hasSourceRedactedProfiles: boolean
+        }
         platformStats?: Array<{
           platform: string
           profileCount: number
@@ -906,6 +1076,13 @@ describe('public JSON contract types', () => {
             composedFiles?: string[]
           }
         }>
+        secretExportPolicy?: {
+          mode: 'redacted-by-default' | 'include-secrets'
+          inlineSecretsExported: number
+          inlineSecretsRedacted: number
+          referenceSecretsPreserved: number
+          profilesWithRedactedSecrets: number
+        }
       }
     }>()
   })
@@ -926,6 +1103,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.referenceSummary).toEqual({
       $ref: '#/$defs/ReferenceSummary',
     })
+    expect(publicJsonSchema.$defs?.ExportedProfileItem?.properties?.secretExportSummary).toEqual({
+      $ref: '#/$defs/SecretExportItemSummary',
+    })
   })
 
   it('machine-readable schema 覆盖 validate/export summary.platformStats def', () => {
@@ -936,12 +1116,21 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.referenceStats).toEqual({
       $ref: '#/$defs/SecretReferenceStats',
     })
+    expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/ValidateExportPlatformStat' },
     })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.referenceStats).toEqual({
       $ref: '#/$defs/SecretReferenceStats',
+    })
+    expect(publicJsonSchema.$defs?.ExportSummary?.properties?.executabilityStats).toEqual({
+      $ref: '#/$defs/ExecutabilityStats',
+    })
+    expect(publicJsonSchema.$defs?.ExportSummary?.properties?.secretExportPolicy).toEqual({
+      $ref: '#/$defs/SecretExportPolicySummary',
     })
     expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.required).toEqual(expect.arrayContaining([
       'platform',
@@ -955,6 +1144,35 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.ValidateExportPlatformStat?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
+    })
+  })
+
+  it('machine-readable schema 覆盖 export secret redaction defs', () => {
+    expect(publicJsonSchema.$defs?.SecretExportPolicySummary?.required).toEqual([
+      'mode',
+      'inlineSecretsExported',
+      'inlineSecretsRedacted',
+      'referenceSecretsPreserved',
+      'profilesWithRedactedSecrets',
+    ])
+    expect(publicJsonSchema.$defs?.SecretExportPolicySummary?.properties?.mode).toEqual({
+      type: 'string',
+      enum: ['redacted-by-default', 'include-secrets'],
+    })
+    expect(publicJsonSchema.$defs?.SecretExportItemSummary?.required).toEqual([
+      'hasInlineSecrets',
+      'hasRedactedInlineSecrets',
+      'hasReferenceSecrets',
+      'redactedFieldCount',
+      'preservedReferenceCount',
+    ])
+    expect(publicJsonSchema.$defs?.SecretExportItemSummary?.properties?.details).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SecretExportItemDetail' },
+    })
+    expect(publicJsonSchema.$defs?.SecretExportItemDetail?.properties?.kind).toEqual({
+      type: 'string',
+      enum: ['inline-secret-redacted', 'inline-secret-exported', 'reference-preserved'],
     })
   })
 
@@ -1625,6 +1843,28 @@ describe('public JSON contract types', () => {
     }
 
     expect(validatePublicSchema(scopeUnavailableFailureResult)).toBe(true)
+  })
+
+  it('action=import-apply redacted inline secret 失败样例能通过 machine-readable schema 校验', () => {
+    const redactedSourceFailureResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: false,
+      action: 'import-apply',
+      warnings: [
+        '导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。',
+      ],
+      error: {
+        code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS',
+        message: '导入文件中的 inline secret 已被 redacted；当前不能直接进入 import apply。',
+        details: {
+          sourceFile: 'E:/tmp/export.json',
+          profileId: 'gemini-prod',
+          redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+        },
+      },
+    }
+
+    expect(validatePublicSchema(redactedSourceFailureResult)).toBe(true)
   })
 
   it('action=import-apply validation 失败样例支持 referenceGovernance 索引', () => {

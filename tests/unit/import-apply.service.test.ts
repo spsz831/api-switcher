@@ -104,6 +104,7 @@ function createImportedSource(
         { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
       ],
     },
+    redactedInlineSecretFields: overrides.redactedInlineSecretFields,
   }
 }
 
@@ -151,6 +152,42 @@ describe('import apply service', () => {
         },
       },
     }))
+  })
+
+  it('命中 redacted inline secret 导入源时，import apply 会直接阻断', async () => {
+    const service = new ImportApplyService({
+      load: async () => ({
+        sourceFile: 'E:/tmp/export.json',
+        sourceCompatibility: {
+          mode: 'strict',
+          schemaVersion: '2026-04-15.public-json.v1',
+          warnings: ['导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。'],
+        },
+        profiles: [
+          createImportedSource({
+            profile: createProfile(),
+            redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+          }),
+        ],
+      }),
+    } as any)
+
+    const result = await service.apply('E:/tmp/export.json', { profile: 'gemini-prod' })
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'import-apply',
+      warnings: ['导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。'],
+      error: {
+        code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS',
+        message: '导入文件中的 inline secret 已被 redacted；当前不能直接进入 import apply。',
+        details: {
+          sourceFile: 'E:/tmp/export.json',
+          profileId: 'gemini-prod',
+          redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+        },
+      },
+    })
   })
 
   it('选中的 imported profile 不是受支持的平台时返回 IMPORT_PLATFORM_NOT_SUPPORTED', async () => {

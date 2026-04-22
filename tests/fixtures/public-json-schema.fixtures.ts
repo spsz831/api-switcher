@@ -420,6 +420,23 @@ export const exportCommandOutputFixture = {
           },
         ],
       },
+      secretExportSummary: {
+        hasInlineSecrets: false,
+        hasRedactedInlineSecrets: false,
+        hasReferenceSecrets: true,
+        redactedFieldCount: 0,
+        preservedReferenceCount: 2,
+        details: [
+          {
+            field: 'source.secret_ref',
+            kind: 'reference-preserved',
+          },
+          {
+            field: 'apply.auth_reference',
+            kind: 'reference-preserved',
+          },
+        ],
+      },
     },
   ],
   summary: {
@@ -446,6 +463,13 @@ export const exportCommandOutputFixture = {
         },
       },
     ],
+    secretExportPolicy: {
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 0,
+      referenceSecretsPreserved: 2,
+      profilesWithRedactedSecrets: 0,
+    },
     warnings: [],
     limitations: [],
   },

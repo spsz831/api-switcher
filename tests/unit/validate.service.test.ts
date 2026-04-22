@@ -214,6 +214,19 @@ describe('validate service', () => {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
     })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
   })
 
   it('会把 profile 中的明文 secret 暴露为非阻断 warning', async () => {
@@ -290,6 +303,19 @@ describe('validate service', () => {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
     })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
   })
 
   it('secret_ref/auth_reference profile 在 validate 层可被识别，但会提示写入链路尚未消费引用', async () => {
@@ -360,6 +386,19 @@ describe('validate service', () => {
       hasReferenceProfiles: true,
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
+    })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     })
     expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({

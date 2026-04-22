@@ -1,5 +1,5 @@
 import { collectIssueMessages } from '../domain/masking'
-import { buildProfileReferenceSummary, buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
+import { buildExecutabilityStats, buildProfileReferenceSummary, buildSecretReferenceStats, withProfileSecretReferenceContract, withProfileSecretWarnings } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
@@ -67,6 +67,7 @@ export class ValidateService {
     return {
       platformStats: this.buildPlatformStats(profiles, items),
       referenceStats: buildSecretReferenceStats(profiles),
+      executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation.warnings),
         ...item.validation.effectiveConfig?.overrides.map((override) => override.message) ?? [],

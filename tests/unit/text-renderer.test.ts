@@ -111,6 +111,17 @@ function createFailureResult(action: string, message: string, warnings?: string[
   }
 }
 
+function expectOrderedSections(output: string, sections: string[]): void {
+  let previousIndex = -1
+
+  for (const section of sections) {
+    const index = output.indexOf(section)
+    expect(index).toBeGreaterThanOrEqual(0)
+    expect(index).toBeGreaterThan(previousIndex)
+    previousIndex = index
+  }
+}
+
 const geminiScopeCapabilities = [
   {
     scope: 'system-defaults',
@@ -234,6 +245,19 @@ const currentPayload: CurrentCommandOutput = {
       hasUnsupportedReferenceProfiles: true,
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: true,
+    },
+    executabilityStats: {
+      profileCount: 3,
+      inlineReadyProfileCount: 2,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     },
     platformStats: [
       {
@@ -1249,6 +1273,19 @@ const validatePayload: ValidateCommandOutput = {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
     },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'gemini',
@@ -1424,6 +1461,28 @@ const importPreviewPayload: ImportPreviewCommandOutput = {
     mismatchCount: 1,
     partialCount: 0,
     insufficientDataCount: 0,
+    sourceExecutability: {
+      totalItems: 1,
+      applyReadyCount: 1,
+      previewOnlyCount: 0,
+      blockedCount: 0,
+      blockedByCodeStats: [
+        { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+      ],
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'gemini',
@@ -1478,6 +1537,23 @@ const exportPayload: ExportCommandOutput = {
         missingReferenceCount: 0,
         unsupportedReferenceCount: 0,
         missingValueCount: 0,
+      },
+      secretExportSummary: {
+        hasInlineSecrets: true,
+        hasRedactedInlineSecrets: true,
+        hasReferenceSecrets: false,
+        redactedFieldCount: 2,
+        preservedReferenceCount: 0,
+        details: [
+          {
+            field: 'source.token',
+            kind: 'inline-secret-redacted',
+          },
+          {
+            field: 'apply.ANTHROPIC_AUTH_TOKEN',
+            kind: 'inline-secret-redacted',
+          },
+        ],
       },
       validation: {
         ok: true,
@@ -1557,6 +1633,19 @@ const exportPayload: ExportCommandOutput = {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
     },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     platformStats: [
       {
         platform: 'claude',
@@ -1574,6 +1663,13 @@ const exportPayload: ExportCommandOutput = {
         },
       },
     ],
+    secretExportPolicy: {
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 2,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 1,
+    },
     warnings: ['Claude 当前项目级配置会覆盖用户级同名字段。'],
     limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
   },
@@ -1860,6 +1956,19 @@ const listPayload: ListCommandOutput = {
       hasUnsupportedReferenceProfiles: true,
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: true,
+    },
+    executabilityStats: {
+      profileCount: 3,
+      inlineReadyProfileCount: 2,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     },
     platformStats: [
       {
@@ -2634,6 +2743,20 @@ const importApplyScopeUnavailableFailureResult: CommandResult = {
     },
   },
 }
+const importApplyRedactedSecretFailureResult: CommandResult = {
+  ok: false,
+  action: 'import-apply',
+  warnings: ['导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。'],
+  error: {
+    code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS',
+    message: '导入文件中的 inline secret 已被 redacted；当前不能直接进入 import apply。',
+    details: {
+      sourceFile: 'E:/tmp/export.json',
+      profileId: 'gemini-prod',
+      redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+    },
+  },
+}
 const importApplyConfirmationFailureResult: CommandResult = {
   ok: false,
   action: 'import-apply',
@@ -2787,6 +2910,7 @@ const outputValidateFailureWithData = renderText(validateFailureWithDataResult)
 const outputClaudeRollbackFailure = renderText(claudeRollbackFailureResult)
 const outputImportApplyNotReadyFailure = renderText(importApplyNotReadyFailureResult)
 const outputImportApplyScopeUnavailableFailure = renderText(importApplyScopeUnavailableFailureResult)
+const outputImportApplyRedactedSecretFailure = renderText(importApplyRedactedSecretFailureResult)
 const outputImportApplyConfirmationFailure = renderText(importApplyConfirmationFailureResult)
 const outputCodexImportApplyConfirmationFailure = renderText(codexImportApplyConfirmationFailureResult)
 const outputClaudeImportApplyScopeUnavailableFailure = renderText(claudeImportApplyScopeUnavailableFailureResult)
@@ -2814,6 +2938,11 @@ describe('text renderer', () => {
     expect(outputCurrent).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=yes')
     expect(outputCurrent).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputCurrent).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
+    expect(outputCurrent).toContain('executabilityStats 摘要:')
+    expect(outputCurrent).toContain('  - profiles=3, inlineReady=2, referenceReady=0, referenceMissing=1, writeUnsupported=1, sourceRedacted=0')
+    expect(outputCurrent).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=yes, hasWriteUnsupportedProfiles=yes, hasSourceRedactedProfiles=no')
+    expect(outputCurrent).toContain('  - 提示: 当前存在未解析或不受支持的 reference profiles，后续写入不可直接执行。')
+    expect(outputCurrent).toContain('  - 提示: 当前有 write unsupported profiles，现有写入链路仍不会直接消费这些 profiles。')
     expect(outputCurrent).toContain('检测结果:')
     expect(outputCurrent).toContain('- 平台: gemini')
     expect(outputCurrent).toContain('  托管识别: 是')
@@ -2876,6 +3005,10 @@ describe('text renderer', () => {
     expect(outputEmptyCurrent).toContain('[current] 成功')
     expect(outputEmptyCurrent).toContain('- 当前无已标记配置')
     expect(outputEmptyCurrent).not.toContain('检测结果:')
+  })
+
+  it('current 文本 summary 顺序与 summarySections 对齐', () => {
+    expectOrderedSections(outputCurrent, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:'])
   })
 
   it('渲染 preview 结果时输出校验、风险、文件、提示与限制说明', () => {
@@ -3094,6 +3227,9 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputValidate).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputValidate).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputValidate).toContain('executabilityStats 摘要:')
+    expect(outputValidate).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
+    expect(outputValidate).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
     expect(outputValidate).toContain('  reference 摘要:')
     expect(outputValidate).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
     expect(outputValidate).toContain('  校验结果: 失败')
@@ -3134,6 +3270,10 @@ describe('text renderer', () => {
     expect(outputEmptyValidate).toBe('[validate] 成功\n')
   })
 
+  it('validate 文本 summary 顺序与 summarySections 对齐', () => {
+    expectOrderedSections(outputValidate, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:'])
+  })
+
   it('渲染 export 结果时输出名称与校验摘要说明', () => {
     expect(outputExport).toContain('[export] 成功')
     expect(outputExport).toContain('按平台汇总:')
@@ -3143,9 +3283,22 @@ describe('text renderer', () => {
     expect(outputExport).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputExport).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputExport).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputExport).toContain('executabilityStats 摘要:')
+    expect(outputExport).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
+    expect(outputExport).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
+    expect(outputExport).toContain('secret 导出策略:')
+    expect(outputExport).toContain('  - mode=redacted-by-default')
+    expect(outputExport).toContain('  - inline secrets: redacted=2, exported=0')
+    expect(outputExport).toContain('  - reference secrets: preserved=0')
     expect(outputExport).toContain('- claude-prod (claude)')
     expect(outputExport).toContain('  reference 摘要:')
     expect(outputExport).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
+    expect(outputExport).toContain('  secret 导出摘要:')
+    expect(outputExport).toContain('  - hasInlineSecrets=yes, hasRedactedInlineSecrets=yes, hasReferenceSecrets=no')
+    expect(outputExport).toContain('  - redacted=2, referencePreserved=0')
+    expect(outputExport).toContain('  - inline secrets 已脱敏导出:')
+    expect(outputExport).toContain('    - source.token')
+    expect(outputExport).toContain('    - apply.ANTHROPIC_AUTH_TOKEN')
     expect(outputExport).toContain('  名称: Claude 生产')
     expect(outputExport).toContain('  默认写入作用域: user scope')
     expect(outputExport).toContain('  作用域能力:')
@@ -3176,6 +3329,12 @@ describe('text renderer', () => {
     expect(outputImportPreview).toContain('源兼容性: schema-version-missing')
     expect(outputImportPreview).toContain('  - 导入文件未声明 schemaVersion，当前按兼容模式解析。')
     expect(outputImportPreview).toContain('汇总: total=1, match=0, mismatch=1, partial=0, insufficient-data=0')
+    expect(outputImportPreview).toContain('导入源可执行性:')
+    expect(outputImportPreview).toContain('  - total=1, apply-ready=1, preview-only=0, blocked=0')
+    expect(outputImportPreview).toContain('  - REDACTED_INLINE_SECRET: total=0')
+    expect(outputImportPreview).toContain('executabilityStats 摘要:')
+    expect(outputImportPreview).toContain('  - profiles=1, inlineReady=0, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
+    expect(outputImportPreview).toContain('  - hasInlineReadyProfiles=no, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
     expect(outputImportPreview).toContain('按平台汇总:')
     expect(outputImportPreview).toContain('  - gemini: total=1, match=0, mismatch=1, partial=0, insufficient-data=0')
     expect(outputImportPreview).toContain('决策代码汇总:')
@@ -3208,6 +3367,10 @@ describe('text renderer', () => {
     expect(outputImportPreview).toContain('  - 自定义 Gemini precedence 摘要。')
     expect(outputImportPreview).toContain('  - 自定义 Gemini project 覆盖 user 提示。')
     expect(outputImportPreview).toContain('  建议: 先修复本地作用域解析，再考虑进入 apply 设计。')
+  })
+
+  it('import preview 文本 summary 顺序与 summarySections 对齐', () => {
+    expectOrderedSections(outputImportPreview, ['导入源可执行性:', 'executabilityStats 摘要:', '按平台汇总:'])
   })
 
   it('渲染 import apply 结果时输出稳定成功字段与 explainable 摘要', () => {
@@ -3266,6 +3429,10 @@ describe('text renderer', () => {
 
   it('空 export 结果返回空正文', () => {
     expect(outputEmptyExport).toBe('[export] 成功\n')
+  })
+
+  it('export 文本 summary 顺序与 summarySections 对齐', () => {
+    expectOrderedSections(outputExport, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:'])
   })
 
   it('渲染 add 结果时输出配置、摘要、提示与限制说明', () => {
@@ -3327,6 +3494,11 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=yes')
     expect(outputList).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputList).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
+    expect(outputList).toContain('executabilityStats 摘要:')
+    expect(outputList).toContain('  - profiles=3, inlineReady=2, referenceReady=0, referenceMissing=1, writeUnsupported=1, sourceRedacted=0')
+    expect(outputList).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=yes, hasWriteUnsupportedProfiles=yes, hasSourceRedactedProfiles=no')
+    expect(outputList).toContain('  - 提示: 当前存在未解析或不受支持的 reference profiles，后续写入不可直接执行。')
+    expect(outputList).toContain('  - 提示: 当前有 write unsupported profiles，现有写入链路仍不会直接消费这些 profiles。')
     expect(outputList).toContain('- claude-prod (claude)')
     expect(outputList).toContain('  reference 摘要:')
     expect(outputList).toContain('  - hasReferenceFields=no, hasInlineSecrets=yes, writeUnsupported=no')
@@ -3358,6 +3530,10 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - Codex 当前由 config.toml 与 auth.json 共同组成有效配置。')
     expect(outputList).toContain('限制说明:')
     expect(outputList).toContain('  - GEMINI_API_KEY 仍需通过环境变量生效。')
+  })
+
+  it('list 文本 summary 顺序与 summarySections 对齐', () => {
+    expectOrderedSections(outputList, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:'])
   })
 
   it('空 list 结果返回空正文', () => {
@@ -3463,6 +3639,19 @@ describe('text renderer', () => {
     expect(outputImportApplyScopeUnavailableFailure).toContain('  - project: status=unresolved, detected=no, writable=no')
     expect(outputImportApplyScopeUnavailableFailure).toContain('    原因代码: PROJECT_ROOT_UNRESOLVED')
     expect(outputImportApplyScopeUnavailableFailure).not.toContain('--force')
+  })
+
+  it('import apply redacted secret 失败会输出导入源阻断原因与字段列表', () => {
+    expect(outputImportApplyRedactedSecretFailure).toContain('[import-apply] 失败')
+    expect(outputImportApplyRedactedSecretFailure).toContain('导入文件中的 inline secret 已被 redacted；当前不能直接进入 import apply。')
+    expect(outputImportApplyRedactedSecretFailure).toContain('导入文件: E:/tmp/export.json')
+    expect(outputImportApplyRedactedSecretFailure).toContain('导入配置: gemini-prod')
+    expect(outputImportApplyRedactedSecretFailure).toContain('阻断原因:')
+    expect(outputImportApplyRedactedSecretFailure).toContain('  - 导入源中的 inline secret 只有 redacted placeholder，没有可执行明文。')
+    expect(outputImportApplyRedactedSecretFailure).toContain('  - 当前 import apply 不会从 redacted export 反推真实 secret。')
+    expect(outputImportApplyRedactedSecretFailure).toContain('redacted 字段:')
+    expect(outputImportApplyRedactedSecretFailure).toContain('  - source.apiKey')
+    expect(outputImportApplyRedactedSecretFailure).toContain('  - apply.GEMINI_API_KEY')
   })
 
   it('import apply Gemini confirmation 失败会输出 project 风险平台摘要', () => {

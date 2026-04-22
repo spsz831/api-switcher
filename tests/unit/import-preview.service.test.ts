@@ -90,6 +90,28 @@ describe('import preview service', () => {
       mismatchCount: 0,
       partialCount: 0,
       insufficientDataCount: 0,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
+      executabilityStats: {
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
       platformStats: [
         {
           platform: 'gemini',
@@ -228,6 +250,15 @@ describe('import preview service', () => {
     expect(result.data?.summary).toEqual(expect.objectContaining({
       totalItems: 1,
       mismatchCount: 1,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
       decisionCodeStats: expect.arrayContaining([
         expect.objectContaining({ code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1 }),
         expect.objectContaining({ code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1 }),
@@ -302,6 +333,15 @@ describe('import preview service', () => {
     expect(result.data?.summary).toEqual(expect.objectContaining({
       totalItems: 1,
       partialCount: 1,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
       decisionCodeStats: expect.arrayContaining([
         expect.objectContaining({ code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, nonBlockingCount: 1 }),
       ]),
@@ -373,6 +413,24 @@ describe('import preview service', () => {
               profile: createGeminiProfile('gemini-insufficient'),
               exportedObservation: undefined,
             },
+            {
+              profile: {
+                ...createGeminiProfile('gemini-redacted'),
+                source: { apiKey: '<redacted:inline-secret>', authType: 'gemini-api-key' },
+                apply: { GEMINI_API_KEY: '<redacted:inline-secret>', enforcedAuthType: 'gemini-api-key' },
+              },
+              redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+              exportedObservation: {
+                defaultWriteScope: 'user',
+                observedAt: '2026-04-16T00:00:00.000Z',
+                scopeCapabilities: [
+                  { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+                ],
+                scopeAvailability: [
+                  { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
+                ],
+              },
+            },
           ],
         }),
       } as any,
@@ -411,25 +469,48 @@ describe('import preview service', () => {
       ['gemini-partial', 'partial'],
       ['gemini-mismatch', 'mismatch'],
       ['gemini-insufficient', 'insufficient-data'],
+      ['gemini-redacted', 'match'],
     ])
     expect(result.data?.summary).toEqual({
-      totalItems: 4,
-      matchCount: 1,
+      totalItems: 5,
+      matchCount: 2,
       mismatchCount: 1,
       partialCount: 1,
       insufficientDataCount: 1,
+      sourceExecutability: {
+        totalItems: 5,
+        applyReadyCount: 4,
+        previewOnlyCount: 1,
+        blockedCount: 1,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 1 },
+        ],
+      },
+      executabilityStats: {
+        profileCount: 5,
+        inlineReadyProfileCount: 4,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 1,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: true,
+      },
       platformStats: [
         {
           platform: 'gemini',
-          totalItems: 4,
-          matchCount: 1,
+          totalItems: 5,
+          matchCount: 2,
           mismatchCount: 1,
           partialCount: 1,
           insufficientDataCount: 1,
         },
       ],
       decisionCodeStats: [
-        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 2, blockingCount: 0, nonBlockingCount: 2 },
         { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
         { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
         { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },

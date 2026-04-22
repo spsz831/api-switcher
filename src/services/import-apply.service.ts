@@ -9,6 +9,7 @@ import type {
   ImportObservation,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
+  ImportApplyRedactedSecretDetails,
   ValidationFailureDetails,
 } from '../types/command'
 import type { ScopeAvailability } from '../types/capabilities'
@@ -148,6 +149,25 @@ export class ImportApplyService {
           error: {
             code: 'IMPORT_PLATFORM_NOT_SUPPORTED',
             message: '当前仅支持导入应用 Gemini、Codex 或 Claude profile。',
+          },
+        }
+      }
+
+      if ((importedSource.redactedInlineSecretFields?.length ?? 0) > 0) {
+        const details: ImportApplyRedactedSecretDetails = {
+          sourceFile: source.sourceFile,
+          profileId: importedSource.profile.id,
+          redactedInlineSecretFields: importedSource.redactedInlineSecretFields!,
+        }
+
+        return {
+          ok: false,
+          action: 'import-apply',
+          warnings: sourceWarnings,
+          error: {
+            code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS',
+            message: '导入文件中的 inline secret 已被 redacted；当前不能直接进入 import apply。',
+            details,
           },
         }
       }

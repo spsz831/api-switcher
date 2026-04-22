@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { REDACTED_INLINE_SECRET_PLACEHOLDER } from '../../src/constants/secret-export'
 import { ExportService } from '../../src/services/export.service'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 import type { Profile } from '../../src/types/profile'
@@ -171,7 +172,11 @@ describe('export service', () => {
 
     expect(result.ok).toBe(true)
     expect(result.data?.profiles[0]).toMatchObject({
-      profile: profiles[0],
+      profile: {
+        ...profiles[0],
+        source: { token: REDACTED_INLINE_SECRET_PLACEHOLDER },
+        apply: { ANTHROPIC_AUTH_TOKEN: REDACTED_INLINE_SECRET_PLACEHOLDER },
+      },
       validation: {
         ok: true,
       },
@@ -190,9 +195,35 @@ describe('export service', () => {
       ],
     })
     expect(result.data?.profiles[1]).toMatchObject({
-      profile: profiles[1],
+      profile: {
+        ...profiles[1],
+        source: { apiKey: REDACTED_INLINE_SECRET_PLACEHOLDER, authType: 'gemini-api-key' },
+        apply: { GEMINI_API_KEY: REDACTED_INLINE_SECRET_PLACEHOLDER, enforcedAuthType: 'gemini-api-key' },
+      },
       defaultWriteScope: 'user',
       observedAt: expect.any(String),
+    })
+    expect(result.data?.profiles[0]?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.token', kind: 'inline-secret-redacted' },
+        { field: 'apply.ANTHROPIC_AUTH_TOKEN', kind: 'inline-secret-redacted' },
+      ],
+    })
+    expect(result.data?.profiles[1]?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.apiKey', kind: 'inline-secret-redacted' },
+        { field: 'apply.GEMINI_API_KEY', kind: 'inline-secret-redacted' },
+      ],
     })
     expect(result.data?.profiles[1]?.scopeAvailability).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'user', status: 'available', writable: true }),
@@ -265,6 +296,26 @@ describe('export service', () => {
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
     })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 2,
+      inlineReadyProfileCount: 2,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
+    expect(result.data?.summary.secretExportPolicy).toEqual({
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 4,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 2,
+    })
     expect(new Date(result.data?.profiles[1]?.observedAt ?? '').toString()).not.toBe('Invalid Date')
     expect(result.data?.profiles[0]?.observedAt).toBeUndefined()
   })
@@ -303,6 +354,14 @@ describe('export service', () => {
     expect(result.ok).toBe(true)
     const exportedProfile = result.data?.profiles?.[0]
     expect(exportedProfile).toBeDefined()
+    expect(exportedProfile?.profile).toEqual({
+      ...profiles[0],
+      source: { token: REDACTED_INLINE_SECRET_PLACEHOLDER, baseURL: 'https://gateway.example.com/api' },
+      apply: {
+        ANTHROPIC_AUTH_TOKEN: REDACTED_INLINE_SECRET_PLACEHOLDER,
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+      },
+    })
     const validationWarnings = exportedProfile?.validation?.warnings ?? []
     expect(validationWarnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -342,6 +401,37 @@ describe('export service', () => {
       hasReferenceProfiles: false,
       hasInlineProfiles: true,
       hasWriteUnsupportedProfiles: false,
+    })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
+    expect(exportedProfile?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.token', kind: 'inline-secret-redacted' },
+        { field: 'apply.ANTHROPIC_AUTH_TOKEN', kind: 'inline-secret-redacted' },
+      ],
+    })
+    expect(result.data?.summary.secretExportPolicy).toEqual({
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 2,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 1,
     })
   })
 
@@ -386,6 +476,7 @@ describe('export service', () => {
     ).export()
 
     expect(result.ok).toBe(true)
+    expect(result.data?.profiles?.[0]?.profile).toEqual(profiles[0])
     expect(result.data?.profiles?.[0]?.validation?.warnings).toEqual([])
     expect(result.data?.profiles?.[0]?.validation?.limitations).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -402,6 +493,19 @@ describe('export service', () => {
       hasReferenceProfiles: true,
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
+    })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     })
     expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -425,6 +529,74 @@ describe('export service', () => {
       missingReferenceCount: 0,
       unsupportedReferenceCount: 2,
       missingValueCount: 0,
+    })
+    expect(result.data?.profiles?.[0]?.secretExportSummary).toEqual({
+      hasInlineSecrets: false,
+      hasRedactedInlineSecrets: false,
+      hasReferenceSecrets: true,
+      redactedFieldCount: 0,
+      preservedReferenceCount: 2,
+      details: [
+        { field: 'source.secret_ref', kind: 'reference-preserved' },
+        { field: 'apply.auth_reference', kind: 'reference-preserved' },
+      ],
+    })
+    expect(result.data?.summary.secretExportPolicy).toEqual({
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 0,
+      referenceSecretsPreserved: 2,
+      profilesWithRedactedSecrets: 0,
+    })
+  })
+
+  it('include-secrets 模式保留 inline secret 明文并更新导出策略摘要', async () => {
+    const profiles = [
+      {
+        id: 'codex-prod',
+        name: 'codex-prod',
+        platform: 'codex',
+        source: { apiKey: 'sk-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+        apply: { OPENAI_API_KEY: 'sk-live-123456', base_url: 'https://gateway.example.com/openai/v1' },
+      },
+    ]
+
+    const result = await new ExportService(
+      {
+        list: async () => profiles,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          detectCurrent: async () => null,
+        }),
+      } as any,
+    ).export({ includeSecrets: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.profiles?.[0]?.profile).toEqual(profiles[0])
+    expect(result.data?.profiles?.[0]?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: false,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 0,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.apiKey', kind: 'inline-secret-exported' },
+        { field: 'apply.OPENAI_API_KEY', kind: 'inline-secret-exported' },
+      ],
+    })
+    expect(result.data?.summary.secretExportPolicy).toEqual({
+      mode: 'include-secrets',
+      inlineSecretsExported: 2,
+      inlineSecretsRedacted: 0,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 0,
     })
   })
 })

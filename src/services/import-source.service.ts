@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { PUBLIC_JSON_SCHEMA_VERSION } from '../constants/public-json-schema'
+import { REDACTED_INLINE_SECRET_PLACEHOLDER } from '../constants/secret-export'
+import { isSecretLikeKey, isSecretReferenceKey } from '../domain/masking'
 import type { ImportObservation, ImportSourceCompatibility } from '../types/command'
 import type { Profile } from '../types/profile'
 
@@ -16,6 +18,7 @@ interface ImportEnvelope {
 export interface ImportedProfileSource {
   profile: Profile
   exportedObservation?: ImportObservation
+  redactedInlineSecretFields?: string[]
 }
 
 export interface LoadedImportSource {
@@ -44,11 +47,12 @@ export class ImportSourceService {
     const sourceText = await this.readSourceFile(resolvedPath)
     const payload = this.parseSourceJson(sourceText, resolvedPath)
     const profiles = this.extractProfiles(payload, resolvedPath)
+    const sourceCompatibility = this.buildSourceCompatibility(payload, profiles)
 
     return {
       sourceFile: resolvedPath,
       schemaVersion: payload.schemaVersion,
-      sourceCompatibility: this.buildSourceCompatibility(payload),
+      sourceCompatibility,
       profiles,
     }
   }
@@ -96,23 +100,36 @@ export class ImportSourceService {
         return {
           profile,
           exportedObservation: this.pickObservation(item),
+          redactedInlineSecretFields: this.collectRedactedInlineSecretFields(profile),
         }
       })
   }
 
-  private buildSourceCompatibility(payload: ImportEnvelope): ImportSourceCompatibility {
+  private buildSourceCompatibility(
+    payload: ImportEnvelope,
+    profiles: ImportedProfileSource[],
+  ): ImportSourceCompatibility {
+    const warnings = !payload.schemaVersion
+      ? ['导入文件未声明 schemaVersion，当前按兼容模式解析。']
+      : []
+    const redactedFieldCount = profiles.reduce((count, item) => count + (item.redactedInlineSecretFields?.length ?? 0), 0)
+
+    if (redactedFieldCount > 0) {
+      warnings.push(`导入文件包含 ${redactedFieldCount} 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。`)
+    }
+
     if (!payload.schemaVersion) {
       return {
         mode: 'schema-version-missing',
         schemaVersion: undefined,
-        warnings: ['导入文件未声明 schemaVersion，当前按兼容模式解析。'],
+        warnings,
       }
     }
 
     return {
       mode: 'strict',
       schemaVersion: payload.schemaVersion,
-      warnings: [],
+      warnings,
     }
   }
 
@@ -149,5 +166,31 @@ export class ImportSourceService {
       && typeof candidate.source === 'object'
       && !!candidate.apply
       && typeof candidate.apply === 'object'
+  }
+
+  private collectRedactedInlineSecretFields(profile: Profile): string[] {
+    return [
+      ...this.collectRedactedInlineSecretFieldsFromRecord(profile.source, 'source'),
+      ...this.collectRedactedInlineSecretFieldsFromRecord(profile.apply, 'apply'),
+    ]
+  }
+
+  private collectRedactedInlineSecretFieldsFromRecord(record: Record<string, unknown>, prefix: string): string[] {
+    return Object.entries(record).flatMap(([key, value]) => {
+      const field = `${prefix}.${key}`
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return this.collectRedactedInlineSecretFieldsFromRecord(value as Record<string, unknown>, field)
+      }
+
+      if (
+        isSecretLikeKey(key)
+        && !isSecretReferenceKey(key)
+        && value === REDACTED_INLINE_SECRET_PLACEHOLDER
+      ) {
+        return [field]
+      }
+
+      return []
+    })
   }
 }

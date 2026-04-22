@@ -4,6 +4,7 @@ import type { ValidationIssue } from '../types/adapter'
 import type { Profile } from '../types/profile'
 import type { ValidationResult } from '../types/adapter'
 import type {
+  ExecutabilityStats,
   ReferenceGovernanceDetail,
   ReferenceGovernanceFailureDetails,
   ReferenceGovernanceReasonCode,
@@ -282,6 +283,93 @@ export function buildSecretReferenceStats(
     hasUnsupportedReferenceProfiles: unsupportedReferenceProfileCount > 0,
     hasInlineProfiles: inlineProfileCount > 0,
     hasWriteUnsupportedProfiles: writeUnsupportedProfileCount > 0,
+  }
+}
+
+export interface ExecutabilityInspectionTarget {
+  profile: Profile
+  sourceRedacted?: boolean
+}
+
+type ExecutabilityKind =
+  | 'source-redacted'
+  | 'write-unsupported'
+  | 'reference-missing'
+  | 'reference-ready'
+  | 'inline-ready'
+  | 'none'
+
+function classifyExecutability(
+  target: ExecutabilityInspectionTarget,
+  resolver: SecretReferenceResolver,
+): ExecutabilityKind {
+  if (target.sourceRedacted) {
+    return 'source-redacted'
+  }
+
+  const referenceSummary = buildProfileReferenceSummary(target.profile, resolver)
+  if (referenceSummary?.writeUnsupported) {
+    return 'write-unsupported'
+  }
+
+  if (
+    referenceSummary?.hasReferenceFields
+    && (
+      referenceSummary.missingReferenceCount > 0
+      || referenceSummary.missingValueCount > 0
+      || referenceSummary.unsupportedReferenceCount > 0
+    )
+  ) {
+    return 'reference-missing'
+  }
+
+  if (
+    referenceSummary?.hasReferenceFields
+    && referenceSummary.resolvedReferenceCount > 0
+    && !referenceSummary.writeUnsupported
+  ) {
+    return 'reference-ready'
+  }
+
+  if (hasProfileInlineSecrets(target.profile)) {
+    return 'inline-ready'
+  }
+
+  return 'none'
+}
+
+export function buildExecutabilityStats(
+  targets: ExecutabilityInspectionTarget[],
+  resolver: SecretReferenceResolver = defaultSecretReferenceResolver,
+): ExecutabilityStats {
+  const profileCount = targets.length
+  const buckets = targets.reduce<Record<Exclude<ExecutabilityKind, 'none'>, number>>((acc, target) => {
+    const kind = classifyExecutability(target, resolver)
+    if (kind !== 'none') {
+      acc[kind] += 1
+    }
+
+    return acc
+  }, {
+    'source-redacted': 0,
+    'write-unsupported': 0,
+    'reference-missing': 0,
+    'reference-ready': 0,
+    'inline-ready': 0,
+  })
+
+  return {
+    profileCount,
+    inlineReadyProfileCount: buckets['inline-ready'],
+    referenceReadyProfileCount: buckets['reference-ready'],
+    referenceMissingProfileCount: buckets['reference-missing'],
+    writeUnsupportedProfileCount: buckets['write-unsupported'],
+    sourceRedactedProfileCount: buckets['source-redacted'],
+    hasInlineReadyProfiles: buckets['inline-ready'] > 0,
+    hasReferenceReadyProfiles: buckets['reference-ready'] > 0,
+    hasReferenceMissingProfiles: buckets['reference-missing'] > 0,
+    hasWriteUnsupportedProfiles: buckets['write-unsupported'] > 0,
+    hasSourceRedactedProfiles: buckets['source-redacted'] > 0,
   }
 }
 

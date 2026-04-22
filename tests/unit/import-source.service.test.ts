@@ -96,8 +96,54 @@ describe('import source service', () => {
               { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
             ],
           },
+          redactedInlineSecretFields: [],
         }),
       ],
+    })
+  })
+
+  it('识别 redacted inline secret 占位并保留字段位置', async () => {
+    const filePath = path.join(runtimeDir, 'redacted-export.json')
+    await fs.writeFile(filePath, JSON.stringify({
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: true,
+      action: 'export',
+      data: {
+        profiles: [
+          {
+            profile: {
+              id: 'codex-prod',
+              name: 'codex-prod',
+              platform: 'codex',
+              source: { apiKey: '<redacted:inline-secret>', baseURL: 'https://gateway.example.com/openai/v1' },
+              apply: { OPENAI_API_KEY: '<redacted:inline-secret>', base_url: 'https://gateway.example.com/openai/v1' },
+            },
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }, null, 2), 'utf8')
+
+    const result = await new ImportSourceService().load(filePath)
+
+    expect(result.sourceCompatibility).toEqual({
+      mode: 'strict',
+      schemaVersion: '2026-04-15.public-json.v1',
+      warnings: ['导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。'],
+    })
+    expect(result.profiles[0]).toEqual({
+      profile: {
+        id: 'codex-prod',
+        name: 'codex-prod',
+        platform: 'codex',
+        source: { apiKey: '<redacted:inline-secret>', baseURL: 'https://gateway.example.com/openai/v1' },
+        apply: { OPENAI_API_KEY: '<redacted:inline-secret>', base_url: 'https://gateway.example.com/openai/v1' },
+      },
+      exportedObservation: undefined,
+      redactedInlineSecretFields: ['source.apiKey', 'apply.OPENAI_API_KEY'],
     })
   })
 

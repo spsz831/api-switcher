@@ -477,6 +477,14 @@ describe('cli commands integration', () => {
               fields: string[]
             }>
           }
+          summarySections?: Array<{
+            id: string
+            title: string
+            priority: number
+            fields: string[]
+            purpose: string
+            recommendedWhen?: string[]
+          }>
           primaryFieldSemantics: Array<{ path: string; semantic: string }>
           primaryErrorFieldSemantics: Array<{ path: string; semantic: string }>
         }>
@@ -499,8 +507,12 @@ describe('cli commands integration', () => {
     const currentAction = actions.find((action) => action.action === 'current')
     const exportAction = actions.find((action) => action.action === 'export')
     const listAction = actions.find((action) => action.action === 'list')
+    const importAction = actions.find((action) => action.action === 'import')
+    const importApplyAction = actions.find((action) => action.action === 'import-apply')
     const previewAction = actions.find((action) => action.action === 'preview')
+    const rollbackAction = actions.find((action) => action.action === 'rollback')
     const schemaAction = actions.find((action) => action.action === 'schema')
+    const useAction = actions.find((action) => action.action === 'use')
     const validateAction = actions.find((action) => action.action === 'validate')
 
     expect(currentAction).toEqual({
@@ -510,7 +522,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: true,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -519,6 +531,7 @@ describe('cli commands integration', () => {
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -528,6 +541,7 @@ describe('cli commands integration', () => {
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
@@ -537,6 +551,7 @@ describe('cli commands integration', () => {
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -545,7 +560,7 @@ describe('cli commands integration', () => {
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级聚合和 reference 聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -554,9 +569,15 @@ describe('cli commands integration', () => {
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
         ],
       },
+      summarySections: [
+        { id: 'platform', title: 'Platform summary', priority: 1, fields: ['summary.platformStats'], purpose: '先看平台级聚合，快速判断结果覆盖了哪些平台以及各平台状态分布。', recommendedWhen: ['cross-platform overview', 'top-level health check'] },
+        { id: 'reference', title: 'Reference summary', priority: 2, fields: ['summary.referenceStats'], purpose: '看 secret/reference 解析形态，判断是否存在未解析 env、受支持但不写入、或不支持 scheme 的输入。', recommendedWhen: ['secret governance', 'reference resolution review'] },
+        { id: 'executability', title: 'Executability summary', priority: 3, fields: ['summary.executabilityStats'], purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。', recommendedWhen: ['pre-write readiness', 'apply/use readiness check'] },
+      ],
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'detections.referenceSummary', semantic: 'item-explainable' },
@@ -576,7 +597,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -585,35 +606,52 @@ describe('cli commands integration', () => {
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.secretExportPolicy', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
+        { path: 'profiles.secretExportSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.secretExportPolicy', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
+        { path: 'profiles.secretExportSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.secretExportPolicy', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
+        { path: 'profiles.secretExportSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级导出聚合和 reference 聚合。' },
-          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference explainable。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy'], purpose: '先看平台级导出聚合、reference 聚合、写入可执行性聚合和本次 secret 导出策略。' },
+          { stage: 'items', fields: ['profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference 与 secret export explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
         ],
       },
+      summarySections: [
+        { id: 'platform', title: 'Platform summary', priority: 1, fields: ['summary.platformStats'], purpose: '先看平台级聚合，快速判断结果覆盖了哪些平台以及各平台状态分布。', recommendedWhen: ['cross-platform overview', 'top-level health check'] },
+        { id: 'reference', title: 'Reference summary', priority: 2, fields: ['summary.referenceStats'], purpose: '看 secret/reference 解析形态，判断是否存在未解析 env、受支持但不写入、或不支持 scheme 的输入。', recommendedWhen: ['secret governance', 'reference resolution review'] },
+        { id: 'executability', title: 'Executability summary', priority: 3, fields: ['summary.executabilityStats'], purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。', recommendedWhen: ['pre-write readiness', 'apply/use readiness check'] },
+      ],
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.secretExportPolicy', semantic: 'result-policy' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
+        { path: 'profiles.secretExportSummary', semantic: 'item-explainable' },
       ],
       primaryErrorFieldSemantics: [
         { path: 'error.code', semantic: 'error-core' },
@@ -628,7 +666,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: true,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'profiles', 'profiles.referenceSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
@@ -638,33 +676,42 @@ describe('cli commands integration', () => {
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先按平台分组并识别 reference 聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先按平台分组并识别 reference 聚合与写入可执行性聚合。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
         ],
       },
+      summarySections: [
+        { id: 'platform', title: 'Platform summary', priority: 1, fields: ['summary.platformStats'], purpose: '先看平台级聚合，快速判断结果覆盖了哪些平台以及各平台状态分布。', recommendedWhen: ['cross-platform overview', 'top-level health check'] },
+        { id: 'reference', title: 'Reference summary', priority: 2, fields: ['summary.referenceStats'], purpose: '看 secret/reference 解析形态，判断是否存在未解析 env、受支持但不写入、或不支持 scheme 的输入。', recommendedWhen: ['secret governance', 'reference resolution review'] },
+        { id: 'executability', title: 'Executability summary', priority: 3, fields: ['summary.executabilityStats'], purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。', recommendedWhen: ['pre-write readiness', 'apply/use readiness check'] },
+      ],
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ],
@@ -745,6 +792,17 @@ describe('cli commands integration', () => {
       ],
     })
 
+    expect(importAction?.summarySections).toEqual([
+      { id: 'source-executability', title: 'Source executability summary', priority: 1, fields: ['summary.sourceExecutability'], purpose: '先看导入源本身是否还能继续进入 apply，用于识别 redacted inline secret 等源侧阻塞。', recommendedWhen: ['import source triage', 'apply eligibility from source data'] },
+      { id: 'executability', title: 'Executability summary', priority: 2, fields: ['summary.executabilityStats'], purpose: '再看目标平台侧是否具备写入可执行条件，用于区分可继续 apply 和需本地修复的项。', recommendedWhen: ['pre-apply readiness', 'target-side write readiness'] },
+      { id: 'platform', title: 'Platform summary', priority: 3, fields: ['summary.platformStats'], purpose: '最后看 mixed-batch 在各平台上的分布，便于按平台分批处理。', recommendedWhen: ['mixed-batch routing', 'platform-level distribution review'] },
+    ])
+    expect(previewAction?.summarySections).toBeUndefined()
+    expect(useAction?.summarySections).toBeUndefined()
+    expect(rollbackAction?.summarySections).toBeUndefined()
+    expect(importApplyAction?.summarySections).toBeUndefined()
+    expect(schemaAction?.summarySections).toBeUndefined()
+
     expect(validateAction).toEqual({
       action: 'validate',
       hasPlatformSummary: true,
@@ -752,7 +810,7 @@ describe('cli commands integration', () => {
       hasScopeCapabilities: false,
       hasScopeAvailability: false,
       hasScopePolicy: false,
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'items', 'items.referenceSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'items', 'items.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -762,33 +820,42 @@ describe('cli commands integration', () => {
       fieldPresence: [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
         { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
       fieldSources: [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
         { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ],
       fieldStability: [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
         { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats'], purpose: '先看平台级通过/限制聚合和 reference 聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级通过/限制聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
         ],
       },
+      summarySections: [
+        { id: 'platform', title: 'Platform summary', priority: 1, fields: ['summary.platformStats'], purpose: '先看平台级聚合，快速判断结果覆盖了哪些平台以及各平台状态分布。', recommendedWhen: ['cross-platform overview', 'top-level health check'] },
+        { id: 'reference', title: 'Reference summary', priority: 2, fields: ['summary.referenceStats'], purpose: '看 secret/reference 解析形态，判断是否存在未解析 env、受支持但不写入、或不支持 scheme 的输入。', recommendedWhen: ['secret governance', 'reference resolution review'] },
+        { id: 'executability', title: 'Executability summary', priority: 3, fields: ['summary.executabilityStats'], purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。', recommendedWhen: ['pre-write readiness', 'apply/use readiness check'] },
+      ],
       primaryFieldSemantics: [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'items', semantic: 'item-collection' },
         { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ],
@@ -860,6 +927,12 @@ describe('cli commands integration', () => {
         actions: Array<{
           action: string
           primaryErrorFields: string[]
+          failureCodes: Array<{
+            code: string
+            priority: number
+            category: string
+            recommendedHandling: string
+          }>
           fieldPresence: Array<{ path: string; channel: string; presence: string; conditionCode?: string }>
           fieldSources: Array<{ path: string; channel: string; source: string }>
           fieldStability: Array<{ path: string; channel: string; stabilityTier: string }>
@@ -902,6 +975,16 @@ describe('cli commands integration', () => {
         path: 'error.details.referenceGovernance',
         semantic: 'reference-governance',
       })
+      if (actionName === 'import-apply') {
+        expect(action?.failureCodes).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS',
+            priority: 5,
+            category: 'source',
+            recommendedHandling: 'check-import-source',
+          }),
+        ]))
+      }
       expect(action?.referenceGovernanceCodes).toEqual([
         { code: 'REFERENCE_INPUT_CONFLICT', priority: 1, category: 'input', recommendedHandling: 'fix-reference-input' },
         { code: 'REFERENCE_MISSING', priority: 2, category: 'reference', recommendedHandling: 'fix-reference-input' },
@@ -1497,6 +1580,19 @@ describe('cli commands integration', () => {
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
     })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
@@ -1559,6 +1655,19 @@ describe('cli commands integration', () => {
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
     })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
@@ -1611,6 +1720,19 @@ describe('cli commands integration', () => {
       hasReferenceProfiles: true,
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
     })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -1856,6 +1978,14 @@ describe('cli commands integration', () => {
         scopeAvailability?: ScopeAvailabilityContract[]
         defaultWriteScope?: string
         observedAt?: string
+        secretExportSummary?: {
+          hasInlineSecrets: boolean
+          hasRedactedInlineSecrets: boolean
+          hasReferenceSecrets: boolean
+          redactedFieldCount: number
+          preservedReferenceCount: number
+          details?: Array<{ field: string; kind: string }>
+        }
         validation?: {
           ok: boolean
           errors: Array<{ code: string }>
@@ -1884,6 +2014,13 @@ describe('cli commands integration', () => {
             facts: Array<{ code: string; message: string }>
           }
         }>
+        secretExportPolicy?: {
+          mode: 'redacted-by-default' | 'include-secrets'
+          inlineSecretsExported: number
+          inlineSecretsRedacted: number
+          referenceSecretsPreserved: number
+          profilesWithRedactedSecrets: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -1907,7 +2044,22 @@ describe('cli commands integration', () => {
     const codexProfile = payload.data?.profiles.find((item) => item.profile.id === 'codex-prod')
     const geminiProfile = payload.data?.profiles.find((item) => item.profile.id === 'gemini-prod')
 
-    expect(claudeProfile?.profile.source).toEqual({ token: 'sk-l***56', baseURL: 'https://gateway.example.com/api' })
+    expect(claudeProfile?.profile.source).toEqual({ token: '<redacted:inline-secret>', baseURL: 'https://gateway.example.com/api' })
+    expect(claudeProfile?.profile.apply).toEqual({
+      ANTHROPIC_AUTH_TOKEN: '<redacted:inline-secret>',
+      ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+    })
+    expect(claudeProfile?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.token', kind: 'inline-secret-redacted' },
+        { field: 'apply.ANTHROPIC_AUTH_TOKEN', kind: 'inline-secret-redacted' },
+      ],
+    })
     expect(claudeProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
@@ -1941,7 +2093,22 @@ describe('cli commands integration', () => {
       }),
     ]))
 
-    expect(codexProfile?.profile.source).toEqual({ apiKey: 'sk-c***56', baseURL: 'https://gateway.example.com/openai/v1' })
+    expect(codexProfile?.profile.source).toEqual({ apiKey: '<redacted:inline-secret>', baseURL: 'https://gateway.example.com/openai/v1' })
+    expect(codexProfile?.profile.apply).toEqual({
+      OPENAI_API_KEY: '<redacted:inline-secret>',
+      base_url: 'https://gateway.example.com/openai/v1',
+    })
+    expect(codexProfile?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.apiKey', kind: 'inline-secret-redacted' },
+        { field: 'apply.OPENAI_API_KEY', kind: 'inline-secret-redacted' },
+      ],
+    })
     expect(codexProfile?.platformSummary).toEqual({
       kind: 'multi-file-composition',
       composedFiles: [],
@@ -1953,7 +2120,22 @@ describe('cli commands integration', () => {
     expect(codexProfile?.validation?.limitations.map((item) => item.message)).toContain('当前会同时托管 Codex 的 config.toml 与 auth.json。')
     expect(codexProfile?.validation?.managedBoundaries?.some((item) => item.type === 'multi-file-transaction')).toBe(true)
 
-    expect(geminiProfile?.profile.source).toEqual({ apiKey: 'gm-l***56', authType: 'gemini-api-key' })
+    expect(geminiProfile?.profile.source).toEqual({ apiKey: '<redacted:inline-secret>', authType: 'gemini-api-key' })
+    expect(geminiProfile?.profile.apply).toEqual({
+      GEMINI_API_KEY: '<redacted:inline-secret>',
+      enforcedAuthType: 'gemini-api-key',
+    })
+    expect(geminiProfile?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: true,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 2,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.apiKey', kind: 'inline-secret-redacted' },
+        { field: 'apply.GEMINI_API_KEY', kind: 'inline-secret-redacted' },
+      ],
+    })
     expect(geminiProfile?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
@@ -2006,6 +2188,13 @@ describe('cli commands integration', () => {
         }),
       }),
     ]))
+    expect(payload.data?.summary.secretExportPolicy).toEqual({
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 6,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 3,
+    })
     expect(geminiProfile?.defaultWriteScope).toBe('user')
     expect(geminiProfile?.observedAt).toEqual(expect.any(String))
     expect(new Date(geminiProfile?.observedAt ?? '').toString()).not.toBe('Invalid Date')
@@ -2075,6 +2264,19 @@ describe('cli commands integration', () => {
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
     })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
@@ -2101,6 +2303,17 @@ describe('cli commands integration', () => {
       unsupportedReferenceCount: 2,
       missingValueCount: 0,
     })
+    expect(payload.data?.profiles?.[0]?.secretExportSummary).toEqual({
+      hasInlineSecrets: false,
+      hasRedactedInlineSecrets: false,
+      hasReferenceSecrets: true,
+      redactedFieldCount: 0,
+      preservedReferenceCount: 2,
+      details: [
+        { field: 'source.secret_ref', kind: 'reference-preserved' },
+        { field: 'apply.auth_reference', kind: 'reference-preserved' },
+      ],
+    })
     expect(payload.data?.profiles?.[0]?.validation?.warnings).toEqual([])
     expect(payload.data?.profiles?.[0]?.validation?.errors).toEqual([])
     expect(payload.data?.profiles?.[0]?.validation?.limitations).toEqual(expect.arrayContaining([
@@ -2109,6 +2322,48 @@ describe('cli commands integration', () => {
         level: 'limitation',
       }),
     ]))
+    expect(payload.data?.summary.secretExportPolicy).toEqual({
+      mode: 'redacted-by-default',
+      inlineSecretsExported: 0,
+      inlineSecretsRedacted: 0,
+      referenceSecretsPreserved: 2,
+      profilesWithRedactedSecrets: 0,
+    })
+  })
+
+  it('export --json --include-secrets 显式保留 inline secret 明文', async () => {
+    const result = await runCli(['export', '--json', '--include-secrets'])
+    const payload = parseJsonResult<any>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+
+    const claudeProfile = payload.data?.profiles.find((item: any) => item.profile.id === 'claude-prod')
+    const codexProfile = payload.data?.profiles.find((item: any) => item.profile.id === 'codex-prod')
+    const geminiProfile = payload.data?.profiles.find((item: any) => item.profile.id === 'gemini-prod')
+
+    expect(claudeProfile?.profile.source?.token).toBe('sk-live-123456')
+    expect(codexProfile?.profile.source?.apiKey).toBe('sk-codex-live-123456')
+    expect(geminiProfile?.profile.source?.apiKey).toBe('gm-live-123456')
+    expect(payload.data?.summary.secretExportPolicy).toEqual({
+      mode: 'include-secrets',
+      inlineSecretsExported: 6,
+      inlineSecretsRedacted: 0,
+      referenceSecretsPreserved: 0,
+      profilesWithRedactedSecrets: 0,
+    })
+    expect(geminiProfile?.secretExportSummary).toEqual({
+      hasInlineSecrets: true,
+      hasRedactedInlineSecrets: false,
+      hasReferenceSecrets: false,
+      redactedFieldCount: 0,
+      preservedReferenceCount: 0,
+      details: [
+        { field: 'source.apiKey', kind: 'inline-secret-exported' },
+        { field: 'apply.GEMINI_API_KEY', kind: 'inline-secret-exported' },
+      ],
+    })
   })
 
   it('preview --json 输出 Codex 结构化预览结果与 warnings', async () => {
@@ -3932,6 +4187,24 @@ describe('cli commands integration', () => {
         mismatchCount: number
         partialCount: number
         insufficientDataCount: number
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
+        sourceExecutability: {
+          totalItems: number
+          applyReadyCount: number
+          previewOnlyCount: number
+          blockedCount: number
+          blockedByCodeStats: Array<{
+            code: string
+            totalCount: number
+          }>
+        }
         decisionCodeStats: Array<{
           code: string
           totalCount: number
@@ -4053,24 +4326,55 @@ describe('cli commands integration', () => {
         ],
       },
     }))
-    expect(payload.data?.summary).toEqual(expect.objectContaining({
+    expect(payload.data?.summary?.totalItems).toBe(1)
+    expect(payload.data?.summary?.matchCount).toBe(0)
+    expect(payload.data?.summary?.mismatchCount).toBe(1)
+    expect(payload.data?.summary?.partialCount).toBe(0)
+    expect(payload.data?.summary?.insufficientDataCount).toBe(0)
+    expect(payload.data?.summary?.executabilityStats).toEqual({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
+    expect(payload.data?.summary?.sourceExecutability).toEqual({
       totalItems: 1,
-      mismatchCount: 1,
-      decisionCodeStats: expect.arrayContaining([
-        expect.objectContaining({ code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1 }),
-        expect.objectContaining({ code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1 }),
-      ]),
-      driftKindStats: expect.arrayContaining([
-        expect.objectContaining({ driftKind: 'availability-drift', totalCount: 1, blockingCount: 1 }),
-      ]),
-      matchCount: 0,
-      platformStats: [
-        expect.objectContaining({
-          platform: 'gemini',
-          mismatchCount: 1,
-        }),
+      applyReadyCount: 1,
+      previewOnlyCount: 0,
+      blockedCount: 0,
+      blockedByCodeStats: [
+        { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
       ],
-    }))
+    })
+    expect(payload.data?.summary?.decisionCodeStats).toEqual([
+      { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 0, blockingCount: 0, nonBlockingCount: 0 },
+      { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+      { code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
+    ])
+    expect(payload.data?.summary?.driftKindStats).toEqual([
+      { driftKind: 'default-scope-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+      { driftKind: 'availability-drift', totalCount: 1, blockingCount: 1, warningCount: 0, infoCount: 0 },
+      { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
+    ])
+    expect(payload.data?.summary?.platformStats).toEqual([
+      {
+        platform: 'gemini',
+        totalItems: 1,
+        matchCount: 0,
+        mismatchCount: 1,
+        partialCount: 0,
+        insufficientDataCount: 0,
+      },
+    ])
   })
 
   it('import --json 在混合批次下准确聚合 match、partial、mismatch 与 insufficient-data', async () => {
@@ -4131,6 +4435,23 @@ describe('cli commands integration', () => {
           },
           {
             profile: {
+              id: 'gemini-redacted',
+              name: 'gemini-redacted',
+              platform: 'gemini',
+              source: { apiKey: '<redacted:inline-secret>', authType: 'gemini-api-key' },
+              apply: { GEMINI_API_KEY: '<redacted:inline-secret>', enforcedAuthType: 'gemini-api-key' },
+            },
+            defaultWriteScope: 'user',
+            observedAt: '2026-04-16T00:00:00.000Z',
+            scopeCapabilities: [
+              { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+            ],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: geminiSettingsPath },
+            ],
+          },
+          {
+            profile: {
               id: 'gemini-insufficient',
               name: 'gemini-insufficient',
               platform: 'gemini',
@@ -4161,6 +4482,24 @@ describe('cli commands integration', () => {
         mismatchCount: number
         partialCount: number
         insufficientDataCount: number
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
+        sourceExecutability: {
+          totalItems: number
+          applyReadyCount: number
+          previewOnlyCount: number
+          blockedCount: number
+          blockedByCodeStats: Array<{
+            code: string
+            totalCount: number
+          }>
+        }
         decisionCodeStats: Array<{
           code: string
           totalCount: number
@@ -4194,16 +4533,39 @@ describe('cli commands integration', () => {
       ['gemini-match', 'match', ['READY_USING_LOCAL_OBSERVATION']],
       ['gemini-partial', 'partial', ['LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION']],
       ['gemini-mismatch', 'mismatch', ['BLOCKED_BY_FIDELITY_MISMATCH', 'REQUIRES_LOCAL_SCOPE_RESOLUTION']],
+      ['gemini-redacted', 'match', ['READY_USING_LOCAL_OBSERVATION']],
       ['gemini-insufficient', 'insufficient-data', ['BLOCKED_BY_INSUFFICIENT_OBSERVATION']],
     ])
     expect(payload.data?.summary).toEqual({
-      totalItems: 4,
-      matchCount: 1,
+      totalItems: 5,
+      matchCount: 2,
       mismatchCount: 1,
       partialCount: 1,
       insufficientDataCount: 1,
+      executabilityStats: {
+        profileCount: 5,
+        inlineReadyProfileCount: 4,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 1,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: true,
+      },
+      sourceExecutability: {
+        totalItems: 5,
+        applyReadyCount: 4,
+        previewOnlyCount: 1,
+        blockedCount: 1,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 1 },
+        ],
+      },
       decisionCodeStats: [
-        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 2, blockingCount: 0, nonBlockingCount: 2 },
         { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
         { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
         { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
@@ -4217,8 +4579,8 @@ describe('cli commands integration', () => {
       platformStats: [
         {
           platform: 'gemini',
-          totalItems: 4,
-          matchCount: 1,
+          totalItems: 5,
+          matchCount: 2,
           mismatchCount: 1,
           partialCount: 1,
           insufficientDataCount: 1,
@@ -4312,6 +4674,24 @@ describe('cli commands integration', () => {
         mismatchCount: number
         partialCount: number
         insufficientDataCount: number
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
+        sourceExecutability: {
+          totalItems: number
+          applyReadyCount: number
+          previewOnlyCount: number
+          blockedCount: number
+          blockedByCodeStats: Array<{
+            code: string
+            totalCount: number
+          }>
+        }
         decisionCodeStats: Array<{
           code: string
           totalCount: number
@@ -4353,6 +4733,28 @@ describe('cli commands integration', () => {
       mismatchCount: 1,
       partialCount: 1,
       insufficientDataCount: 1,
+      executabilityStats: {
+        profileCount: 4,
+        inlineReadyProfileCount: 4,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
+      sourceExecutability: {
+        totalItems: 4,
+        applyReadyCount: 4,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
       decisionCodeStats: [
         { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
         { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
@@ -4718,6 +5120,46 @@ describe('cli commands integration', () => {
     expect(codexConfig).toContain('default_provider = "openai"')
     expect(codexAuth.OPENAI_API_KEY).toBe('sk-codex-live-123456')
     expect(codexAuth.user_id).toBe('u-1')
+  })
+
+  it('import apply --json 命中 redacted inline secret 导入源时会直接阻断', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-redacted-inline-secret.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: '<redacted:inline-secret>', authType: 'gemini-api-key' },
+          apply: { GEMINI_API_KEY: '<redacted:inline-secret>', enforcedAuthType: 'gemini-api-key' },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-prod', '--json'])
+    const payload = parseJsonResult<{
+      sourceFile: string
+      profileId: string
+      redactedInlineSecretFields: string[]
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.warnings).toContain('导入文件包含 2 个 redacted inline secret 占位值；import preview 会保留字段位置，但不会把它当作真实 secret 明文。')
+    expect(payload.error?.code).toBe('IMPORT_SOURCE_REDACTED_INLINE_SECRETS')
+    expect(payload.error?.details).toEqual({
+      sourceFile: importFile,
+      profileId: 'gemini-prod',
+      redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+    })
   })
 
   it('import apply --json 在 mixed source 下按 --profile 精确命中目标平台，不受同批其他 profile 干扰', async () => {
