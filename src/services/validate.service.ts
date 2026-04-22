@@ -5,6 +5,7 @@ import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { Profile } from '../types/profile'
 import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -68,6 +69,7 @@ export class ValidateService {
       platformStats: this.buildPlatformStats(profiles, items),
       referenceStats: buildSecretReferenceStats(profiles),
       executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation.warnings),
         ...item.validation.effectiveConfig?.overrides.map((override) => override.message) ?? [],

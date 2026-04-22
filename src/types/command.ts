@@ -155,6 +155,20 @@ export interface ExecutabilityStats {
   hasSourceRedactedProfiles: boolean
 }
 
+export interface ReadonlyTriageBucketStat {
+  id: 'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'
+  title: string
+  totalCount: number
+  summaryFields: string[]
+  itemFields?: string[]
+  recommendedNextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+}
+
+export interface ReadonlyTriageStats {
+  totalItems: number
+  buckets: ReadonlyTriageBucketStat[]
+}
+
 export type ReferenceGovernanceReasonCode =
   | 'REFERENCE_WRITE_UNSUPPORTED'
   | 'INLINE_SECRET_PRESENT'
@@ -211,6 +225,7 @@ export interface CurrentSummary {
   platformStats?: CurrentListPlatformStat[]
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
@@ -219,6 +234,7 @@ export interface ListSummary {
   platformStats?: CurrentListPlatformStat[]
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
@@ -237,6 +253,7 @@ export interface ExportSummary {
   platformStats?: ValidateExportPlatformStat[]
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   secretExportPolicy?: SecretExportPolicySummary
   warnings: string[]
   limitations: string[]
@@ -450,6 +467,7 @@ export interface ValidateSummary {
   platformStats?: ValidateExportPlatformStat[]
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
@@ -493,6 +511,7 @@ export interface ImportPreviewSummary {
   insufficientDataCount: number
   sourceExecutability: ImportSourceExecutabilitySummary
   executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   platformStats: ImportPreviewPlatformStat[]
   decisionCodeStats: ImportPreviewDecisionCodeStat[]
   driftKindStats: ImportPreviewDriftKindStat[]

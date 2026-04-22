@@ -12,6 +12,7 @@ import type {
 } from '../types/command'
 import type { ValidationIssue, ValidationResult } from '../types/adapter'
 import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 import type { Profile } from '../types/profile'
@@ -117,6 +118,7 @@ export class ExportService {
       platformStats: this.buildPlatformStats(items),
       referenceStats: buildSecretReferenceStats(profiles),
       executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       secretExportPolicy: this.buildSecretExportPolicy(items, includeSecrets),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation?.warnings ?? []),

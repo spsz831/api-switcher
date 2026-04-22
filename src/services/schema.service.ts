@@ -26,7 +26,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     appliesToActions: ['current', 'list', 'validate', 'export'],
     exampleActions: ['current', 'export'],
     bestEntryAction: 'current',
-    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'],
     sharedItemFields: ['platformSummary'],
     sharedFailureFields: ['error.code', 'error.message'],
     optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
@@ -103,7 +103,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     appliesToActions: ['import'],
     exampleActions: ['import'],
     bestEntryAction: 'import',
-    sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
+    sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats'],
     sharedItemFields: ['platformSummary', 'previewDecision'],
     sharedFailureFields: ['error.code', 'error.message'],
     optionalScopeFields: [],
@@ -216,15 +216,15 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'add':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopeCapabilities']
     case 'current':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability']
     case 'export':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary']
     case 'import':
-      return ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'items', 'sourceCompatibility']
+      return ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats', 'items', 'sourceCompatibility']
     case 'import-apply':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'list':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
@@ -234,7 +234,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'use':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
     case 'validate':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'items', 'items.referenceSummary']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'items', 'items.referenceSummary']
     default:
       return []
   }
@@ -364,6 +364,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -375,6 +376,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'summary.secretExportPolicy', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -385,6 +387,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.sourceExecutability', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
         { path: 'sourceCompatibility', channel: 'success', presence: 'always' },
         { path: 'error.code', channel: 'failure', presence: 'always' },
@@ -413,6 +416,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
@@ -475,6 +479,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
         { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
@@ -499,6 +504,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
@@ -510,6 +516,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'summary.secretExportPolicy', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
@@ -520,6 +527,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.sourceExecutability', channel: 'success', source: 'import-analysis' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'import-analysis' },
         { path: 'summary.platformStats', channel: 'success', source: 'import-analysis' },
+        { path: 'summary.triageStats', channel: 'success', source: 'import-analysis' },
         { path: 'items', channel: 'success', source: 'import-analysis' },
         { path: 'sourceCompatibility', channel: 'success', source: 'import-analysis' },
         { path: 'error.code', channel: 'failure', source: 'error-envelope' },
@@ -548,6 +556,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ]
@@ -610,6 +619,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
         { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ]
@@ -634,6 +644,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -645,6 +656,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.secretExportPolicy', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -655,6 +667,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.sourceExecutability', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
         { path: 'sourceCompatibility', channel: 'success', stabilityTier: 'stable' },
         { path: 'error.code', channel: 'failure', stabilityTier: 'stable' },
@@ -683,6 +696,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
@@ -745,6 +759,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
         { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
@@ -768,7 +783,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'current':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级聚合、reference 聚合和写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -780,7 +795,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'export':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy'], purpose: '先看平台级导出聚合、reference 聚合、写入可执行性聚合和本次 secret 导出策略。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.secretExportPolicy'], purpose: '先看平台级导出聚合、reference 聚合、写入可执行性聚合、triage 分流桶和本次 secret 导出策略。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference 与 secret export explainable。' },
         ],
         failure: [
@@ -790,7 +805,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'import':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'], purpose: '先看导入源可执行性、写入可执行性和 mixed-batch 平台聚合。' },
+          { stage: 'summary', fields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats'], purpose: '先看导入源可执行性、写入可执行性、mixed-batch 平台聚合和 triage 分流桶。' },
           { stage: 'items', fields: ['items'], purpose: '再处理每个 imported item。' },
           { stage: 'detail', fields: ['sourceCompatibility'], purpose: '最后看来源兼容性。' },
         ],
@@ -815,7 +830,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'list':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先按平台分组并识别 reference 聚合与写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先按平台分组并识别 reference 聚合、写入可执行性聚合与 triage 分流桶。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -872,7 +887,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'validate':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级通过/限制聚合、reference 聚合和写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级通过/限制聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -917,6 +932,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'detections.referenceSummary', semantic: 'item-explainable' },
@@ -928,6 +944,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'summary.secretExportPolicy', semantic: 'result-policy' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
@@ -938,6 +955,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'summary.sourceExecutability', semantic: 'source-executability' },
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'items', semantic: 'item-collection' },
         { path: 'sourceCompatibility', semantic: 'source-compatibility' },
       ]
@@ -959,6 +977,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ]
@@ -1011,6 +1030,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'items', semantic: 'item-collection' },
         { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ]

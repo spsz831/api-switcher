@@ -12,6 +12,7 @@ import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } 
 import type { Profile } from '../types/profile'
 import { buildExecutabilityStats, buildProfileReferenceSummary, buildSecretReferenceStats, collectProfileSecretReferenceContractLimitations } from '../domain/secret-inspection'
 import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -147,6 +148,7 @@ export class CurrentStateService {
       platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, PLATFORM_NAMES, false),
       referenceStats: buildSecretReferenceStats(profiles),
       executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
       limitations: Array.from(new Set([
         ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
@@ -167,6 +169,7 @@ export class CurrentStateService {
       platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, targetPlatforms, true),
       referenceStats: buildSecretReferenceStats(profiles),
       executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
       limitations: Array.from(new Set([
         ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),

@@ -15,6 +15,7 @@ import type {
 import { type ImportedProfileSource, ImportSourceError, ImportSourceService } from './import-source.service'
 import { ImportFidelityService } from './import-fidelity.service'
 import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyImportTriageStats } from './readonly-triage-summary'
 import { getScopeCapabilityMatrix, resolveTargetScope } from './scope-options'
 import { buildExecutabilityStats } from '../domain/secret-inspection'
 
@@ -129,6 +130,7 @@ export class ImportPreviewService {
         profile: item.profile,
         sourceRedacted: (item.redactedInlineSecretFields?.length ?? 0) > 0,
       }))),
+      triageStats: buildReadonlyImportTriageStats(items, sourceProfiles),
       platformStats: this.buildPlatformStats(items),
       decisionCodeStats: this.buildDecisionCodeStats(items),
       driftKindStats: this.buildDriftKindStats(items),

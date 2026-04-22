@@ -562,7 +562,7 @@ describe('cli commands integration', () => {
         appliesToActions: ['current', 'list', 'validate', 'export'],
         exampleActions: ['current', 'export'],
         bestEntryAction: 'current',
-        sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'],
+        sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'],
         sharedItemFields: ['platformSummary'],
         sharedFailureFields: ['error.code', 'error.message'],
         optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
@@ -664,7 +664,7 @@ describe('cli commands integration', () => {
         appliesToActions: ['import'],
         exampleActions: ['import'],
         bestEntryAction: 'import',
-        sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats'],
+        sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats'],
         sharedItemFields: ['platformSummary', 'previewDecision'],
         sharedFailureFields: ['error.code', 'error.message'],
         optionalScopeFields: [],
@@ -821,7 +821,7 @@ describe('cli commands integration', () => {
       hasScopeAvailability: true,
       hasScopePolicy: false,
       consumerProfileIds: ['readonly-state-audit'],
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -831,6 +831,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -841,6 +842,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
@@ -851,6 +853,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -859,7 +862,7 @@ describe('cli commands integration', () => {
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级聚合、reference 聚合和写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -877,6 +880,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'detections.referenceSummary', semantic: 'item-explainable' },
@@ -897,7 +901,7 @@ describe('cli commands integration', () => {
       hasScopeAvailability: false,
       hasScopePolicy: false,
       consumerProfileIds: ['readonly-state-audit'],
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.secretExportPolicy', 'profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
@@ -907,6 +911,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'summary.secretExportPolicy', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -916,6 +921,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'summary.secretExportPolicy', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
@@ -925,6 +931,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.secretExportPolicy', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -932,7 +939,7 @@ describe('cli commands integration', () => {
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.secretExportPolicy'], purpose: '先看平台级导出聚合、reference 聚合、写入可执行性聚合和本次 secret 导出策略。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.secretExportPolicy'], purpose: '先看平台级导出聚合、reference 聚合、写入可执行性聚合、triage 分流桶和本次 secret 导出策略。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary', 'profiles.secretExportSummary'], purpose: '再读导出 profile 列表，并按需读取每项的 reference 与 secret export explainable。' },
         ],
         failure: [
@@ -948,6 +955,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'summary.secretExportPolicy', semantic: 'result-policy' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
@@ -967,7 +975,7 @@ describe('cli commands integration', () => {
       hasScopeAvailability: false,
       hasScopePolicy: false,
       consumerProfileIds: ['readonly-state-audit'],
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'profiles', 'profiles.referenceSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'profiles', 'profiles.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
@@ -978,6 +986,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
@@ -985,6 +994,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ],
@@ -992,12 +1002,13 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先按平台分组并识别 reference 聚合与写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先按平台分组并识别 reference 聚合、写入可执行性聚合与 triage 分流桶。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -1013,6 +1024,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ],
@@ -1228,7 +1240,7 @@ describe('cli commands integration', () => {
       hasScopeAvailability: false,
       hasScopePolicy: false,
       consumerProfileIds: ['readonly-state-audit'],
-      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'items', 'items.referenceSummary'],
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'items', 'items.referenceSummary'],
       primaryErrorFields: ['error.code', 'error.message'],
       failureCodes: [
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -1239,6 +1251,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'summary.triageStats', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
         { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ],
@@ -1246,6 +1259,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
         { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ],
@@ -1253,12 +1267,13 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
         { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ],
       readOrderGroups: {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看平台级通过/限制聚合、reference 聚合和写入可执行性聚合。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级通过/限制聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -1274,6 +1289,7 @@ describe('cli commands integration', () => {
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'summary.triageStats', semantic: 'triage-aggregate' },
         { path: 'items', semantic: 'item-collection' },
         { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ],
@@ -2011,6 +2027,45 @@ describe('cli commands integration', () => {
       hasWriteUnsupportedProfiles: true,
       hasSourceRedactedProfiles: false,
     })
+    expect(payload.data?.summary.triageStats?.buckets.map((item: { id: string; totalCount: number }) => [item.id, item.totalCount])).toEqual([
+      ['overview', 1],
+      ['reference-governance', 1],
+      ['write-readiness', 1],
+    ])
+    expect(payload.data?.summary.triageStats?.buckets.map((item: { id: string; totalCount: number }) => [item.id, item.totalCount])).toEqual([
+      ['overview', 1],
+      ['reference-governance', 1],
+      ['write-readiness', 1],
+    ])
+    expect(payload.data?.summary.triageStats).toEqual({
+      totalItems: 1,
+      buckets: [
+        {
+          id: 'overview',
+          title: 'Overview bucket',
+          totalCount: 1,
+          summaryFields: ['summary.platformStats'],
+          itemFields: ['platformSummary'],
+          recommendedNextStep: 'inspect-items',
+        },
+        {
+          id: 'reference-governance',
+          title: 'Reference governance bucket',
+          totalCount: 1,
+          summaryFields: ['summary.referenceStats'],
+          itemFields: ['detections.referenceSummary', 'profiles.referenceSummary'],
+          recommendedNextStep: 'review-reference-details',
+        },
+        {
+          id: 'write-readiness',
+          title: 'Write readiness bucket',
+          totalCount: 1,
+          summaryFields: ['summary.executabilityStats'],
+          itemFields: ['detections.referenceSummary', 'profiles.referenceSummary'],
+          recommendedNextStep: 'continue-to-write',
+        },
+      ],
+    })
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'claude',
@@ -2086,6 +2141,21 @@ describe('cli commands integration', () => {
       hasWriteUnsupportedProfiles: true,
       hasSourceRedactedProfiles: false,
     })
+    expect(payload.data?.summary.triageStats?.buckets.map((item: { id: string; totalCount: number }) => [item.id, item.totalCount])).toEqual([
+      ['overview', 1],
+      ['reference-governance', 1],
+      ['write-readiness', 1],
+    ])
+    expect(payload.data?.summary.triageStats?.buckets.map((item: { id: string; totalCount: number }) => [item.id, item.totalCount])).toEqual([
+      ['overview', 1],
+      ['reference-governance', 1],
+      ['write-readiness', 1],
+    ])
+    expect(payload.data?.summary.triageStats?.buckets.map((item: { id: string; totalCount: number }) => [item.id, item.totalCount])).toEqual([
+      ['overview', 1],
+      ['reference-governance', 1],
+      ['write-readiness', 1],
+    ])
     expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
       expect.objectContaining({
         platform: 'codex',
@@ -4835,6 +4905,13 @@ describe('cli commands integration', () => {
           writeUnsupportedProfileCount: number
           sourceRedactedProfileCount: number
         }
+        triageStats?: {
+          totalItems: number
+          buckets: Array<{
+            id: string
+            totalCount: number
+          }>
+        }
         sourceExecutability: {
           totalItems: number
           applyReadyCount: number
@@ -4991,6 +5068,35 @@ describe('cli commands integration', () => {
       blockedCount: 0,
       blockedByCodeStats: [
         { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+      ],
+    })
+    expect(payload.data?.summary?.triageStats).toEqual({
+      totalItems: 1,
+      buckets: [
+        {
+          id: 'source-blocked',
+          title: 'Source blocked bucket',
+          totalCount: 0,
+          summaryFields: ['summary.sourceExecutability'],
+          itemFields: ['sourceCompatibility', 'items.previewDecision'],
+          recommendedNextStep: 'repair-source-input',
+        },
+        {
+          id: 'write-readiness',
+          title: 'Write readiness bucket',
+          totalCount: 1,
+          summaryFields: ['summary.executabilityStats'],
+          itemFields: ['items.previewDecision', 'items.fidelity'],
+          recommendedNextStep: 'continue-to-write',
+        },
+        {
+          id: 'platform-routing',
+          title: 'Platform routing bucket',
+          totalCount: 1,
+          summaryFields: ['summary.platformStats'],
+          itemFields: ['platformSummary'],
+          recommendedNextStep: 'group-by-platform',
+        },
       ],
     })
     expect(payload.data?.summary?.decisionCodeStats).toEqual([
@@ -5226,6 +5332,35 @@ describe('cli commands integration', () => {
           insufficientDataCount: 1,
         },
       ],
+      triageStats: {
+        totalItems: 5,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            totalCount: 1,
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            totalCount: 2,
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            totalCount: 5,
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+          },
+        ],
+      },
       warnings: ['project 作用域的可用性与当前本地环境不一致。'],
       limitations: [
         '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',
@@ -5433,6 +5568,35 @@ describe('cli commands integration', () => {
           insufficientDataCount: 1,
         },
       ],
+      triageStats: {
+        totalItems: 4,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            totalCount: 0,
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            totalCount: 2,
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            totalCount: 4,
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+          },
+        ],
+      },
       warnings: ['默认写入作用域不一致：导出时为 user，当前本地为 project。'],
       limitations: [
         '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',

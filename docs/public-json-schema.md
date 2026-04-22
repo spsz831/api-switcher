@@ -450,7 +450,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。建议固定分工如下：
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。建议固定分工如下：
 
 - `primaryFields`：先读哪些字段。
 - `readOrderGroups`：先读哪一层，再读哪一层。
@@ -465,6 +465,8 @@ type SchemaCommandOutput = {
 - `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
 - `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
+
+对只读命令本身，运行时 `summary.triageStats` 会把这些分流桶实例化成当前批次的真实计数；`consumerProfiles[].triageBuckets[]` 则是 schema catalog 里的稳定目录层，回答“有哪些桶、每个桶建议读哪些字段、下一步通常走什么动作”。
 
 如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段；如果需要更偏自动化的接入，再读取 `triageBuckets[]`，直接按稳定桶做分流。最小接入流程建议固定为：
 

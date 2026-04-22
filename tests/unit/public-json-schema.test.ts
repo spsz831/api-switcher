@@ -191,6 +191,17 @@ describe('public JSON contract types', () => {
           hasWriteUnsupportedProfiles: boolean
           hasSourceRedactedProfiles: boolean
         }
+        triageStats?: {
+          totalItems: number
+          buckets: Array<{
+            id: string
+            title: string
+            totalCount: number
+            summaryFields: string[]
+            itemFields?: string[]
+            recommendedNextStep: string
+          }>
+        }
       }
       items: Array<{
         platformSummary?: {
@@ -395,6 +406,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportPreviewSummary?.properties?.executabilityStats).toEqual({
       $ref: '#/$defs/ExecutabilityStats',
     })
+    expect(publicJsonSchema.$defs?.ImportPreviewSummary?.properties?.triageStats).toEqual({
+      $ref: '#/$defs/ReadonlyTriageStats',
+    })
   })
 
   it('machine-readable schema 冻结 import-apply 稳定 failure detail defs', () => {
@@ -525,6 +539,17 @@ describe('public JSON contract types', () => {
         hasWriteUnsupportedProfiles: boolean
         hasSourceRedactedProfiles: boolean
       }
+      triageStats?: {
+        totalItems: number
+        buckets: Array<{
+          id: string
+          title: string
+          totalCount: number
+          summaryFields: string[]
+          itemFields?: string[]
+          recommendedNextStep: string
+        }>
+      }
       platformStats?: Array<{
         platform: string
         profileCount: number
@@ -576,6 +601,17 @@ describe('public JSON contract types', () => {
         hasReferenceMissingProfiles: boolean
         hasWriteUnsupportedProfiles: boolean
         hasSourceRedactedProfiles: boolean
+      }
+      triageStats?: {
+        totalItems: number
+        buckets: Array<{
+          id: string
+          title: string
+          totalCount: number
+          summaryFields: string[]
+          itemFields?: string[]
+          recommendedNextStep: string
+        }>
       }
       platformStats?: Array<{
         platform: string
@@ -961,6 +997,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.executabilityStats).toEqual({
       $ref: '#/$defs/ExecutabilityStats',
     })
+    expect(publicJsonSchema.$defs?.CurrentSummary?.properties?.triageStats).toEqual({
+      $ref: '#/$defs/ReadonlyTriageStats',
+    })
     expect(publicJsonSchema.$defs?.ListSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/CurrentListPlatformStat' },
@@ -970,6 +1009,9 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.ListSummary?.properties?.executabilityStats).toEqual({
       $ref: '#/$defs/ExecutabilityStats',
+    })
+    expect(publicJsonSchema.$defs?.ListSummary?.properties?.triageStats).toEqual({
+      $ref: '#/$defs/ReadonlyTriageStats',
     })
     expect(publicJsonSchema.$defs?.CurrentListPlatformStat?.required).toEqual(expect.arrayContaining([
       'platform',
@@ -1068,6 +1110,17 @@ describe('public JSON contract types', () => {
           hasWriteUnsupportedProfiles: boolean
           hasSourceRedactedProfiles: boolean
         }
+        triageStats?: {
+          totalItems: number
+          buckets: Array<{
+            id: string
+            title: string
+            totalCount: number
+            summaryFields: string[]
+            itemFields?: string[]
+            recommendedNextStep: string
+          }>
+        }
         platformStats?: Array<{
           platform: string
           profileCount: number
@@ -1120,6 +1173,17 @@ describe('public JSON contract types', () => {
           hasReferenceMissingProfiles: boolean
           hasWriteUnsupportedProfiles: boolean
           hasSourceRedactedProfiles: boolean
+        }
+        triageStats?: {
+          totalItems: number
+          buckets: Array<{
+            id: string
+            title: string
+            totalCount: number
+            summaryFields: string[]
+            itemFields?: string[]
+            recommendedNextStep: string
+          }>
         }
         platformStats?: Array<{
           platform: string
@@ -1190,6 +1254,9 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.executabilityStats).toEqual({
       $ref: '#/$defs/ExecutabilityStats',
     })
+    expect(publicJsonSchema.$defs?.ValidateSummary?.properties?.triageStats).toEqual({
+      $ref: '#/$defs/ReadonlyTriageStats',
+    })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.platformStats).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/ValidateExportPlatformStat' },
@@ -1199,6 +1266,9 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.executabilityStats).toEqual({
       $ref: '#/$defs/ExecutabilityStats',
+    })
+    expect(publicJsonSchema.$defs?.ExportSummary?.properties?.triageStats).toEqual({
+      $ref: '#/$defs/ReadonlyTriageStats',
     })
     expect(publicJsonSchema.$defs?.ExportSummary?.properties?.secretExportPolicy).toEqual({
       $ref: '#/$defs/SecretExportPolicySummary',
@@ -1275,6 +1345,24 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasUnsupportedReferenceProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasInlineProfiles).toEqual({ type: 'boolean' })
     expect(publicJsonSchema.$defs?.SecretReferenceStats?.properties?.hasWriteUnsupportedProfiles).toEqual({ type: 'boolean' })
+  })
+
+  it('machine-readable schema 覆盖 readonly triage defs', () => {
+    expect(publicJsonSchema.$defs?.ReadonlyTriageStats?.required).toEqual([
+      'totalItems',
+      'buckets',
+    ])
+    expect(publicJsonSchema.$defs?.ReadonlyTriageBucketStat?.required).toEqual([
+      'id',
+      'title',
+      'totalCount',
+      'summaryFields',
+      'recommendedNextStep',
+    ])
+    expect(publicJsonSchema.$defs?.ReadonlyTriageBucketStat?.properties?.id).toEqual({
+      type: 'string',
+      enum: ['overview', 'reference-governance', 'write-readiness', 'source-blocked', 'platform-routing'],
+    })
   })
 
   it('machine-readable schema 覆盖 ReferenceSummary def', () => {

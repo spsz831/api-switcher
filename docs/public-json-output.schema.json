@@ -370,6 +370,43 @@
       },
       "additionalProperties": false
     },
+    "ReadonlyTriageBucketStat": {
+      "type": "object",
+      "required": ["id", "title", "totalCount", "summaryFields", "recommendedNextStep"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+        },
+        "title": { "type": "string" },
+        "totalCount": { "type": "integer", "minimum": 0 },
+        "summaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "itemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommendedNextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReadonlyTriageStats": {
+      "type": "object",
+      "required": ["totalItems", "buckets"],
+      "properties": {
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "buckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReadonlyTriageBucketStat" }
+        }
+      },
+      "additionalProperties": false
+    },
     "ReferenceGovernanceFailureDetails": {
       "type": "object",
       "required": [
@@ -470,6 +507,7 @@
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -491,6 +529,7 @@
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -1101,6 +1140,7 @@
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -1122,6 +1162,7 @@
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "secretExportPolicy": { "$ref": "#/$defs/SecretExportPolicySummary" },
         "warnings": {
           "type": "array",
@@ -1450,6 +1491,7 @@
         "insufficientDataCount": { "type": "integer", "minimum": 0 },
         "sourceExecutability": { "$ref": "#/$defs/ImportSourceExecutabilitySummary" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "platformStats": {
           "type": "array",
           "items": { "$ref": "#/$defs/ImportPreviewPlatformStat" }
