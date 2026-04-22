@@ -2539,6 +2539,28 @@ describe('cli commands integration', () => {
           noChanges: false,
         }),
       ]),
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+        referenceProfileCount: 0,
+        inlineProfileCount: 1,
+        writeUnsupportedProfileCount: 0,
+        hasReferenceProfiles: false,
+        hasInlineProfiles: true,
+        hasWriteUnsupportedProfiles: false,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      }),
       warnings: payload.data?.risk.reasons ?? [],
       limitations: payload.data?.risk.limitations ?? [],
     }))
@@ -2627,6 +2649,28 @@ describe('cli commands integration', () => {
     ]))
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
   })
 
   it('preview --json 输出 Gemini scope capability contract', async () => {

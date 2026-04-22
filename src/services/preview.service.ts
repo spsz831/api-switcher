@@ -1,5 +1,5 @@
 import { evaluateRisk } from '../domain/risk-engine'
-import { withProfileSecretReferenceContract } from '../domain/secret-inspection'
+import { buildExecutabilityStats, buildSecretReferenceStats, withProfileSecretReferenceContract } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import type { ScopeAvailability } from '../types/capabilities'
@@ -83,6 +83,8 @@ export class PreviewService {
             listMode: true,
           }),
         }),
+        referenceStats: buildSecretReferenceStats([profile]),
+        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
       }

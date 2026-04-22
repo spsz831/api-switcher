@@ -2974,7 +2974,7 @@ redacted 字段:
 }
 ```
 
-`preview --json` 的语义是“先按平台 precedence 推导 effective config，再评估本次写入目标”。成功时也会返回 `scopePolicy`，把“请求了哪一层、最终解析到哪一层、是否高风险、回滚是否要求同 scope”稳定暴露给机器消费方。单平台命令也统一提供 `data.summary.platformStats[]`，用于输出平台级聚合入口；对 `preview` 来说，推荐先读 `summary.platformStats[0]`，再按需展开 `preview/scopePolicy/scopeCapabilities/scopeAvailability`。当显式请求 Gemini `project scope` 时，返回里会同时给出 `scopePolicy`、`scopeCapabilities` 与当前的 `scopeAvailability`：
+`preview --json` 的语义是“先按平台 precedence 推导 effective config，再评估本次写入目标”。成功时也会返回 `scopePolicy`，把“请求了哪一层、最终解析到哪一层、是否高风险、回滚是否要求同 scope”稳定暴露给机器消费方。单平台命令也统一提供 `data.summary.platformStats[]`；对 `preview` 来说，成功态同样会补齐 `data.summary.referenceStats` 与 `data.summary.executabilityStats`，让脚本先做平台级聚合、secret/reference 治理聚合和写入可执行性聚合，再决定是否展开 `preview/scopePolicy/scopeCapabilities/scopeAvailability`。文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。当显式请求 Gemini `project scope` 时，返回里会同时给出 `scopePolicy`、`scopeCapabilities` 与当前的 `scopeAvailability`：
 
 ```json
 {

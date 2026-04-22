@@ -215,7 +215,11 @@ describe('docs consistency', () => {
   it('schema 文档为 preview/import apply 保留成功与失败样例标题，避免顶部导航指向后正文仍不对称', () => {
     expect(publicJsonSchemaDoc).toContain('### preview --json')
     expect(readme).toContain('成功时也会返回 `scopePolicy`')
+    expect(readme).toContain('成功态同样会补齐 `data.summary.referenceStats` 与 `data.summary.executabilityStats`')
+    expect(readme).toContain('文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。')
     expect(publicJsonSchemaDoc).toContain('`data.scopePolicy` 描述本次预览请求的目标 scope 语义')
+    expect(publicJsonSchemaDoc).toContain('`data.summary.referenceStats` 会补出当前写入 profile 的 secret/reference 形态聚合')
+    expect(publicJsonSchemaDoc).toContain('文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。')
     expect(publicJsonSchemaDoc).toContain('scopePolicy?: SnapshotScopePolicy')
     expect(publicJsonSchemaDoc).toContain('失败样例重点看 action 级失败 envelope')
     expect(publicJsonSchemaDoc).toContain('"action": "preview"')

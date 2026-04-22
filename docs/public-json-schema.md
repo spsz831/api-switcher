@@ -441,7 +441,7 @@ type SchemaVersionCommandOutput = {
 | --- | --- | --- | --- |
 | [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`detections[].referenceSummary`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 拿平台级聚合与 reference 聚合，再补读 `summary.executabilityStats` 拿写入可执行性聚合，再读 `detections[].platform/currentScope`，最后按需展开 `detections[].referenceSummary` 与 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`profiles[].referenceSummary`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 做平台分组与治理分层，再补读 `summary.executabilityStats` 做写入前分层，再读 `profiles[]` 的平台与 selector，最后按需读取 `profiles[].referenceSummary` 与 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
-| [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
+| [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
 | [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后再展开 `preview/platformSummary`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED`。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
 | [`rollback --json`](#rollback---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级恢复聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 看快照上一版 profile 的 secret 形态与写入可执行性，最后展开 `rollback`。 | `scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED` |
 | [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`items[].referenceSummary`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再补读 `summary.executabilityStats` 看写入可执行性聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `items[].referenceSummary` 与 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
@@ -2194,7 +2194,7 @@ type AddCommandOutput = {
 ### preview --json
 
 `data.scopePolicy` 描述本次预览请求的目标 scope 语义；`data.scopeCapabilities` 描述当前平台的 scope 操作能力。
-`data.summary.platformStats[]` 是单平台命令的稳定平台级聚合入口；对 `preview`，它包含目标 scope、warning/limitation 计数、变更文件计数、是否计划备份和 `noChanges`。
+`data.summary.platformStats[]` 是单平台命令的稳定平台级聚合入口；对 `preview`，它包含目标 scope、warning/limitation 计数、变更文件计数、是否计划备份和 `noChanges`。`data.summary.referenceStats` 会补出当前写入 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `preview`、`risk`、`scopePolicy` 与 scope 相关细节。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。
 
 语义补充：
 
@@ -2203,7 +2203,7 @@ type AddCommandOutput = {
 
 样例阅读方式：
 
-- 成功样例重点看 success payload 中的 `summary.platformStats`、`preview`、`risk`、`summary`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
+- 成功样例重点看 success payload 中的 `summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`preview`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
 - 失败样例重点看 action 级失败 envelope，以及 `error.details.scopePolicy`、`scopeAvailability` 里的稳定 failure details。
 
 成功样例：

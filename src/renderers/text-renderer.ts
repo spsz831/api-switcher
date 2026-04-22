@@ -947,6 +947,8 @@ function renderCurrent(data: CurrentCommandOutput): string {
 function renderPreview(data: PreviewCommandOutput): string {
   const lines = [
     ...renderSinglePlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderExecutabilityStats(data.summary.executabilityStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,
     ...renderValidationIssues('错误', data.validation.errors),

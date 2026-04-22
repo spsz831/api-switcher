@@ -766,6 +766,34 @@ const previewPayload: PreviewCommandOutput = {
         },
       },
     ],
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['高风险操作需要确认'],
     limitations: ['Gemini 最终认证结果仍受环境变量影响。'],
   },
@@ -3156,6 +3184,13 @@ describe('text renderer', () => {
     expect(outputPreview).toContain('按平台汇总:')
     expect(outputPreview).toContain('  - gemini: profiles=1, profile=gemini-prod, scope=user, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
     expect(outputPreview).toContain('    - preview 汇总 Gemini precedence 摘要。')
+    expect(outputPreview).toContain('referenceStats 摘要:')
+    expect(outputPreview).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputPreview).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
+    expect(outputPreview).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputPreview).toContain('executabilityStats 摘要:')
+    expect(outputPreview).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
+    expect(outputPreview).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
     expect(outputPreview).toContain('- 配置: gemini-prod (gemini)')
     expect(outputPreview).toContain('  校验结果: 通过')
     expect(outputPreview).toContain('  风险等级: medium')
@@ -3195,6 +3230,10 @@ describe('text renderer', () => {
     expect(outputPreview).toContain('  - 高风险操作需要确认')
     expect(outputPreview).toContain('限制说明:')
     expect(outputPreview).toContain('  - Gemini 最终认证结果仍受环境变量影响。')
+  })
+
+  it('preview 文本 summary 顺序与单平台写入命令读取顺序对齐', () => {
+    expectOrderedSections(outputPreview, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:', '- 配置: gemini-prod (gemini)'])
   })
 
   it('preview 无变化时显示无变化摘要', () => {

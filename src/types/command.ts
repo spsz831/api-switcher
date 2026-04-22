@@ -49,6 +49,8 @@ export interface PreviewRiskSummary {
 
 export interface PreviewSummary {
   platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
