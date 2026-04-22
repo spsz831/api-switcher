@@ -2612,7 +2612,7 @@ redacted 字段:
 - mixed-batch 接入时，推荐先看 `summary.decisionCodeStats` 与 `summary.driftKindStats`，再按需展开 `items[]`。
 - 更完整的字段词典、推荐消费顺序和失败处理建议见 [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)；稳定字段定义见 [`docs/public-json-schema.md`](docs/public-json-schema.md)。
 
-`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`，不是挂在 `preview` 或 `validation` 子对象里；同时，`data.summary.platformStats[]` 会提供单平台聚合入口，方便 UI 先读平台级 warning/limitation/变更文件计数，而不必先扫描完整 `preview`：
+`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`，不是挂在 `preview` 或 `validation` 子对象里；同时，成功态也会把 `data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 一起暴露成稳定 summary 入口，方便 UI 或自动化脚本先读平台级 warning/limitation/变更文件计数，再做 secret/reference 治理与写入可执行性判断，而不必先扫描完整 `preview`。文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节：
 
 ```json
 {

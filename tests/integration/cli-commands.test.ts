@@ -504,6 +504,7 @@ describe('cli commands integration', () => {
     expect(payload.data?.schemaVersion).toBe(PUBLIC_JSON_SCHEMA_VERSION)
     expect(payload.data?.schemaId).toBe('https://api-switcher.local/schemas/public-json-output.schema.json')
     const actions = payload.data?.commandCatalog.actions ?? []
+    const addAction = actions.find((action) => action.action === 'add')
     const currentAction = actions.find((action) => action.action === 'current')
     const exportAction = actions.find((action) => action.action === 'export')
     const listAction = actions.find((action) => action.action === 'list')
@@ -514,6 +515,71 @@ describe('cli commands integration', () => {
     const schemaAction = actions.find((action) => action.action === 'schema')
     const useAction = actions.find((action) => action.action === 'use')
     const validateAction = actions.find((action) => action.action === 'validate')
+
+    expect(addAction).toEqual({
+      action: 'add',
+      hasPlatformSummary: false,
+      hasPlatformStats: true,
+      hasScopeCapabilities: true,
+      hasScopeAvailability: false,
+      hasScopePolicy: false,
+      primaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopeCapabilities'],
+      primaryErrorFields: ['error.code', 'error.message'],
+      failureCodes: [
+        { code: 'ADD_INPUT_REQUIRED', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'ADD_INPUT_CONFLICT', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'UNSUPPORTED_PLATFORM', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'GEMINI_URL_UNSUPPORTED', priority: 4, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'DUPLICATE_PROFILE_ID', priority: 5, category: 'state', recommendedHandling: 'select-existing-resource' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 6, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ADD_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ],
+      fieldPresence: [
+        { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
+        { path: 'risk', channel: 'success', presence: 'always' },
+        { path: 'preview', channel: 'success', presence: 'always' },
+        { path: 'scopeCapabilities', channel: 'success', presence: 'always' },
+      ],
+      fieldSources: [
+        { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
+        { path: 'risk', channel: 'success', source: 'command-service' },
+        { path: 'preview', channel: 'success', source: 'platform-adapter' },
+        { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
+      ],
+      fieldStability: [
+        { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'risk', channel: 'success', stabilityTier: 'stable' },
+        { path: 'preview', channel: 'success', stabilityTier: 'stable' },
+        { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
+      ],
+      readOrderGroups: {
+        success: [
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看单平台聚合、reference 聚合和写入可执行性聚合。' },
+          { stage: 'detail', fields: ['risk', 'preview', 'scopeCapabilities'], purpose: '再展开新增结果、风险和 scope 能力。' },
+        ],
+        failure: [
+          { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
+        ],
+      },
+      primaryFieldSemantics: [
+        { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'risk', semantic: 'risk' },
+        { path: 'preview', semantic: 'result-core' },
+        { path: 'scopeCapabilities', semantic: 'scope-resolution' },
+      ],
+      primaryErrorFieldSemantics: [
+        { path: 'error.code', semantic: 'error-core' },
+        { path: 'error.message', semantic: 'error-core' },
+      ],
+    })
 
     expect(currentAction).toEqual({
       action: 'current',
@@ -3340,6 +3406,28 @@ describe('cli commands integration', () => {
       auth_reference: 'vault://codex/prod',
       base_url: 'https://gateway.example.com/openai/v1',
     })
+    expect(payload.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
     expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
   })
@@ -3412,6 +3500,20 @@ describe('cli commands integration', () => {
           backupCreated?: boolean
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -3504,6 +3606,20 @@ describe('cli commands integration', () => {
           backupCreated?: boolean
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -3532,6 +3648,28 @@ describe('cli commands integration', () => {
       }),
     ]))
     expect(payload.data?.summary.platformStats?.[0]?.warningCount).toBeGreaterThanOrEqual(1)
+    expect(payload.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.warnings).toContain('ANTHROPIC_BASE_URL 可能缺少 /api 后缀。')
     expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(payload.data?.preview.riskLevel).toBe('medium')
@@ -3563,6 +3701,20 @@ describe('cli commands integration', () => {
           backupCreated?: boolean
           noChanges?: boolean
         }>
+        referenceStats?: {
+          profileCount: number
+          referenceProfileCount: number
+          inlineProfileCount: number
+          writeUnsupportedProfileCount: number
+        }
+        executabilityStats?: {
+          profileCount: number
+          inlineReadyProfileCount: number
+          referenceReadyProfileCount: number
+          referenceMissingProfileCount: number
+          writeUnsupportedProfileCount: number
+          sourceRedactedProfileCount: number
+        }
         warnings: string[]
         limitations: string[]
       }
@@ -3589,6 +3741,28 @@ describe('cli commands integration', () => {
       warnings: [],
       limitations: ['当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。'],
     }))
+    expect(payload.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    })
+    expect(payload.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    })
     expect(payload.data?.summary.platformStats).toEqual([
       expect.objectContaining({
         platform: 'claude',

@@ -637,6 +637,8 @@ export interface ImportApplyCommandOutput {
 
 export interface AddSummary {
   platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }

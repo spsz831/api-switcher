@@ -104,14 +104,19 @@ describe('docs consistency', () => {
 
   it('README / schema 文档对 add summary.platformStats contract 保持一致', () => {
     expect(readme).toContain('`add --json` 的 `scopeCapabilities` 在成功摘要顶层 `data`')
-    expect(readme).toContain('`data.summary.platformStats[]` 会提供单平台聚合入口')
+    expect(readme).toContain('成功态也会把 `data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 一起暴露成稳定 summary 入口')
+    expect(readme).toContain('文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节：')
     expect(readme).toContain('"action": "add"')
     expect(readme).toContain('"platformStats": [')
     expect(readme).toContain('"code": "CLAUDE_SCOPE_PRECEDENCE"')
 
     expect(publicJsonSchemaDoc).toContain('### add --json')
     expect(publicJsonSchemaDoc).toContain('`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口')
+    expect(publicJsonSchemaDoc).toContain('`data.summary.referenceStats` 会补出当前新增 profile 的 secret/reference 形态聚合')
+    expect(publicJsonSchemaDoc).toContain('文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节。')
     expect(publicJsonSchemaDoc).toContain('platformStats?: SinglePlatformStat[]')
+    expect(publicJsonSchemaDoc).toContain('referenceStats?: SecretReferenceStats')
+    expect(publicJsonSchemaDoc).toContain('executabilityStats?: ExecutabilityStats')
   })
 
   it('schema 文档保留公共 explainable 字段总览，避免四个命令的共享字段语义漂移', () => {

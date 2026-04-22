@@ -1,5 +1,7 @@
 import { evaluateRisk } from '../domain/risk-engine'
 import {
+  buildExecutabilityStats,
+  buildSecretReferenceStats,
   withProfileSecretReferenceContract,
 } from '../domain/secret-inspection'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
@@ -84,6 +86,8 @@ export class AddService {
             listMode: true,
           }),
         }),
+        referenceStats: buildSecretReferenceStats([profile]),
+        executabilityStats: buildExecutabilityStats([{ profile }]),
         warnings: risk.reasons,
         limitations: risk.limitations,
       }

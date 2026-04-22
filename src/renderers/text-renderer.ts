@@ -1010,6 +1010,8 @@ function renderUse(data: UseCommandOutput): string {
 function renderAdd(data: AddCommandOutput): string {
   return [
     ...renderSinglePlatformStats(data.summary.platformStats),
+    ...renderReferenceStats(data.summary.referenceStats),
+    ...renderExecutabilityStats(data.summary.executabilityStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  名称: ${data.profile.name}`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,

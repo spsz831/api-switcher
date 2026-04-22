@@ -2172,7 +2172,7 @@ api-switcher import apply E:/tmp/exported-redacted.json --profile gemini-prod --
 
 ### add --json
 
-`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。
+`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。`data.summary.referenceStats` 会补出当前新增 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `risk`、`preview` 与 `scopeCapabilities`。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节。
 
 `add` 的 secret 输入面支持两类互斥模式：明文 `--key`，或 reference-only 的 `--secret-ref` / `--auth-reference`。reference-only 成功时，`profile.source.secret_ref` 与 `profile.apply.auth_reference` 会保留原始引用字符串，便于外部系统继续消费；同时 `summary.limitations` 会提示 `preview/use/import apply` 暂未消费该引用。若既没有 key 也没有 reference，失败码为 `ADD_INPUT_REQUIRED`；若同时传入明文 key 与 reference，失败码为 `ADD_INPUT_CONFLICT`。
 
@@ -2184,6 +2184,8 @@ type AddCommandOutput = {
   risk: PreviewRiskSummary
   summary: {
     platformStats?: SinglePlatformStat[]
+    referenceStats?: SecretReferenceStats
+    executabilityStats?: ExecutabilityStats
     warnings: string[]
     limitations: string[]
   }

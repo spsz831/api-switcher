@@ -1879,6 +1879,34 @@ const addPayload: AddCommandOutput = {
         },
       },
     ],
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 0,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      resolvedReferenceProfileCount: 0,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      hasReferenceProfiles: false,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+      hasResolvedReferenceProfiles: false,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
     warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
@@ -1915,6 +1943,8 @@ const addPayloadWithLimitations: AddCommandOutput = {
   },
   summary: {
     platformStats: addPayload.summary.platformStats,
+    referenceStats: addPayload.summary.referenceStats,
+    executabilityStats: addPayload.summary.executabilityStats,
     warnings: ['建议先执行 preview 或 validate 再确认'],
     limitations: ['新增配置后仍建议执行 preview 校验 effective config。'],
   },
@@ -3643,6 +3673,13 @@ describe('text renderer', () => {
     expect(outputAdd).toContain('按平台汇总:')
     expect(outputAdd).toContain('  - claude: profiles=1, profile=claude-prod, warnings=1, limitations=1, changedFiles=1, backup=yes, noChanges=no')
     expect(outputAdd).toContain('    - Claude 支持 user < project < local 三层 precedence。')
+    expect(outputAdd).toContain('referenceStats 摘要:')
+    expect(outputAdd).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
+    expect(outputAdd).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
+    expect(outputAdd).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputAdd).toContain('executabilityStats 摘要:')
+    expect(outputAdd).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
+    expect(outputAdd).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
     expect(outputAdd).toContain('- 配置: claude-prod (claude)')
     expect(outputAdd).toContain('  名称: Claude 生产')
     expect(outputAdd).toContain('  校验结果: 通过')
@@ -3672,6 +3709,10 @@ describe('text renderer', () => {
     expect(outputAdd).toContain('  - 建议先执行 preview 或 validate 再确认')
     expect(outputAdd).toContain('限制说明:')
     expect(outputAdd).toContain('  - 新增配置后仍建议执行 preview 校验 effective config。')
+  })
+
+  it('add 文本 summary 顺序与单平台写入命令读取顺序对齐', () => {
+    expectOrderedSections(outputAdd, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:', '- 配置: claude-prod (claude)'])
   })
 
   it('add 会渲染 validation 与 preview 的 limitations', () => {

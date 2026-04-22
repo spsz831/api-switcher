@@ -53,7 +53,7 @@ function getReferenceGovernanceCodeCatalog(action: typeof COMMAND_ACTIONS[number
 function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
   switch (action) {
     case 'add':
-      return ['summary.platformStats', 'risk', 'preview', 'scopeCapabilities']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopeCapabilities']
     case 'current':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'current', 'detections', 'detections.referenceSummary', 'scopeCapabilities', 'scopeAvailability']
     case 'export':
@@ -192,6 +192,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
     case 'add':
       return [
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
+        { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
+        { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'risk', channel: 'success', presence: 'always' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'always' },
@@ -323,6 +325,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
     case 'add':
       return [
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
+        { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'risk', channel: 'success', source: 'command-service' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
@@ -454,6 +458,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
     case 'add':
       return [
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
+        { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'risk', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
@@ -585,7 +591,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'add':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats'], purpose: '先看单平台聚合和风险计数。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看单平台聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['risk', 'preview', 'scopeCapabilities'], purpose: '再展开新增结果、风险和 scope 能力。' },
         ],
         failure: [
@@ -733,6 +739,8 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
     case 'add':
       return [
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
+        { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
+        { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'risk', semantic: 'risk' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
