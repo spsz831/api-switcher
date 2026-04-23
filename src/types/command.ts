@@ -783,6 +783,7 @@ export interface ImportApplyCommandOutput {
   sourceFile: string
   importedProfile: Profile
   appliedScope?: string
+  dryRun?: boolean
   platformSummary?: PlatformExplainableSummary
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities: PlatformScopeCapability[]
@@ -790,7 +791,7 @@ export interface ImportApplyCommandOutput {
   validation: ValidationResult
   preview: PreviewResult
   risk: ImportApplyRiskSummary
-  backupId: string
+  backupId?: string
   changedFiles: string[]
   noChanges: boolean
   summary: ImportApplySummary

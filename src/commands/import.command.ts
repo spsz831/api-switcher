@@ -25,16 +25,18 @@ export function registerImportCommand(program: Command): void {
     .requiredOption('--profile <id>', '要应用的导入 profile ID')
     .option('--scope <scope>', getScopeOptionDescription())
     .option('--force', '强制执行高风险操作')
+    .option('--dry-run', '执行完整 apply 前检查，但不写入文件、不创建备份')
     .option('--json', '使用 JSON 输出')
     .action(async (
       file: string,
-      options: { profile: string; scope?: string; force?: boolean; json?: boolean },
+      options: { profile: string; scope?: string; force?: boolean; dryRun?: boolean; json?: boolean },
     ) => {
       const service = new ImportApplyService()
       const result = await service.apply(file, {
         profile: options.profile,
         scope: options.scope,
         force: options.force,
+        dryRun: options.dryRun,
       })
       outputCommandResult(result, options.json)
     })

@@ -785,7 +785,7 @@ type SchemaVersionCommandOutput = {
 | [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`items[].referenceSummary`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再补读 `summary.executabilityStats` 看写入可执行性聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `items[].referenceSummary` 与 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.secretExportPolicy`、`profiles[].referenceSummary`、`profiles[].secretExportSummary`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]`、`summary.referenceStats` 和 `summary.secretExportPolicy` 看平台级聚合与本次 secret 导出策略，再补读 `summary.executabilityStats` 看后续写入可执行性聚合，最后结合 `profiles[].referenceSummary`、`profiles[].secretExportSummary`、`observedAt` 理解 item 级状态与 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`import preview --json`](#import-preview---json) | UI 接入方、导入迁移工具 | `summary.sourceExecutability`、`summary.executabilityStats`、item 级 `platformSummary`、`exportedObservation`、`localObservation`、`previewDecision`、`summary` | 重点先看 `summary.sourceExecutability` 与 `summary.executabilityStats`，再看 `previewDecision`、`fidelity`、`sourceCompatibility`；命令本身通常不以 item 阻塞作为顶层失败 |
-| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`preview`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `platformSummary/preview`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
+| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`preview`、`dryRun`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `platformSummary/preview`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
 
 ### current --json
 
@@ -1652,7 +1652,7 @@ type ImportPreviewItem = {
 命令语法：
 
 ```bash
-api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--json]
+api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--dry-run] [--json]
 ```
 
 当前契约边界：
@@ -1664,6 +1664,7 @@ api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--j
 - Gemini 支持 `--scope user|project`；Claude 支持 `--scope user|project|local`，其中 `local` 未 `--force` 时会进入更严格的确认门槛；Codex 不支持 `--scope`，会直接按平台真实双文件目标写入。
 - 对 Gemini 显式 `--scope project` 的失败态，如果当前 project root 无法解析，应该把它视为 availability failure；此时即使顶层 `error.code` 仍是 `USE_FAILED`，也应继续读取 `error.details.scopeAvailability.project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - apply 成功后的 rollback 依赖快照 provenance；当前 provenance 会绑定 `origin=import-apply`、`sourceFile` 与 `importedProfileId`。
+- `--dry-run` 会执行同一套 apply 前检查，但不会写入文件、不会创建快照；成功态返回 `dryRun=true`、`changedFiles=[]`、`noChanges=true`，计划差异仍保留在 `preview.diffSummary[]`。
 - machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 要求 `data` 匹配 `ImportApplyCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
 
 成功态稳定字段：
@@ -1686,6 +1687,7 @@ type ImportApplyCommandOutput = {
   sourceFile: string
   importedProfile: Profile
   appliedScope?: string
+  dryRun?: boolean
   platformSummary?: PlatformExplainableSummary
   scopePolicy: SnapshotScopePolicy
   scopeCapabilities: ScopeCapability[]
@@ -1693,7 +1695,7 @@ type ImportApplyCommandOutput = {
   validation: ValidationResult
   preview: PreviewResult
   risk: ImportApplyRiskSummary
-  backupId: string
+  backupId?: string
   changedFiles: string[]
   noChanges: boolean
   summary: ImportApplySummary
@@ -1703,6 +1705,7 @@ type ImportApplyCommandOutput = {
 补充语义：
 
 - `appliedScope` 表示本次写入最终解析出的平台 scope。
+- `dryRun=true` 表示本次只执行 apply 前检查，不落盘、不创建备份；此时 `backupId` 不存在，`changedFiles=[]`，`noChanges=true`。
 - `platformSummary` 是 success payload 上的平台摘要；它与 `current/list/validate/export/import preview` 的同名字段保持语义一致。
 - `summary.platformStats[]` 是 success payload 上的单平台聚合入口；它包含平台、profile、目标 scope、warning/limitation、变更文件计数、是否创建备份和 `noChanges`。
 - `summary.referenceStats` 会把本次 apply 的导入 profile 归类为 `reference / inline / write unsupported` 三类治理形态，适合脚本先做 secret 形态判断。

@@ -1982,7 +1982,6 @@
         "validation",
         "preview",
         "risk",
-        "backupId",
         "changedFiles",
         "noChanges",
         "summary"
@@ -1993,6 +1992,7 @@
         "appliedScope": {
           "type": "string"
         },
+        "dryRun": { "type": "boolean" },
         "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {

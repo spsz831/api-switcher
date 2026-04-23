@@ -76,13 +76,14 @@ describe('public JSON contract types', () => {
       scopeAvailability?: ScopeAvailability[]
       validation: ValidationResult
       preview: PreviewResult
-      backupId: string
+      dryRun?: boolean
+      backupId?: string
     }>()
 
     expectTypeOf<Extract<
-      'sourceFile' | 'importedProfile' | 'backupId',
+      'sourceFile' | 'importedProfile',
       RequiredKeys<ImportApplyCommandOutput>
-    >>().toEqualTypeOf<'sourceFile' | 'importedProfile' | 'backupId'>()
+    >>().toEqualTypeOf<'sourceFile' | 'importedProfile'>()
   })
 
   it('用类型断言定义 import apply 成功态共享字段矩阵', () => {
@@ -405,11 +406,14 @@ describe('public JSON contract types', () => {
       'validation',
       'preview',
       'risk',
-      'backupId',
       'changedFiles',
       'noChanges',
       'summary',
     ]))
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.required).not.toContain('backupId')
+    expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.dryRun).toEqual({
+      type: 'boolean',
+    })
 
     expect(publicJsonSchema.$defs?.ImportApplyCommandOutput?.properties?.scopePolicy).toEqual({
       $ref: '#/$defs/SnapshotScopePolicy',
@@ -2510,7 +2514,6 @@ describe('public JSON contract types', () => {
           reasons: [],
           limitations: [],
         },
-        changedFiles: [],
         noChanges: true,
         summary: {
           warnings: [],

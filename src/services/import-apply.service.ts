@@ -117,7 +117,7 @@ export class ImportApplyService {
 
   async apply(
     filePath: string,
-    options: { profile: string; force?: boolean; scope?: string },
+    options: { profile: string; force?: boolean; scope?: string; dryRun?: boolean },
   ): Promise<CommandResult<ImportApplyCommandOutput>> {
     try {
       const source = await this.importSourceService.load(filePath)
@@ -297,6 +297,61 @@ export class ImportApplyService {
             message: '当前导入应用需要确认或 --force。',
             details,
           },
+        }
+      }
+
+      if (options.dryRun) {
+        const dryRunSummary = buildSingleProfileCommandSummary({
+          platform: importedSource.profile.platform,
+          profileId: importedSource.profile.id,
+          profile: importedSource.profile,
+          targetScope: appliedScope,
+          warningCount: decision.reasons.length,
+          limitationCount: decision.limitations.length,
+          changedFileCount: 0,
+          backupCreated: false,
+          noChanges: true,
+          platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+            currentScope: appliedScope,
+            composedFiles: preview.targetFiles.map((item) => item.path),
+            listMode: true,
+          }),
+          warnings: mergeUniqueMessages(sourceWarnings, decision.reasons),
+          limitations: decision.limitations,
+        })
+
+        return {
+          ok: true,
+          action: 'import-apply',
+          data: {
+            sourceFile: source.sourceFile,
+            importedProfile: importedSource.profile,
+            appliedScope,
+            dryRun: true,
+            platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+              listMode: true,
+              composedFiles: preview.targetFiles.map((item) => item.path),
+            }),
+            scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
+              requestedScope: options.scope,
+              resolvedScope: appliedScope,
+            })!,
+            scopeCapabilities,
+            scopeAvailability,
+            validation,
+            preview,
+            risk: {
+              allowed: true,
+              riskLevel: preview.riskLevel,
+              reasons: dryRunSummary.warnings,
+              limitations: dryRunSummary.limitations,
+            },
+            changedFiles: [],
+            noChanges: true,
+            summary: dryRunSummary,
+          },
+          warnings: dryRunSummary.warnings,
+          limitations: dryRunSummary.limitations,
         }
       }
 

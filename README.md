@@ -202,7 +202,7 @@ pnpm test
 - `add --platform <platform> --name <name> (--key <key> | --secret-ref <ref> [--auth-reference <reference>]) [--url <url>]`
 - `export`
 - `import preview <file>`
-- `import apply <file> --profile <id> [--scope <scope>] [--force]`
+- `import apply <file> --profile <id> [--scope <scope>] [--force] [--dry-run]`
 - `schema [--json] [--schema-version]`
 
 当前 `--scope` 支持与 CLI help 均来自平台 `scopePolicy` 能力声明；可写目标是能力矩阵里 `Use/write=yes` 的 scope：
@@ -1445,11 +1445,12 @@ api-switcher import preview exported.json --json
 
 `import apply` 负责真正写入，当前 contract 边界如下：
 
-- 命令语法：`api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--json]`
+- 命令语法：`api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--dry-run] [--json]`
 - 当前支持 Gemini / Codex / Claude 导入应用。
 - 单 profile 边界：必须显式传 `--profile`，每次仅处理一个 profile。
 - `import apply --json` 成功态也会返回 `platformSummary`，用于把平台 precedence / 多文件组合语义与本次 apply 结果一起交给机器消费方。
 - `import apply --json` 成功态会把 `data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 一起暴露成稳定 summary 入口。推荐先读 `summary.platformStats[0]` 拿平台、scope、warning/limitation、变更文件计数，再读 `summary.referenceStats` 和 `summary.executabilityStats` 做 secret 形态与写入可执行性判断，最后再展开 `platformSummary` 与 `preview`。
+- `import apply --dry-run --json` 会执行完整 apply 前检查并返回 `data.dryRun=true`，但不会写入文件、不会创建 `backupId`，且返回 `changedFiles=[]`、`noChanges=true`；计划差异仍保留在 `data.preview.diffSummary[]`。
 - `import apply --json` 失败态如果涉及 secret/reference 治理，会在 `error.details.referenceGovernance` 给出机器可读原因；失败态不要读取 `summary.referenceStats`，推荐顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节。`referenceDetails[]` 会进一步暴露字段级 resolver explainable，例如 `REFERENCE_ENV_UNRESOLVED`、`REFERENCE_SCHEME_UNSUPPORTED`、`REFERENCE_ENV_RESOLVED`。
 - local-first apply rule：是否允许 apply 以本地实时 observation 为准，不以导出观察直接决策。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判断 `scopeAvailability`，再判断是否需要 `--force`。

@@ -6456,6 +6456,99 @@ describe('cli commands integration', () => {
     expect(codexAuth.user_id).toBe('u-1')
   })
 
+  it('import apply --dry-run --json 会执行 apply 前检查但不写入 Codex 双文件目标', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-codex-dry-run.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-dry-run-123456', baseURL: 'https://dry-run.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-dry-run-123456',
+            base_url: 'https://dry-run.example.com/openai/v1',
+          },
+        },
+      },
+    ])
+
+    const configBefore = await fs.readFile(codexConfigPath, 'utf8')
+    const authBefore = await fs.readFile(codexAuthPath, 'utf8')
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--force', '--dry-run', '--json'])
+    const payload = parseJsonResult<{
+      dryRun: boolean
+      backupId?: string
+      changedFiles: string[]
+      noChanges: boolean
+      preview: { noChanges: boolean; diffSummary: Array<{ path: string; hasChanges: boolean }> }
+      summary: {
+        platformStats?: Array<{
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.dryRun).toBe(true)
+    expect(payload.data?.backupId).toBeUndefined()
+    expect(payload.data?.changedFiles).toEqual([])
+    expect(payload.data?.noChanges).toBe(true)
+    expect(payload.data?.preview.noChanges).toBe(false)
+    expect(payload.data?.preview.diffSummary).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: codexConfigPath, hasChanges: true }),
+      expect.objectContaining({ path: codexAuthPath, hasChanges: true }),
+    ]))
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        changedFileCount: 0,
+        backupCreated: false,
+        noChanges: true,
+      }),
+    ]))
+    await expect(fs.readFile(codexConfigPath, 'utf8')).resolves.toBe(configBefore)
+    await expect(fs.readFile(codexAuthPath, 'utf8')).resolves.toBe(authBefore)
+  })
+
+  it('import apply --dry-run 文本输出明确提示未写入且未创建备份', async () => {
+    const importFile = path.join(runtimeDir, 'import-apply-codex-dry-run-text.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-dry-run-text-123456', baseURL: 'https://dry-run-text.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-dry-run-text-123456',
+            base_url: 'https://dry-run-text.example.com/openai/v1',
+          },
+        },
+      },
+    ])
+
+    const configBefore = await fs.readFile(codexConfigPath, 'utf8')
+    const authBefore = await fs.readFile(codexAuthPath, 'utf8')
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--force', '--dry-run'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[import-apply] 成功')
+    expect(result.stdout).toContain('Dry run: 是')
+    expect(result.stdout).toContain('备份ID: 未创建')
+    expect(result.stdout).toContain('无变更: 是')
+    expect(result.stdout).toContain('已变更文件: 无')
+    expect(result.stdout).toContain('changedFiles=0, backup=no, noChanges=yes')
+    expect(result.stdout).toContain('变更摘要:')
+    await expect(fs.readFile(codexConfigPath, 'utf8')).resolves.toBe(configBefore)
+    await expect(fs.readFile(codexAuthPath, 'utf8')).resolves.toBe(authBefore)
+  })
+
   it('import apply --json 命中 redacted inline secret 导入源时会直接阻断', async () => {
     const importFile = path.join(runtimeDir, 'import-apply-redacted-inline-secret.json')
     await writeImportSourceFile(importFile, [
