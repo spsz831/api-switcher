@@ -47,6 +47,10 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("bestEntryAction -ne 'current'")
     expect(smokeScript).toContain("bestEntryAction -ne 'import'")
     expect(smokeScript).toContain("bestEntryAction -ne 'preview'")
+    expect(smokeScript).toContain("defaultConsumerFlowId -ne 'overview-to-items'")
+    expect(smokeScript).toContain("consumerFlow overview-to-items")
+    expect(smokeScript).toContain("defaultConsumerFlowId -ne 'source-to-repair'")
+    expect(smokeScript).toContain("consumerFlow source-to-repair")
   })
 
   it('release smoke script verifies current/list json platformSummary contracts', () => {

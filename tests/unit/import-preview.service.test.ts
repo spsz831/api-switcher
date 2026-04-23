@@ -134,6 +134,35 @@ describe('import preview service', () => {
         { driftKind: 'availability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
         { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
       ],
+      triageStats: {
+        totalItems: 1,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+            totalCount: 0,
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+            totalCount: 0,
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+            totalCount: 1,
+          },
+        ],
+      },
       warnings: [],
       limitations: [],
     })
@@ -521,6 +550,35 @@ describe('import preview service', () => {
         { driftKind: 'availability-drift', totalCount: 1, blockingCount: 1, warningCount: 0, infoCount: 0 },
         { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
       ],
+      triageStats: {
+        totalItems: 5,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+            totalCount: 1,
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+            totalCount: 2,
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+            totalCount: 5,
+          },
+        ],
+      },
       warnings: ['project 作用域的可用性与当前本地环境不一致。'],
       limitations: [
         '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',

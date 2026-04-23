@@ -293,6 +293,18 @@ Invoke-Step -Name 'schema json' -Action {
   if ($null -eq $singlePlatformWrite -or $singlePlatformWrite.bestEntryAction -ne 'preview') {
     throw 'schema --json missing single-platform-write bestEntryAction=preview'
   }
+  if ($readonlyStateAudit.defaultConsumerFlowId -ne 'overview-to-items') {
+    throw 'schema --json missing readonly-state-audit defaultConsumerFlowId=overview-to-items'
+  }
+  if ($null -eq ($readonlyStateAudit.consumerFlow | Where-Object { $_.id -eq 'overview-to-items' } | Select-Object -First 1)) {
+    throw 'schema --json missing readonly-state-audit consumerFlow overview-to-items'
+  }
+  if ($readonlyImportBatch.defaultConsumerFlowId -ne 'source-to-repair') {
+    throw 'schema --json missing readonly-import-batch defaultConsumerFlowId=source-to-repair'
+  }
+  if ($null -eq ($readonlyImportBatch.consumerFlow | Where-Object { $_.id -eq 'source-to-repair' } | Select-Object -First 1)) {
+    throw 'schema --json missing readonly-import-batch consumerFlow source-to-repair'
+  }
 }
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
