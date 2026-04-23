@@ -53,6 +53,23 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("consumerFlow source-to-repair")
   })
 
+  it('release smoke script verifies schema starter recipes discoverability', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain('starterRecipes')
+    expect(smokeScript).toContain("readonly-state-audit-overview")
+    expect(smokeScript).toContain("single-platform-write-preview-to-execute")
+    expect(smokeScript).toContain("readonly-import-batch-source-gating")
+    expect(smokeScript).toContain("api-switcher schema --json --catalog-summary")
+    expect(smokeScript).toContain("api-switcher schema --json --action preview")
+    expect(smokeScript).toContain("api-switcher schema --json --recommended-action continue-to-write")
+    expect(smokeScript).toContain("api-switcher import preview <file> --json")
+    expect(smokeScript).toContain('schema --json missing readonly-state-audit starter recipe')
+    expect(smokeScript).toContain('schema --json missing single-platform-write starter recipe')
+    expect(smokeScript).toContain('schema --json missing readonly-import-batch starter recipe')
+  })
+
   it('release smoke script verifies schema consumer profile filtering contract', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

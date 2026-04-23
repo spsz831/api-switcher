@@ -317,6 +317,39 @@ Invoke-Step -Name 'schema json' -Action {
   if ($null -eq ($readonlyImportBatch.consumerFlow | Where-Object { $_.id -eq 'source-to-repair' } | Select-Object -First 1)) {
     throw 'schema --json missing readonly-import-batch consumerFlow source-to-repair'
   }
+
+  $readonlyStateAuditStarterRecipe = @($readonlyStateAudit.starterRecipes | Where-Object {
+    $_.id -eq 'readonly-state-audit-overview' `
+      -and $_.discover -eq 'api-switcher schema --json --catalog-summary' `
+      -and $_.action -eq 'api-switcher schema --json --action current' `
+      -and $_.nextStep -eq 'api-switcher schema --json --recommended-action inspect-items' `
+      -and $_.runtime -eq 'api-switcher current --json'
+  }) | Select-Object -First 1
+  if ($null -eq $readonlyStateAuditStarterRecipe) {
+    throw 'schema --json missing readonly-state-audit starter recipe'
+  }
+
+  $singlePlatformWriteStarterRecipe = @($singlePlatformWrite.starterRecipes | Where-Object {
+    $_.id -eq 'single-platform-write-preview-to-execute' `
+      -and $_.discover -eq 'api-switcher schema --json --catalog-summary' `
+      -and $_.action -eq 'api-switcher schema --json --action preview' `
+      -and $_.nextStep -eq 'api-switcher schema --json --recommended-action continue-to-write' `
+      -and $_.runtime -eq 'api-switcher preview <selector> --json'
+  }) | Select-Object -First 1
+  if ($null -eq $singlePlatformWriteStarterRecipe) {
+    throw 'schema --json missing single-platform-write starter recipe'
+  }
+
+  $readonlyImportBatchStarterRecipe = @($readonlyImportBatch.starterRecipes | Where-Object {
+    $_.id -eq 'readonly-import-batch-source-gating' `
+      -and $_.discover -eq 'api-switcher schema --json --catalog-summary' `
+      -and $_.action -eq 'api-switcher schema --json --action import' `
+      -and $_.nextStep -eq 'api-switcher schema --json --recommended-action repair-source-input' `
+      -and $_.runtime -eq 'api-switcher import preview <file> --json'
+  }) | Select-Object -First 1
+  if ($null -eq $readonlyImportBatchStarterRecipe) {
+    throw 'schema --json missing readonly-import-batch starter recipe'
+  }
 }
 Invoke-Step -Name 'schema consumer profile filter json' -Action {
   $payload = node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch | ConvertFrom-Json
