@@ -357,6 +357,17 @@ api-switcher schema --json --catalog-summary
 }
 ```
 
+非 JSON 模式下，`schema --catalog-summary` 也会输出同一组推荐入口提示，便于人工直接判断下一步是走 `starter-template` 还是完整 consumer profile：
+
+```text
+Catalog Summary:
+  - consumerProfiles=3, actions=11, recommendedActions=15
+  - 推荐画像入口:
+    - readonly-state-audit: entry=current, recommended=starter-template, starterTemplate=readonly-state-audit-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-state-audit
+    - single-platform-write: entry=preview, recommended=full-consumer-profile, next=api-switcher schema --json --consumer-profile single-platform-write
+    - readonly-import-batch: entry=import, recommended=starter-template, starterTemplate=readonly-import-batch-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-import-batch
+```
+
 最小稳定返回示例：
 
 ```json

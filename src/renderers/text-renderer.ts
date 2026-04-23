@@ -1318,9 +1318,29 @@ function renderList(data: ListCommandOutput): string {
 }
 
 function renderSchema(data: SchemaCommandOutput): string {
+  const catalogSummary = data.catalogSummary
+  const catalogSummaryLines = catalogSummary
+    ? [
+        'Catalog Summary:',
+        `  - consumerProfiles=${catalogSummary.counts.consumerProfiles}, actions=${catalogSummary.counts.actions}, recommendedActions=${catalogSummary.counts.recommendedActions}`,
+        '  - 推荐画像入口:',
+        ...catalogSummary.consumerProfiles.map((profile) => {
+          const details = [
+            `entry=${profile.bestEntryAction}`,
+            `recommended=${profile.recommendedEntryMode ?? 'full-consumer-profile'}`,
+            profile.starterTemplateId ? `starterTemplate=${profile.starterTemplateId}` : null,
+            `next=api-switcher schema --json --consumer-profile ${profile.id}`,
+          ].filter(Boolean).join(', ')
+
+          return `    - ${profile.id}: ${details}`
+        }),
+      ]
+    : []
+
   return [
     `Schema Version: ${data.schemaVersion}`,
     ...(data.schemaId ? [`Schema ID: ${data.schemaId}`] : []),
+    ...catalogSummaryLines,
   ].join('\n')
 }
 

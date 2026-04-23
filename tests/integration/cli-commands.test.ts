@@ -1940,6 +1940,24 @@ describe('cli commands integration', () => {
     expect(result.stdout).toContain('Schema ID: https://api-switcher.local/schemas/public-json-output.schema.json')
   })
 
+  it('schema --catalog-summary 文本输出会给出 consumer profile 推荐入口提示', async () => {
+    const result = await runCli(['schema', '--catalog-summary'])
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('[schema] 成功')
+    expect(result.stdout).toContain('Catalog Summary:')
+    expect(result.stdout).toContain('readonly-state-audit')
+    expect(result.stdout).toContain('recommended=starter-template')
+    expect(result.stdout).toContain('starterTemplate=readonly-state-audit-minimal-reader')
+    expect(result.stdout).toContain('next=api-switcher schema --json --consumer-profile readonly-state-audit')
+    expect(result.stdout).toContain('single-platform-write')
+    expect(result.stdout).toContain('recommended=full-consumer-profile')
+    expect(result.stdout).toContain('next=api-switcher schema --json --consumer-profile single-platform-write')
+    expect(result.stdout).toContain('readonly-import-batch')
+    expect(result.stdout).toContain('starterTemplate=readonly-import-batch-minimal-reader')
+  })
+
   it('schema 命令在顶层 help 和子命令 help 中可发现', async () => {
     const root = await runCli(['--help'])
     const schema = await runCli(['schema', '--help'])

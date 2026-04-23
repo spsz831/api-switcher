@@ -394,6 +394,17 @@ type PlatformExplainableSummary = {
 }
 ```
 
+文本模式下，`schema --catalog-summary` 会使用同一份 `catalogSummary.consumerProfiles[]` 输出推荐入口提示，避免非 JSON 调用方还要先读完整文档才能知道下一步该直取 `starterTemplate` 还是完整 `consumerProfile`：
+
+```text
+Catalog Summary:
+  - consumerProfiles=3, actions=11, recommendedActions=15
+  - 推荐画像入口:
+    - readonly-state-audit: entry=current, recommended=starter-template, starterTemplate=readonly-state-audit-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-state-audit
+    - single-platform-write: entry=preview, recommended=full-consumer-profile, next=api-switcher schema --json --consumer-profile single-platform-write
+    - readonly-import-batch: entry=import, recommended=starter-template, starterTemplate=readonly-import-batch-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-import-batch
+```
+
 ```ts
 type SchemaCommandOutput = {
   schemaVersion: '2026-04-15.public-json.v1'
