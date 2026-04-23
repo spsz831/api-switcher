@@ -145,6 +145,17 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         defaultConsumerFlowId: 'overview-to-items',
       },
     },
+    starterRecipes: [
+      {
+        id: 'readonly-state-audit-overview',
+        intent: '从只读状态审计入口进入平台总览与后续明细展开。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action current',
+        nextStep: 'api-switcher schema --json --recommended-action inspect-items',
+        runtime: 'api-switcher current --json',
+        appliesTo: ['current', 'list', 'validate', 'export'],
+      },
+    ],
     consumerFlow: [
       {
         id: 'overview-to-items',
@@ -204,6 +215,17 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     optionalFailureFields: ['error.details.referenceGovernance', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability', 'error.details.previewDecision', 'error.details.risk'],
     optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
     recommendedStages: ['summary', 'detail', 'artifacts'],
+    starterRecipes: [
+      {
+        id: 'single-platform-write-preview-to-execute',
+        intent: '从 preview 发现链路进入单平台写入执行判断。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action preview',
+        nextStep: 'api-switcher schema --json --recommended-action continue-to-write',
+        runtime: 'api-switcher preview <selector> --json',
+        appliesTo: ['preview', 'use', 'import-apply'],
+      },
+    ],
   },
   {
     id: 'readonly-import-batch',
@@ -323,6 +345,17 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         defaultConsumerFlowId: 'source-to-repair',
       },
     },
+    starterRecipes: [
+      {
+        id: 'readonly-import-batch-source-gating',
+        intent: '从导入批次分析入口先判断 source gating，再决定是否继续 apply。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action import',
+        nextStep: 'api-switcher schema --json --recommended-action repair-source-input',
+        runtime: 'api-switcher import preview <file> --json',
+        appliesTo: ['import'],
+      },
+    ],
     consumerFlow: [
       {
         id: 'source-to-repair',

@@ -709,6 +709,10 @@
         "starterTemplate": {
           "$ref": "#/$defs/SchemaConsumerProfileStarterTemplate"
         },
+        "starterRecipes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileStarterRecipe" }
+        },
         "defaultConsumerFlowId": {
           "type": "string"
         },
@@ -878,6 +882,26 @@
       "properties": {
         "defaultConsumerFlowId": {
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterRecipe": {
+      "type": "object",
+      "required": ["id", "intent", "discover", "action", "nextStep", "runtime", "appliesTo"],
+      "properties": {
+        "id": { "type": "string" },
+        "intent": { "type": "string" },
+        "discover": { "type": "string" },
+        "action": { "type": "string" },
+        "nextStep": { "type": "string" },
+        "runtime": { "type": "string" },
+        "appliesTo": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+          }
         }
       },
       "additionalProperties": false

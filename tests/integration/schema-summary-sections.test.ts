@@ -374,4 +374,61 @@ describe('schema summary sections integration', () => {
     })
     expect(byProfile('single-platform-write')?.starterTemplate).toBeUndefined()
   })
+
+  it('schema --json 为 consumer profile 暴露稳定 starter recipes', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog?: {
+        consumerProfiles?: Array<{
+          id: string
+          starterRecipes?: Array<{
+            id: string
+            intent: string
+            discover: string
+            action: string
+            nextStep: string
+            runtime: string
+            appliesTo: string[]
+          }>
+        }>
+      }
+    }>(result.stdout)
+
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('single-platform-write')?.starterRecipes).toEqual([
+      {
+        id: 'single-platform-write-preview-to-execute',
+        intent: '从 preview 发现链路进入单平台写入执行判断。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action preview',
+        nextStep: 'api-switcher schema --json --recommended-action continue-to-write',
+        runtime: 'api-switcher preview <selector> --json',
+        appliesTo: ['preview', 'use', 'import-apply'],
+      },
+    ])
+    expect(byProfile('readonly-state-audit')?.starterRecipes).toEqual([
+      {
+        id: 'readonly-state-audit-overview',
+        intent: '从只读状态审计入口进入平台总览与后续明细展开。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action current',
+        nextStep: 'api-switcher schema --json --recommended-action inspect-items',
+        runtime: 'api-switcher current --json',
+        appliesTo: ['current', 'list', 'validate', 'export'],
+      },
+    ])
+    expect(byProfile('readonly-import-batch')?.starterRecipes).toEqual([
+      {
+        id: 'readonly-import-batch-source-gating',
+        intent: '从导入批次分析入口先判断 source gating，再决定是否继续 apply。',
+        discover: 'api-switcher schema --json --catalog-summary',
+        action: 'api-switcher schema --json --action import',
+        nextStep: 'api-switcher schema --json --recommended-action repair-source-input',
+        runtime: 'api-switcher import preview <file> --json',
+        appliesTo: ['import'],
+      },
+    ])
+  })
 })

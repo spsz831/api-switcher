@@ -309,6 +309,7 @@ export interface SchemaConsumerProfile {
   triageBuckets?: SchemaConsumerProfileTriageBucket[]
   consumerActions?: SchemaConsumerProfileAction[]
   starterTemplate?: SchemaConsumerProfileStarterTemplate
+  starterRecipes?: SchemaConsumerProfileStarterRecipe[]
   defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
   consumerFlow?: SchemaConsumerProfileFlowStep[]
 }
@@ -448,6 +449,16 @@ export interface SchemaConsumerProfileStarterTemplate {
   items: SchemaConsumerProfileStarterTemplateItems
   failure: SchemaConsumerProfileStarterTemplateSection
   flow: SchemaConsumerProfileStarterTemplateFlow
+}
+
+export interface SchemaConsumerProfileStarterRecipe {
+  id: string
+  intent: string
+  discover: string
+  action: string
+  nextStep: string
+  runtime: string
+  appliesTo: SchemaConsumerProfile['appliesToActions']
 }
 
 export interface SchemaActionFailureCode {

@@ -925,6 +925,10 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.starterTemplate).toEqual({
       $ref: '#/$defs/SchemaConsumerProfileStarterTemplate',
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.starterRecipes).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaConsumerProfileStarterRecipe' },
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.defaultConsumerFlowId).toEqual({
       type: 'string',
     })
@@ -1007,6 +1011,25 @@ describe('public JSON contract types', () => {
     ]))
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplateFlow?.properties?.defaultConsumerFlowId).toEqual({
       type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterRecipe?.required).toEqual(expect.arrayContaining([
+      'id',
+      'intent',
+      'discover',
+      'action',
+      'nextStep',
+      'runtime',
+      'appliesTo',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterRecipe?.properties?.nextStep).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterRecipe?.properties?.appliesTo).toEqual({
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['add', 'preview', 'use', 'rollback', 'current', 'list', 'validate', 'export', 'import', 'import-apply'],
+      },
     })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.use).toEqual({
       type: 'string',

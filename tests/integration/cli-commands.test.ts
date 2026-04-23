@@ -754,6 +754,43 @@ describe('cli commands integration', () => {
             purpose: '当只读结果需要决定是否继续进入写入链路时，优先查看 executability 与 item 级 reference 证据。',
           },
         ],
+        starterRecipes: [
+          {
+            id: 'readonly-state-audit-overview',
+            intent: '从只读状态审计入口进入平台总览与后续明细展开。',
+            discover: 'api-switcher schema --json --catalog-summary',
+            action: 'api-switcher schema --json --action current',
+            nextStep: 'api-switcher schema --json --recommended-action inspect-items',
+            runtime: 'api-switcher current --json',
+            appliesTo: ['current', 'list', 'validate', 'export'],
+          },
+        ],
+        starterTemplate: {
+          id: 'readonly-state-audit-minimal-reader',
+          summary: {
+            fields: [
+              'summary.platformStats',
+              'summary.referenceStats',
+              'summary.executabilityStats',
+              'summary.triageStats',
+            ],
+          },
+          items: {
+            sharedFields: [
+              'platformSummary',
+              'referenceSummary',
+            ],
+          },
+          failure: {
+            fields: [
+              'error.code',
+              'error.message',
+            ],
+          },
+          flow: {
+            defaultConsumerFlowId: 'overview-to-items',
+          },
+        },
         consumerFlow: [
           {
             id: 'overview-to-items',
@@ -813,6 +850,17 @@ describe('cli commands integration', () => {
         optionalFailureFields: ['error.details.referenceGovernance', 'error.details.scopePolicy', 'error.details.scopeCapabilities', 'error.details.scopeAvailability', 'error.details.previewDecision', 'error.details.risk'],
         optionalArtifactFields: ['changedFiles', 'backupId', 'restoredFiles'],
         recommendedStages: ['summary', 'detail', 'artifacts'],
+        starterRecipes: [
+          {
+            id: 'single-platform-write-preview-to-execute',
+            intent: '从 preview 发现链路进入单平台写入执行判断。',
+            discover: 'api-switcher schema --json --catalog-summary',
+            action: 'api-switcher schema --json --action preview',
+            nextStep: 'api-switcher schema --json --recommended-action continue-to-write',
+            runtime: 'api-switcher preview <selector> --json',
+            appliesTo: ['preview', 'use', 'import-apply'],
+          },
+        ],
       },
       {
         id: 'readonly-import-batch',
@@ -942,6 +990,45 @@ describe('cli commands integration', () => {
             purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合和 item 级 platform explainable 分组。',
           },
         ],
+        starterRecipes: [
+          {
+            id: 'readonly-import-batch-source-gating',
+            intent: '从导入批次分析入口先判断 source gating，再决定是否继续 apply。',
+            discover: 'api-switcher schema --json --catalog-summary',
+            action: 'api-switcher schema --json --action import',
+            nextStep: 'api-switcher schema --json --recommended-action repair-source-input',
+            runtime: 'api-switcher import preview <file> --json',
+            appliesTo: ['import'],
+          },
+        ],
+        starterTemplate: {
+          id: 'readonly-import-batch-minimal-reader',
+          summary: {
+            fields: [
+              'summary.sourceExecutability',
+              'summary.executabilityStats',
+              'summary.platformStats',
+              'summary.triageStats',
+            ],
+          },
+          items: {
+            sharedFields: [
+              'platformSummary',
+              'exportedObservation',
+              'localObservation',
+              'previewDecision',
+            ],
+          },
+          failure: {
+            fields: [
+              'error.code',
+              'error.message',
+            ],
+          },
+          flow: {
+            defaultConsumerFlowId: 'source-to-repair',
+          },
+        },
         consumerFlow: [
           {
             id: 'source-to-repair',
@@ -1380,6 +1467,7 @@ describe('cli commands integration', () => {
       'scopePolicy',
       'scopeCapabilities',
       'scopeAvailability',
+      'dryRun',
       'changedFiles',
       'backupId',
     ])
@@ -1448,6 +1536,7 @@ describe('cli commands integration', () => {
       'scopePolicy',
       'scopeCapabilities',
       'scopeAvailability',
+      'dryRun',
       'changedFiles',
       'backupId',
     ])
