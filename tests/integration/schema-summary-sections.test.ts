@@ -254,4 +254,39 @@ describe('schema summary sections integration', () => {
     ])
     expect(byProfile('single-platform-write')?.consumerActions).toBeUndefined()
   })
+
+  it('schema --json 为只读 consumer profile 暴露稳定的默认 consumer flow', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog?: {
+        consumerProfiles?: Array<{
+          id: string
+          defaultConsumerFlowId?: string
+          consumerFlow?: Array<{
+            id: string
+            defaultEntry: boolean
+          }>
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.defaultConsumerFlowId).toBe('overview-to-items')
+    expect(
+      byProfile('readonly-state-audit')?.consumerFlow?.filter((item) => item.defaultEntry).map((item) => item.id),
+    ).toEqual(['overview-to-items'])
+    expect(byProfile('readonly-import-batch')?.defaultConsumerFlowId).toBe('source-to-repair')
+    expect(
+      byProfile('readonly-import-batch')?.consumerFlow?.filter((item) => item.defaultEntry).map((item) => item.id),
+    ).toEqual(['source-to-repair'])
+    expect(byProfile('single-platform-write')?.defaultConsumerFlowId).toBeUndefined()
+    expect(byProfile('single-platform-write')?.consumerFlow).toBeUndefined()
+  })
 })

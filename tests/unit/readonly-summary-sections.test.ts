@@ -340,6 +340,33 @@ describe('readonly summary sections', () => {
     expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerFlow).toBeUndefined()
   })
 
+  it('schema consumerProfiles 锁定 defaultConsumerFlowId 与 defaultEntry 的一致性', () => {
+    const result = new SchemaService().getPublicJsonSchema()
+    expect(result.ok).toBe(true)
+    if (!result.ok || !result.data || !result.data.commandCatalog?.consumerProfiles) {
+      throw new Error('schema consumerProfiles are unavailable')
+    }
+
+    const profiles = result.data.commandCatalog.consumerProfiles
+    const readonlyProfiles = profiles.filter((item) =>
+      item.id === 'readonly-state-audit' || item.id === 'readonly-import-batch',
+    )
+
+    for (const profile of readonlyProfiles) {
+      expect(profile.defaultConsumerFlowId).toBeDefined()
+      expect(profile.consumerFlow).toBeDefined()
+
+      const defaultEntries = profile.consumerFlow?.filter((flow) => flow.defaultEntry) ?? []
+      expect(defaultEntries).toHaveLength(1)
+      expect(defaultEntries[0]?.id).toBe(profile.defaultConsumerFlowId)
+      expect(profile.consumerFlow?.some((flow) => flow.id === profile.defaultConsumerFlowId)).toBe(true)
+    }
+
+    const singlePlatformWriteProfile = profiles.find((item) => item.id === 'single-platform-write')
+    expect(singlePlatformWriteProfile?.defaultConsumerFlowId).toBeUndefined()
+    expect(singlePlatformWriteProfile?.consumerFlow).toBeUndefined()
+  })
+
   it('public schema 为 commandCatalog.summarySections 提供稳定定义', () => {
     const schema = loadPublicJsonSchema()
     const capability = schema.$defs?.SchemaActionCapability
