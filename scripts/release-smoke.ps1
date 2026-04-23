@@ -586,6 +586,27 @@ Invoke-Step -Name 'schema catalog summary json' -Action {
   if ($payload.data.catalogSummary.counts.recommendedActions -ne 15) {
     throw 'schema --json --catalog-summary returned unexpected catalogSummary.counts.recommendedActions'
   }
+  $catalogConsumerProfiles = @($payload.data.catalogSummary.consumerProfiles)
+  if ($null -eq ($catalogConsumerProfiles | Where-Object {
+    $_.id -eq 'readonly-state-audit' `
+      -and $_.recommendedEntryMode -eq 'starter-template' `
+      -and $_.starterTemplateId -eq 'readonly-state-audit-minimal-reader'
+  } | Select-Object -First 1)) {
+    throw 'schema --json --catalog-summary missing readonly-state-audit entry mode'
+  }
+  if ($null -eq ($catalogConsumerProfiles | Where-Object {
+    $_.id -eq 'single-platform-write' `
+      -and $_.recommendedEntryMode -eq 'full-consumer-profile'
+  } | Select-Object -First 1)) {
+    throw 'schema --json --catalog-summary missing single-platform-write entry mode'
+  }
+  if ($null -eq ($catalogConsumerProfiles | Where-Object {
+    $_.id -eq 'readonly-import-batch' `
+      -and $_.recommendedEntryMode -eq 'starter-template' `
+      -and $_.starterTemplateId -eq 'readonly-import-batch-minimal-reader'
+  } | Select-Object -First 1)) {
+    throw 'schema --json --catalog-summary missing readonly-import-batch entry mode'
+  }
   $dataPropertyNames = @($payload.data.PSObject.Properties.Name)
   if ($dataPropertyNames -contains 'commandCatalog') {
     throw 'schema --json --catalog-summary unexpectedly returned commandCatalog'

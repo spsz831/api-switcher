@@ -161,6 +161,22 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema catalog summary payload failed public schema validation')
   })
 
+  it('release smoke script verifies schema catalog summary entry mode discoverability', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain('recommendedEntryMode')
+    expect(smokeScript).toContain('starterTemplateId')
+    expect(smokeScript).toContain('readonly-state-audit')
+    expect(smokeScript).toContain('single-platform-write')
+    expect(smokeScript).toContain('readonly-import-batch')
+    expect(smokeScript).toContain('readonly-state-audit-minimal-reader')
+    expect(smokeScript).toContain('readonly-import-batch-minimal-reader')
+    expect(smokeScript).toContain('schema --json --catalog-summary missing readonly-state-audit entry mode')
+    expect(smokeScript).toContain('schema --json --catalog-summary missing single-platform-write entry mode')
+    expect(smokeScript).toContain('schema --json --catalog-summary missing readonly-import-batch entry mode')
+  })
+
   it('release smoke script verifies machine-readable schema catalog summary discoverability', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
