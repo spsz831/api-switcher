@@ -375,6 +375,19 @@ type PlatformExplainableSummary = {
 
 `schema --json --recommended-action <code>` 是稳定动作词表的轻量直取入口。它只过滤 `commandCatalog.recommendedActions[]`，不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `continue-to-write`、`fix-input-and-retry` 这类动作短码目录。未知 code 返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
+如果调用方想把这层 catalog 直接当成“下一步动作词典”，可以先读取最小动作条目，而不必下载整份推荐动作目录。例如 `continue-to-write` 会稳定公开动作码、动作家族、适用阶段和用途：
+
+```json
+{
+  "code": "continue-to-write",
+  "family": "execute",
+  "availability": ["readonly"],
+  "purpose": "在只读分析确认条件满足后，继续进入后续写入链路。"
+}
+```
+
+这层 discoverability 适合和 `--action` 过滤结果一起消费：前者回答“命中这个 next step 之后该把它当成 inspect / repair / route / execute 哪一类动作”，后者回答“为了走到这一步，当前命令结果最先应该读取哪些字段”。
+
 `schema --json --catalog-summary` 是 schema catalog 的轻量目录模式。它直接返回 `data.catalogSummary`，只暴露 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`，适合只想先发现入口、还不需要下载整份 catalog 的调用方。`consumerProfiles[]` 还会额外公开 `hasStarterTemplate`、`starterTemplateId` 与 `recommendedEntryMode`，让调用方在不下载完整 `commandCatalog.consumerProfiles[]` 的前提下，先判断某条画像是否已经提供最小机器消费模板，以及下一步更推荐走 `starter-template` 还是完整 `consumerProfile`。
 
 推荐的最小发现顺序可以固定为：先读取 `catalogSummary` 判断该走哪类画像、命令或推荐动作；如果需要字段级 contract，再切到完整 `schema --json`；如果只需要某一小块 catalog，则继续走 `--consumer-profile`、`--action` 或 `--recommended-action` 这三条过滤入口。

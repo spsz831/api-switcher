@@ -332,6 +332,19 @@ api-switcher schema --json --recommended-action continue-to-write
 
 这不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `recommendedActions[]` 缩到目标动作；未知 code 会返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
+如果你想把这层 catalog 直接当成“下一步动作词典”来消费，可以先读取最小动作条目，而不必扫描完整目录。例如 `continue-to-write` 会稳定公开动作码、动作家族、适用阶段和用途：
+
+```json
+{
+  "code": "continue-to-write",
+  "family": "execute",
+  "availability": ["readonly"],
+  "purpose": "在只读分析确认条件满足后，继续进入后续写入链路。"
+}
+```
+
+这层 discoverability 适合和前面的 `--action` 入口配合使用：先用 `--action` 确认某个命令会暴露哪些字段，再用 `--recommended-action` 确认命中某个 `nextStep` 后应把它解释成 inspect、repair、route 还是 execute。
+
 如果只是想先拿一份轻量目录索引，而不是完整 schema catalog，可以用 `--catalog-summary`：
 
 ```bash
