@@ -84,6 +84,22 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema --json missing readonly-import-batch starter template')
   })
 
+  it('release smoke script verifies readonly consumer flow linkage to actions and recommended actions', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain('consumerActions')
+    expect(smokeScript).toContain('consumerActionId')
+    expect(smokeScript).toContain('overview-to-items')
+    expect(smokeScript).toContain('source-to-repair')
+    expect(smokeScript).toContain('inspect-overview')
+    expect(smokeScript).toContain('repair-source-blockers')
+    expect(smokeScript).toContain('inspect-items')
+    expect(smokeScript).toContain('repair-source-input')
+    expect(smokeScript).toContain('schema --json missing readonly-state-audit default flow linkage')
+    expect(smokeScript).toContain('schema --json missing readonly-import-batch default flow linkage')
+  })
+
   it('release smoke script verifies schema consumer profile filtering contract', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

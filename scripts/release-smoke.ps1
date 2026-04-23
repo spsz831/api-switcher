@@ -374,6 +374,28 @@ Invoke-Step -Name 'schema json' -Action {
   if ($null -eq $readonlyImportBatchStarterRecipe) {
     throw 'schema --json missing readonly-import-batch starter recipe'
   }
+
+  $readonlyStateAuditDefaultFlow = @($readonlyStateAudit.consumerFlow | Where-Object { $_.id -eq $readonlyStateAudit.defaultConsumerFlowId }) | Select-Object -First 1
+  $readonlyStateAuditDefaultAction = @($readonlyStateAudit.consumerActions | Where-Object { $_.id -eq $readonlyStateAuditDefaultFlow.consumerActionId }) | Select-Object -First 1
+  if (
+    $null -eq $readonlyStateAuditDefaultFlow `
+      -or $readonlyStateAuditDefaultFlow.consumerActionId -ne 'inspect-overview' `
+      -or $null -eq $readonlyStateAuditDefaultAction `
+      -or $readonlyStateAuditDefaultAction.nextStep -ne 'inspect-items'
+  ) {
+    throw 'schema --json missing readonly-state-audit default flow linkage'
+  }
+
+  $readonlyImportBatchDefaultFlow = @($readonlyImportBatch.consumerFlow | Where-Object { $_.id -eq $readonlyImportBatch.defaultConsumerFlowId }) | Select-Object -First 1
+  $readonlyImportBatchDefaultAction = @($readonlyImportBatch.consumerActions | Where-Object { $_.id -eq $readonlyImportBatchDefaultFlow.consumerActionId }) | Select-Object -First 1
+  if (
+    $null -eq $readonlyImportBatchDefaultFlow `
+      -or $readonlyImportBatchDefaultFlow.consumerActionId -ne 'repair-source-blockers' `
+      -or $null -eq $readonlyImportBatchDefaultAction `
+      -or $readonlyImportBatchDefaultAction.nextStep -ne 'repair-source-input'
+  ) {
+    throw 'schema --json missing readonly-import-batch default flow linkage'
+  }
 }
 Invoke-Step -Name 'schema consumer profile filter json' -Action {
   $payload = node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch | ConvertFrom-Json
