@@ -363,6 +363,63 @@ Invoke-Step -Name 'schema consumer profile filter failure json' -Action {
     throw "schema consumer profile failure payload failed public schema validation"
   }
 }
+Invoke-Step -Name 'schema action filter json' -Action {
+  $payload = node dist/src/cli/index.js schema --json --action import-apply | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'schema --json --action returned no payload'
+  }
+  if (-not $payload.ok -or $payload.action -ne 'schema') {
+    throw "unexpected schema --json --action envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+
+  $actions = @($payload.data.commandCatalog.actions)
+  if ($actions.Count -ne 1) {
+    throw 'schema --json --action returned more than one action'
+  }
+  if ($actions[0].action -ne 'import-apply') {
+    throw "schema --json --action returned unexpected action: $($actions[0].action)"
+  }
+  if (@($payload.data.commandCatalog.consumerProfiles).Count -le 1) {
+    throw 'schema --json --action unexpectedly trimmed commandCatalog.consumerProfiles'
+  }
+  if ($null -eq $payload.data.schema) {
+    throw 'schema --json --action unexpectedly trimmed schema'
+  }
+}
+Invoke-Step -Name 'schema action filter failure json' -Action {
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $stdoutPath = [System.IO.Path]::GetTempFileName()
+  $stderrPath = [System.IO.Path]::GetTempFileName()
+  $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--action', 'missing-action') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+  $renderedStdout = Get-Content -LiteralPath $stdoutPath -Raw
+  $renderedStderr = Get-Content -LiteralPath $stderrPath -Raw
+  Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force
+
+  if ($process.ExitCode -ne 1) {
+    throw "unexpected exit code for schema action failure: $($process.ExitCode)"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($renderedStderr)) {
+    throw "unexpected stderr for schema action failure: $renderedStderr"
+  }
+
+  $payload = $renderedStdout | ConvertFrom-Json
+  if ($payload.schemaVersion -ne $publicJsonSchemaVersion) {
+    throw "unexpected top-level schemaVersion for schema action failure: $($payload.schemaVersion)"
+  }
+  if ($payload.ok -ne $false -or $payload.action -ne 'schema') {
+    throw "unexpected schema action failure envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+  if ($null -eq $payload.error -or $payload.error.code -ne 'SCHEMA_ACTION_NOT_FOUND') {
+    throw "unexpected error code for schema action failure: $($payload.error.code)"
+  }
+  if ($payload.error.details.action -ne 'missing-action') {
+    throw "unexpected action for schema action failure: $($payload.error.details.action)"
+  }
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema)) {
+    throw "schema action failure payload failed public schema validation"
+  }
+}
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
   if ($null -eq $payload) {

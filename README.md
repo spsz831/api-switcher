@@ -280,6 +280,14 @@ api-switcher schema --json --consumer-profile readonly-import-batch
 
 这不会裁剪 `commandCatalog.actions[]` 或完整 `schema`，只把 `consumerProfiles[]` 缩到目标画像；未知 id 会返回 `SCHEMA_CONSUMER_PROFILE_NOT_FOUND`。
 
+如果只需要某一个命令的能力索引，可以用 `--action <action>` 过滤 `commandCatalog.actions[]`，例如：
+
+```bash
+api-switcher schema --json --action import-apply
+```
+
+这不会裁剪 `commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `actions[]` 缩到目标命令；未知 action 会返回 `SCHEMA_ACTION_NOT_FOUND`。
+
 最小稳定返回示例：
 
 ```json

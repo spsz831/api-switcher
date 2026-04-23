@@ -68,6 +68,21 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema consumer profile failure payload failed public schema validation')
   })
 
+  it('release smoke script verifies schema action filtering contract', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema action filter json'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --json --action import-apply')
+    expect(smokeScript).toContain('schema --json --action returned more than one action')
+    expect(smokeScript).toContain('schema --json --action unexpectedly trimmed commandCatalog.consumerProfiles')
+    expect(smokeScript).toContain('schema --json --action unexpectedly trimmed schema')
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema action filter failure json'")
+    expect(smokeScript).toContain("-ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--action', 'missing-action')")
+    expect(smokeScript).toContain('SCHEMA_ACTION_NOT_FOUND')
+    expect(smokeScript).toContain('schema action failure payload failed public schema validation')
+  })
+
   it('release smoke script verifies current/list json platformSummary contracts', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
