@@ -984,6 +984,7 @@ function renderUse(data: UseCommandOutput): string {
     ...renderReferenceStats(data.summary.referenceStats),
     ...renderExecutabilityStats(data.summary.executabilityStats),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
+    ...(data.dryRun ? ['  Dry run: 是'] : []),
     `  备份ID: ${data.backupId ?? '未创建'}`,
     `  无变更: ${data.noChanges ? '是' : '否'}`,
     `  风险等级: ${data.risk.riskLevel}`,

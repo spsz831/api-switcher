@@ -193,6 +193,8 @@ describe('docs consistency', () => {
 
   it('README / schema 文档对 use/rollback platformSummary contract 保持一致', () => {
     expect(readme).toContain('`use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`')
+    expect(readme).toContain('`use --dry-run --json` 会执行同一套写入前检查')
+    expect(readme).toContain('计划差异仍保留在 `data.preview.diffSummary[]`')
     expect(readme).toContain('`rollback --json` 成功时也会返回 `platformSummary`')
     expect(readme).toContain('"action": "use"')
     expect(readme).toContain('"action": "rollback"')
@@ -207,7 +209,8 @@ describe('docs consistency', () => {
     expect(readme).toContain('`use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 也会一起给出稳定 summary 入口。')
     expect(readme).toContain('`rollback --json` 成功时也会返回 `platformSummary`。同时，`data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 也会一起给出稳定 summary 入口。')
     expect(publicJsonSchemaDoc).toContain('`data.summary.platformStats[]` 是成功态的单平台聚合入口')
-    expect(publicJsonSchemaDoc).toContain('`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`')
+    expect(publicJsonSchemaDoc).toContain('`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`dryRun`、`changedFiles`、`backupId`')
+    expect(publicJsonSchemaDoc).toContain('`use --dry-run --json` 与 `import apply --dry-run --json` 保持同一 execution contract')
     expect(publicJsonSchemaDoc).toContain('`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`')
     expect(publicJsonSchemaDoc).toContain('`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED`')
     expect(publicJsonSchemaDoc).toContain('platformSummary?: PlatformExplainableSummary')

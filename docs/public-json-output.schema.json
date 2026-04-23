@@ -2179,6 +2179,7 @@
       "required": ["profile", "preview", "risk", "summary", "changedFiles", "noChanges"],
       "properties": {
         "profile": {},
+        "dryRun": { "type": "boolean" },
         "backupId": { "type": "string" },
         "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "validation": {},

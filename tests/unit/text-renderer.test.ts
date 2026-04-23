@@ -999,6 +999,25 @@ const noChangesUsePayload: UseCommandOutput = {
   },
 }
 
+const dryRunUsePayload: UseCommandOutput = {
+  ...usePayload,
+  dryRun: true,
+  backupId: undefined,
+  changedFiles: [],
+  noChanges: true,
+  summary: {
+    ...usePayload.summary,
+    platformStats: [
+      {
+        ...usePayload.summary.platformStats![0],
+        changedFileCount: 0,
+        backupCreated: false,
+        noChanges: true,
+      },
+    ],
+  },
+}
+
 const geminiProjectUsePayload: UseCommandOutput = {
   ...usePayload,
   backupId: 'snapshot-gemini-project-001',
@@ -3077,6 +3096,7 @@ const outputPreviewValidationError = renderText(createPreviewResult(emptyValidat
 const outputPreviewValidationLimitations = renderText(createPreviewResult(validationPreviewPayloadWithLimitations))
 const outputUse = renderText(createUseResult(usePayload))
 const outputUseNoChanges = renderText(createUseResult(noChangesUsePayload))
+const outputUseDryRun = renderText(createUseResult(dryRunUsePayload))
 const outputGeminiProjectUse = renderText(createUseResult(geminiProjectUsePayload))
 const outputCodexUse = renderText(createUseResult(codexUsePayload))
 const outputClaudeUse = renderText(createUseResult(claudeUsePayload))
@@ -3363,6 +3383,14 @@ describe('text renderer', () => {
     expect(outputUseNoChanges).toContain('  备份ID: 未创建')
     expect(outputUseNoChanges).toContain('  无变更: 是')
     expect(outputUseNoChanges).toContain('  已变更文件: 无')
+  })
+
+  it('use dry-run 时明确显示未写入且未创建备份', () => {
+    expect(outputUseDryRun).toContain('  Dry run: 是')
+    expect(outputUseDryRun).toContain('  备份ID: 未创建')
+    expect(outputUseDryRun).toContain('  无变更: 是')
+    expect(outputUseDryRun).toContain('  已变更文件: 无')
+    expect(outputUseDryRun).toContain('changedFiles=0, backup=no, noChanges=yes')
   })
 
   it('渲染 rollback 结果时输出备份、恢复文件与限制说明', () => {

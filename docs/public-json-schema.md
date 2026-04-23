@@ -780,7 +780,7 @@ type SchemaVersionCommandOutput = {
 | [`current --json`](#current---json) | CLI 用户、UI 接入方 | `currentScope`、`platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`detections[].referenceSummary`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 拿平台级聚合与 reference 聚合，再补读 `summary.executabilityStats` 拿写入可执行性聚合，再读 `detections[].platform/currentScope`，最后按需展开 `detections[].referenceSummary` 与 `scopeCapabilities/scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`list --json`](#list---json) | CLI 用户、UI 接入方 | profile 级 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`profiles[].referenceSummary`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 做平台分组与治理分层，再补读 `summary.executabilityStats` 做写入前分层，再读 `profiles[]` 的平台与 selector，最后按需读取 `profiles[].referenceSummary` 与 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`preview --json`](#preview---json) | CLI 用户、自动化脚本 | `preview`、`risk`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级目标 scope、warning/limitation 与变更计数，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `preview`。 | `scopeAvailability`、`scopePolicy`、`PREVIEW_FAILED` |
-| [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后再展开 `preview/platformSummary`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED`。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
+| [`use --json`](#use---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopeCapabilities`、`scopeAvailability`、`dryRun`、`changedFiles`、`backupId`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级写入聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后再展开 `preview/platformSummary`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / `USE_FAILED`。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
 | [`rollback --json`](#rollback---json) | CLI 用户、自动化脚本 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`restoredFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级恢复聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 看快照上一版 profile 的 secret 形态与写入可执行性，最后展开 `rollback`。 | `scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`ROLLBACK_SCOPE_MISMATCH` / `ROLLBACK_FAILED` |
 | [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`items[].referenceSummary`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再补读 `summary.executabilityStats` 看写入可执行性聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `items[].referenceSummary` 与 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.secretExportPolicy`、`profiles[].referenceSummary`、`profiles[].secretExportSummary`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]`、`summary.referenceStats` 和 `summary.secretExportPolicy` 看平台级聚合与本次 secret 导出策略，再补读 `summary.executabilityStats` 看后续写入可执行性聚合，最后结合 `profiles[].referenceSummary`、`profiles[].secretExportSummary`、`observedAt` 理解 item 级状态与 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
@@ -3038,6 +3038,7 @@ type PreviewCommandOutput = {
 ```ts
 type UseCommandOutput = {
   profile: Profile
+  dryRun?: boolean
   backupId?: string
   platformSummary?: PlatformExplainableSummary
   validation?: ValidationResult
@@ -3050,6 +3051,8 @@ type UseCommandOutput = {
   scopeAvailability?: ScopeAvailability[]
 }
 ```
+
+`use --dry-run --json` 与 `import apply --dry-run --json` 保持同一 execution contract：`dryRun=true` 表示只执行写入前检查，不创建备份、不落盘；此时 `backupId` 不存在，`changedFiles=[]`、`noChanges=true`，计划差异仍应从 `preview.diffSummary[]` 读取。
 
 确认失败时，`error.details` 至少包含：
 

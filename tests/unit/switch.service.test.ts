@@ -505,8 +505,8 @@ describe('switch service', () => {
     expect(markCurrentCalled).toBe(false)
   })
 
-  it('dryRun 成功时 summary 与顶层 explainable 摘要保持一致', async () => {
-    await fs.writeFile(settingsPath, JSON.stringify({ enforcedAuthType: 'gemini-api-key' }, null, 2), 'utf8')
+  it('dryRun 成功时 summary 与顶层 explainable 摘要保持一致且不报告实际写入产物', async () => {
+    await fs.writeFile(settingsPath, JSON.stringify({ enforcedAuthType: 'legacy-auth' }, null, 2), 'utf8')
     await new ProfilesStore().write({
       version: 1,
       profiles: [
@@ -527,7 +527,16 @@ describe('switch service', () => {
 
     expect(result.ok).toBe(true)
     expect(result.action).toBe('use')
+    expect(result.data?.dryRun).toBe(true)
+    expect(result.data?.backupId).toBeUndefined()
     expect(result.data?.summary).toEqual(expect.objectContaining({
+      platformStats: expect.arrayContaining([
+        expect.objectContaining({
+          changedFileCount: 0,
+          backupCreated: false,
+          noChanges: true,
+        }),
+      ]),
       referenceStats: expect.objectContaining({
         profileCount: 1,
         inlineProfileCount: 1,
@@ -558,6 +567,14 @@ describe('switch service', () => {
     ]))
     expect(result.data?.noChanges).toBe(true)
     expect(result.data?.changedFiles).toEqual([])
+    expect(result.data?.preview.noChanges).toBe(false)
+    expect(result.data?.preview.diffSummary).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: settingsPath,
+        changedKeys: expect.arrayContaining(['enforcedAuthType']),
+        hasChanges: true,
+      }),
+    ]))
   })
 
   it('createBeforeApply 传入 provenance 时写入 snapshot manifest', async () => {

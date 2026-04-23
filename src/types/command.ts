@@ -91,6 +91,7 @@ export interface ConfirmationRequiredDetails {
 
 export interface UseCommandOutput {
   profile: Profile
+  dryRun?: boolean
   backupId?: string
   platformSummary?: PlatformExplainableSummary
   validation?: ValidationResult

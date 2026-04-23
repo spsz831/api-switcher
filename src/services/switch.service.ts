@@ -144,11 +144,31 @@ export class SwitchService {
       }
 
       if (options.dryRun) {
+        const dryRunSummary = buildSingleProfileCommandSummary({
+          platform: profile.platform,
+          profileId: profile.id,
+          profile,
+          targetScope: resolvedScope,
+          warningCount: risk.reasons.length,
+          limitationCount: risk.limitations.length,
+          changedFileCount: 0,
+          backupCreated: false,
+          noChanges: true,
+          platformSummary: buildPlatformSummary(profile.platform, {
+            currentScope: resolvedScope,
+            composedFiles: preview.targetFiles.map((item) => item.path),
+            listMode: true,
+          }),
+          warnings: risk.reasons,
+          limitations: risk.limitations,
+        })
+
         return {
           ok: true,
           action: 'use',
           data: {
             profile,
+            dryRun: true,
             platformSummary: buildPlatformSummary(profile.platform, {
               currentScope: resolvedScope,
               composedFiles: preview.targetFiles.map((item) => item.path),
@@ -157,14 +177,14 @@ export class SwitchService {
             validation,
             preview,
             risk,
-            summary,
-            changedFiles: preview.diffSummary.flatMap((item) => (item.hasChanges ? [item.path] : [])),
-            noChanges: Boolean(preview.noChanges),
+            summary: dryRunSummary,
+            changedFiles: [],
+            noChanges: true,
             scopeCapabilities,
             scopeAvailability,
           },
-          warnings: summary.warnings,
-          limitations: summary.limitations,
+          warnings: dryRunSummary.warnings,
+          limitations: dryRunSummary.limitations,
         }
       }
 

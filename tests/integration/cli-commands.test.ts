@@ -3800,6 +3800,52 @@ describe('cli commands integration', () => {
     expect(state.current.codex).toBe('codex-prod')
   })
 
+  it('use --dry-run --json 会执行写入前检查但不写入 Codex 双文件目标', async () => {
+    const configBefore = await fs.readFile(codexConfigPath, 'utf8')
+    const authBefore = await fs.readFile(codexAuthPath, 'utf8')
+    const result = await runCli(['use', 'codex-prod', '--force', '--dry-run', '--json'])
+    const payload = parseJsonResult<{
+      dryRun: boolean
+      backupId?: string
+      changedFiles: string[]
+      noChanges: boolean
+      preview: {
+        noChanges: boolean
+        diffSummary: Array<{ path: string; hasChanges: boolean }>
+      }
+      summary: {
+        platformStats?: Array<{
+          changedFileCount?: number
+          backupCreated?: boolean
+          noChanges?: boolean
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('use')
+    expect(payload.data?.dryRun).toBe(true)
+    expect(payload.data?.backupId).toBeUndefined()
+    expect(payload.data?.changedFiles).toEqual([])
+    expect(payload.data?.noChanges).toBe(true)
+    expect(payload.data?.preview.noChanges).toBe(false)
+    expect(payload.data?.preview.diffSummary).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: codexConfigPath, hasChanges: true }),
+      expect.objectContaining({ path: codexAuthPath, hasChanges: true }),
+    ]))
+    expect(payload.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        changedFileCount: 0,
+        backupCreated: false,
+        noChanges: true,
+      }),
+    ]))
+    await expect(fs.readFile(codexConfigPath, 'utf8')).resolves.toBe(configBefore)
+    await expect(fs.readFile(codexAuthPath, 'utf8')).resolves.toBe(authBefore)
+  })
+
   it('use --json 无 --force 时返回失败对象并设置 exitCode 1', async () => {
     const result = await runCli(['use', 'gemini-prod', '--json'])
     const payload = parseJsonResult(result.stdout)

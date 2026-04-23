@@ -487,7 +487,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'schema':
       return ['commandCatalog', 'schemaVersion', 'schemaId', 'schema']
     case 'use':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'dryRun', 'changedFiles', 'backupId']
     case 'validate':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'items', 'items.referenceSummary']
     default:
@@ -772,6 +772,7 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
+        { path: 'dryRun', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_DRY_RUN_IS_REQUESTED' },
         { path: 'changedFiles', channel: 'success', presence: 'always' },
         { path: 'backupId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_BACKUP_IS_CREATED' },
         { path: 'error.details.referenceGovernance', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED' },
@@ -849,6 +850,7 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
         { path: 'scopeAvailability', channel: 'success', source: 'platform-adapter' },
+        { path: 'dryRun', channel: 'success', source: 'command-service' },
         { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
         { path: 'backupId', channel: 'success', source: 'write-pipeline' },
         { path: 'error.details.referenceGovernance', channel: 'failure', source: 'command-service' },
@@ -989,6 +991,7 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeAvailability', channel: 'success', stabilityTier: 'bounded' },
+        { path: 'dryRun', channel: 'success', stabilityTier: 'stable' },
         { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
         { path: 'error.details.referenceGovernance', channel: 'failure', stabilityTier: 'stable' },
@@ -1182,7 +1185,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看写入平台的聚合结果、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义、预览和 scope 上下文。' },
-          { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费备份和落盘产物。' },
+          { stage: 'artifacts', fields: ['dryRun', 'changedFiles', 'backupId'], purpose: '最后消费执行模式、备份和落盘产物。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
@@ -1275,6 +1278,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'scopePolicy', semantic: 'scope-resolution' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
         { path: 'scopeAvailability', semantic: 'scope-resolution' },
+        { path: 'dryRun', semantic: 'artifacts' },
         { path: 'changedFiles', semantic: 'artifacts' },
         { path: 'backupId', semantic: 'artifacts' },
       ]

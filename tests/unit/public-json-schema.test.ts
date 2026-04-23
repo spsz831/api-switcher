@@ -1805,6 +1805,10 @@ describe('public JSON contract types', () => {
 
   it('用类型断言定义 use/rollback platformSummary 的最小公共 contract', () => {
     expectTypeOf<UseCommandOutput>().toMatchTypeOf<{
+      dryRun?: boolean
+      backupId?: string
+      changedFiles: string[]
+      noChanges: boolean
       platformSummary?: {
         kind: 'scope-precedence' | 'multi-file-composition'
         facts: Array<{
@@ -1955,6 +1959,9 @@ describe('public JSON contract types', () => {
   })
 
   it('machine-readable schema 覆盖 use/rollback platformSummary defs', () => {
+    expect(publicJsonSchema.$defs?.UseCommandOutput?.properties?.dryRun).toEqual({
+      type: 'boolean',
+    })
     expect(publicJsonSchema.$defs?.UseCommandOutput?.properties?.platformSummary).toEqual({
       $ref: '#/$defs/PlatformExplainableSummary',
     })
