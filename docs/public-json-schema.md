@@ -2142,6 +2142,132 @@ api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --forc
 
 这个样例对应的是 Codex 的标准成功路径。因为 Codex 当前没有 scoped target，返回里可以没有 `appliedScope`；机器消费方不应把这个缺省误解为失败。
 
+Codex `import apply --dry-run --json` 成功样例：
+
+```bash
+api-switcher import apply E:/tmp/exported-codex.json --profile codex-prod --force --dry-run --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "import-apply",
+  "data": {
+    "sourceFile": "E:/tmp/exported-codex.json",
+    "importedProfile": {
+      "id": "codex-prod",
+      "name": "codex-prod",
+      "platform": "codex",
+      "source": {
+        "apiKey": "sk-c***56",
+        "baseURL": "https://gateway.example.com/openai/v1"
+      },
+      "apply": {
+        "OPENAI_API_KEY": "sk-c***56",
+        "base_url": "https://gateway.example.com/openai/v1"
+      }
+    },
+    "dryRun": true,
+    "platformSummary": {
+      "kind": "multi-file-composition",
+      "composedFiles": [
+        "C:/Users/test/.codex/config.toml",
+        "C:/Users/test/.codex/auth.json"
+      ],
+      "facts": [
+        {
+          "code": "CODEX_MULTI_FILE_CONFIGURATION",
+          "message": "Codex 当前由 config.toml 与 auth.json 共同组成有效配置。"
+        }
+      ]
+    },
+    "scopePolicy": {
+      "explicitScope": false,
+      "highRisk": false,
+      "rollbackScopeMatchRequired": false
+    },
+    "scopeCapabilities": [],
+    "validation": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "limitations": []
+    },
+    "preview": {
+      "platform": "codex",
+      "profileId": "codex-prod",
+      "targetFiles": [
+        {
+          "path": "C:/Users/test/.codex/config.toml",
+          "format": "toml",
+          "exists": true,
+          "managedScope": "multi-file",
+          "role": "config",
+          "managedKeys": ["base_url"]
+        },
+        {
+          "path": "C:/Users/test/.codex/auth.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "multi-file",
+          "role": "auth",
+          "managedKeys": ["OPENAI_API_KEY"]
+        }
+      ],
+      "effectiveFields": [],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "C:/Users/test/.codex/config.toml",
+          "changedKeys": ["base_url"],
+          "hasChanges": true
+        },
+        {
+          "path": "C:/Users/test/.codex/auth.json",
+          "changedKeys": ["OPENAI_API_KEY"],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": [],
+      "riskLevel": "low",
+      "requiresConfirmation": false,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "low",
+      "reasons": [],
+      "limitations": []
+    },
+    "changedFiles": [],
+    "noChanges": true,
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "codex",
+          "profileCount": 1,
+          "profileId": "codex-prod",
+          "warningCount": 0,
+          "limitationCount": 0,
+          "changedFileCount": 0,
+          "backupCreated": false,
+          "noChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": []
+    }
+  },
+  "warnings": [],
+  "limitations": []
+}
+```
+
+这个 dry-run 样例里没有 `backupId`，`changedFiles=[]` / `summary.platformStats[0].changedFileCount=0` 表示本次没有实际写入；`preview.diffSummary[]` 仍保留 planned diff，适合 UI 展示即将修改的文件和字段。
+
 Claude `import apply --json` 成功样例：
 
 ```bash
