@@ -1744,7 +1744,13 @@ describe('cli commands integration', () => {
           actions: number
           recommendedActions: number
         }
-        consumerProfiles: Array<{ id: string; bestEntryAction: string }>
+        consumerProfiles: Array<{
+          id: string
+          bestEntryAction: string
+          hasStarterTemplate?: boolean
+          starterTemplateId?: string
+          recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
+        }>
         actions: Array<{ action: string }>
         recommendedActions: Array<{ code: string; family: string }>
       }
@@ -1764,9 +1770,25 @@ describe('cli commands integration', () => {
         recommendedActions: 15,
       },
       consumerProfiles: [
-        { id: 'readonly-state-audit', bestEntryAction: 'current' },
-        { id: 'single-platform-write', bestEntryAction: 'preview' },
-        { id: 'readonly-import-batch', bestEntryAction: 'import' },
+        {
+          id: 'readonly-state-audit',
+          bestEntryAction: 'current',
+          hasStarterTemplate: true,
+          starterTemplateId: 'readonly-state-audit-minimal-reader',
+          recommendedEntryMode: 'starter-template',
+        },
+        {
+          id: 'single-platform-write',
+          bestEntryAction: 'preview',
+          recommendedEntryMode: 'full-consumer-profile',
+        },
+        {
+          id: 'readonly-import-batch',
+          bestEntryAction: 'import',
+          hasStarterTemplate: true,
+          starterTemplateId: 'readonly-import-batch-minimal-reader',
+          recommendedEntryMode: 'starter-template',
+        },
       ],
       actions: [
         { action: 'add' },

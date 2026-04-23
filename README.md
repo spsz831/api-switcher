@@ -302,7 +302,7 @@ api-switcher schema --json --recommended-action continue-to-write
 api-switcher schema --json --catalog-summary
 ```
 
-它会返回 `data.catalogSummary`，只包含 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`。
+它会返回 `data.catalogSummary`，只包含 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`。其中 `consumerProfiles[]` 还会额外暴露 `hasStarterTemplate`、`starterTemplateId` 和 `recommendedEntryMode` 这几个轻量 discoverability 字段，帮助调用方在轻量目录模式下先判断某条画像是更适合直接走最小模板，还是应该切到完整 `consumerProfile` contract。
 
 推荐的最小发现顺序是：先用 `schema --json --catalog-summary` 找到目标 `consumerProfile / action / recommendedAction`，只在需要字段级 contract、机器可读 schema 或完整 capability catalog 时，再按需切到完整 `schema --json`。
 
@@ -322,9 +322,25 @@ api-switcher schema --json --catalog-summary
         "recommendedActions": 15
       },
       "consumerProfiles": [
-        { "id": "readonly-state-audit", "bestEntryAction": "current" },
-        { "id": "single-platform-write", "bestEntryAction": "preview" },
-        { "id": "readonly-import-batch", "bestEntryAction": "import" }
+        {
+          "id": "readonly-state-audit",
+          "bestEntryAction": "current",
+          "recommendedEntryMode": "starter-template",
+          "hasStarterTemplate": true,
+          "starterTemplateId": "readonly-state-audit-minimal-reader"
+        },
+        {
+          "id": "single-platform-write",
+          "bestEntryAction": "preview",
+          "recommendedEntryMode": "full-consumer-profile"
+        },
+        {
+          "id": "readonly-import-batch",
+          "bestEntryAction": "import",
+          "recommendedEntryMode": "starter-template",
+          "hasStarterTemplate": true,
+          "starterTemplateId": "readonly-import-batch-minimal-reader"
+        }
       ],
       "actions": [
         { "action": "add" },

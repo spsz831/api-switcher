@@ -359,6 +359,9 @@ describe('public JSON contract types', () => {
       consumerProfiles: Array<{
         id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
         bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+        hasStarterTemplate?: boolean
+        starterTemplateId?: string
+        recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
       }>
       actions: Array<{
         action: typeof COMMAND_ACTIONS[number]
@@ -768,7 +771,13 @@ describe('public JSON contract types', () => {
     ]))
     expect((schemaCatalogSummaryDef?.examples as Array<Record<string, unknown>> | undefined)?.[0]).toEqual(expect.objectContaining({
       consumerProfiles: expect.arrayContaining([
-        expect.objectContaining({ id: 'readonly-state-audit', bestEntryAction: 'current' }),
+        expect.objectContaining({
+          id: 'readonly-state-audit',
+          bestEntryAction: 'current',
+          hasStarterTemplate: true,
+          starterTemplateId: 'readonly-state-audit-minimal-reader',
+          recommendedEntryMode: 'starter-template',
+        }),
       ]),
       actions: expect.arrayContaining([
         expect.objectContaining({ action: 'add' }),
@@ -795,6 +804,16 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.consumerProfiles).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaCatalogSummaryConsumerProfile' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.hasStarterTemplate).toEqual({
+      type: 'boolean',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.starterTemplateId).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.recommendedEntryMode).toEqual({
+      type: 'string',
+      enum: ['starter-template', 'full-consumer-profile'],
     })
     expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.actions).toEqual({
       type: 'array',

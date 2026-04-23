@@ -1223,9 +1223,25 @@
             "recommendedActions": 15
           },
           "consumerProfiles": [
-            { "id": "readonly-state-audit", "bestEntryAction": "current" },
-            { "id": "single-platform-write", "bestEntryAction": "preview" },
-            { "id": "readonly-import-batch", "bestEntryAction": "import" }
+            {
+              "id": "readonly-state-audit",
+              "bestEntryAction": "current",
+              "recommendedEntryMode": "starter-template",
+              "hasStarterTemplate": true,
+              "starterTemplateId": "readonly-state-audit-minimal-reader"
+            },
+            {
+              "id": "single-platform-write",
+              "bestEntryAction": "preview",
+              "recommendedEntryMode": "full-consumer-profile"
+            },
+            {
+              "id": "readonly-import-batch",
+              "bestEntryAction": "import",
+              "recommendedEntryMode": "starter-template",
+              "hasStarterTemplate": true,
+              "starterTemplateId": "readonly-import-batch-minimal-reader"
+            }
           ],
           "actions": [
             { "action": "add" },
@@ -1262,6 +1278,16 @@
         "bestEntryAction": {
           "type": "string",
           "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+        },
+        "hasStarterTemplate": {
+          "type": "boolean"
+        },
+        "starterTemplateId": {
+          "type": "string"
+        },
+        "recommendedEntryMode": {
+          "type": "string",
+          "enum": ["starter-template", "full-consumer-profile"]
         }
       },
       "additionalProperties": false

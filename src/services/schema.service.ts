@@ -1426,6 +1426,13 @@ function buildCatalogSummary(commandCatalog: SchemaCommandCatalog): SchemaCatalo
     consumerProfiles: consumerProfiles.map((profile) => ({
       id: profile.id,
       bestEntryAction: profile.bestEntryAction,
+      recommendedEntryMode: profile.starterTemplate ? 'starter-template' : 'full-consumer-profile',
+      ...(profile.starterTemplate
+        ? {
+            hasStarterTemplate: true,
+            starterTemplateId: profile.starterTemplate.id,
+          }
+        : {}),
     })),
     actions: actions.map((action) => ({
       action: action.action,

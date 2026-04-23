@@ -348,6 +348,9 @@ export interface SchemaCatalogSummary {
   consumerProfiles: Array<{
     id: SchemaConsumerProfile['id']
     bestEntryAction: SchemaConsumerProfile['bestEntryAction']
+    hasStarterTemplate?: boolean
+    starterTemplateId?: NonNullable<SchemaConsumerProfile['starterTemplate']>['id']
+    recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
   }>
   actions: Array<{
     action: SchemaActionCapability['action']
