@@ -1550,7 +1550,9 @@ describe('cli commands integration', () => {
       hasScopePolicy: false,
       primaryFields: ['commandCatalog', 'schemaVersion', 'schemaId', 'schema'],
       primaryErrorFields: ['error.code', 'error.message'],
-      failureCodes: [],
+      failureCodes: [
+        { code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry', appliesWhen: '当错误来自输入参数或命令参数不合法时优先使用。', triggerFields: ['error.code'] },
+      ],
       fieldPresence: [
         { path: 'schemaVersion', channel: 'success', presence: 'always' },
         { path: 'commandCatalog', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCHEMA_DOCUMENT_IS_REQUESTED' },
@@ -1594,6 +1596,45 @@ describe('cli commands integration', () => {
     expect(payload.data?.schema.$defs).toHaveProperty('ScopeCapability')
     expect(payload.data?.schema.$defs).toHaveProperty('CommandResult')
     expect(payload.data?.schema).toEqual(staticSchema)
+  })
+
+  it('schema --json --consumer-profile 只返回目标 consumer profile', async () => {
+    const result = await runCli(['schema', '--json', '--consumer-profile', 'readonly-import-batch'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        consumerProfiles?: Array<{ id: string }>
+        actions: Array<{ action: string }>
+      }
+      schema?: Record<string, unknown>
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+    expect(payload.data?.commandCatalog.consumerProfiles?.map((item) => item.id)).toEqual(['readonly-import-batch'])
+    expect(payload.data?.commandCatalog.actions.length).toBeGreaterThan(1)
+    expect(payload.data?.schema).toBeDefined()
+  })
+
+  it('schema --json --consumer-profile 对未知 profile 返回稳定失败 envelope', async () => {
+    const result = await runCli(['schema', '--json', '--consumer-profile', 'missing-profile'])
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('schema')
+    expect(payload.error).toEqual({
+      code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND',
+      message: '未找到指定 schema consumer profile: missing-profile',
+      details: {
+        consumerProfileId: 'missing-profile',
+        availableConsumerProfileIds: ['readonly-state-audit', 'single-platform-write', 'readonly-import-batch'],
+      },
+    })
+    expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
   })
 
   it('schema --json 暴露 use/import-apply 失败态 referenceGovernance 消费入口', async () => {
@@ -1729,6 +1770,7 @@ describe('cli commands integration', () => {
     expect(schema.stdout).toContain('--json')
     expect(schema.stdout).toContain('使用 JSON 输出')
     expect(schema.stdout).toContain('--schema-version')
+    expect(schema.stdout).toContain('--consumer-profile <id>')
   })
 
   it('schema --schema-version 只输出当前 public JSON schema 版本', async () => {

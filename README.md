@@ -272,6 +272,14 @@ JSON 输出的稳定公共字段见 [`docs/public-json-schema.md`](docs/public-j
 api-switcher schema --json
 ```
 
+如果只需要某一类共享消费画像，可以用 `--consumer-profile <id>` 过滤 `commandCatalog.consumerProfiles[]`，例如：
+
+```bash
+api-switcher schema --json --consumer-profile readonly-import-batch
+```
+
+这不会裁剪 `commandCatalog.actions[]` 或完整 `schema`，只把 `consumerProfiles[]` 缩到目标画像；未知 id 会返回 `SCHEMA_CONSUMER_PROFILE_NOT_FOUND`。
+
 最小稳定返回示例：
 
 ```json

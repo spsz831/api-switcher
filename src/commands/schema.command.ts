@@ -8,10 +8,13 @@ export function registerSchemaCommand(program: Command): void {
     .description('输出 public JSON schema；只读默认消费路径见 consumerProfiles[].defaultConsumerFlowId / consumerFlow[]')
     .option('--json', '使用 JSON 输出')
     .option('--schema-version', '仅输出 public JSON schema 版本')
-    .action(async (options: { json?: boolean; schemaVersion?: boolean }) => {
+    .option('--consumer-profile <id>', '仅返回指定 commandCatalog.consumerProfiles 条目')
+    .action(async (options: { json?: boolean; schemaVersion?: boolean; consumerProfile?: string }) => {
       const service = new SchemaService()
       outputCommandResult(
-        options.schemaVersion ? service.getPublicJsonSchemaVersion() : service.getPublicJsonSchema(),
+        options.schemaVersion ? service.getPublicJsonSchemaVersion() : service.getPublicJsonSchema({
+          consumerProfile: options.consumerProfile,
+        }),
         options.json,
       )
     })

@@ -20,6 +20,8 @@ import {
   type SchemaReferenceGovernanceCode,
 } from '../types/command'
 
+export type SchemaConsumerProfileFilter = SchemaConsumerProfile['id']
+
 const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
   {
     id: 'readonly-state-audit',
@@ -545,7 +547,9 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'ROLLBACK_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
       ])
     case 'schema':
-      return []
+      return withFailureGuidance([
+        { code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+      ])
     case 'use':
       return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -1350,10 +1354,14 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
   }
 }
 
-function buildCommandCatalog() {
+function buildCommandCatalog(options: { consumerProfile?: SchemaConsumerProfileFilter } = {}) {
+  const consumerProfiles = options.consumerProfile
+    ? SCHEMA_CONSUMER_PROFILES.filter((profile) => profile.id === options.consumerProfile)
+    : SCHEMA_CONSUMER_PROFILES
+
   return {
     actions: SCHEMA_ACTION_CAPABILITIES,
-    consumerProfiles: SCHEMA_CONSUMER_PROFILES,
+    consumerProfiles,
     recommendedActions: SCHEMA_RECOMMENDED_ACTIONS,
   }
 }
@@ -1369,14 +1377,37 @@ export class SchemaService {
     }
   }
 
-  getPublicJsonSchema(): CommandResult<SchemaCommandOutput> {
+  getPublicJsonSchema(options: { consumerProfile?: string } = {}): CommandResult<SchemaCommandOutput> {
+    let consumerProfileFilter: SchemaConsumerProfileFilter | undefined
+
+    if (options.consumerProfile) {
+      const consumerProfile = SCHEMA_CONSUMER_PROFILES.find((profile) => profile.id === options.consumerProfile)
+      if (!consumerProfile) {
+        return {
+          ok: false,
+          action: 'schema',
+          error: {
+            code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND',
+            message: `未找到指定 schema consumer profile: ${options.consumerProfile}`,
+            details: {
+              consumerProfileId: options.consumerProfile,
+              availableConsumerProfileIds: SCHEMA_CONSUMER_PROFILES.map((profile) => profile.id),
+            },
+          },
+        }
+      }
+      consumerProfileFilter = consumerProfile.id
+    }
+
     return {
       ok: true,
       action: 'schema',
       data: {
         schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
         schemaId: publicJsonSchema.$id,
-        commandCatalog: buildCommandCatalog(),
+        commandCatalog: buildCommandCatalog({
+          consumerProfile: consumerProfileFilter,
+        }),
         schema: publicJsonSchema,
       },
     }

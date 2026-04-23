@@ -9,6 +9,7 @@ CLI 也可以直接输出当前契约：
 ```bash
 api-switcher schema --json
 api-switcher schema --schema-version --json
+api-switcher schema --json --consumer-profile readonly-import-batch
 ```
 
 ## 文档分工
@@ -328,6 +329,8 @@ type PlatformExplainableSummary = {
 ### schema --json
 
 完整 schema 输出会返回当前契约版本、schema ID 和机器可读 JSON Schema：
+
+`schema --json --consumer-profile <id>` 是同一份 schema catalog 的轻量过滤入口。它只过滤 `commandCatalog.consumerProfiles[]`，不会裁剪 `commandCatalog.actions[]` 或 `schema`，适合只接入 `readonly-state-audit`、`readonly-import-batch` 或 `single-platform-write` 其中一类产品面。未知 id 返回 `SCHEMA_CONSUMER_PROFILE_NOT_FOUND`。
 
 ```ts
 type SchemaCommandOutput = {
