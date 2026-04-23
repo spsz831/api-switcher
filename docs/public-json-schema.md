@@ -597,7 +597,7 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。建议固定分工如下：
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；只读画像还会额外公开 `starterTemplate`，把 `summary / items / failure / flow` 四层最小读取骨架直接作为稳定模板暴露出来，目前仅对 `readonly-state-audit` 和 `readonly-import-batch` 开放；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。建议固定分工如下：
 
 - `primaryFields`：先读哪些字段。
 - `readOrderGroups`：先读哪一层，再读哪一层。
@@ -607,6 +607,7 @@ type SchemaCommandOutput = {
 - `optionalItemFields`：不同 action 可能额外补充的 item 级 explainable。
 - `sharedFailureFields`：这一整类 action 的失败态优先字段。
 - `optionalFailureFields`：不同 action 可能额外补充的失败态 explainable。
+- `starterTemplate`：只读画像的最小机器消费模板，直接告诉调用方 summary / item / failure / flow 四层先读哪些字段。
 - `exampleActions`：这一类画像有哪些代表命令。
 - `bestEntryAction`：第一次接入这类画像时优先参考哪个 action。
 - `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
@@ -653,6 +654,26 @@ const readOrder = {
   defaultConsumerFlowId: profile?.defaultConsumerFlowId,
   consumerFlow: profile?.consumerFlow ?? [],
   recommendedActions: schema.data.commandCatalog.recommendedActions ?? [],
+}
+```
+
+如果外部调用方只想拿“最小可用模板”，不想自己再拼 `sharedSummaryFields / sharedItemFields / sharedFailureFields / defaultConsumerFlowId`，可以直接消费 `starterTemplate`。当前稳定暴露的模板 id 包括 `readonly-state-audit-minimal-reader` 与 `readonly-import-batch-minimal-reader`：
+
+```ts
+const profile = schema.data.commandCatalog.consumerProfiles.find(
+  (item) => item.id === 'readonly-import-batch',
+)
+
+const starterTemplate = profile?.starterTemplate
+
+const minimalReader = {
+  templateId: starterTemplate?.id ?? 'readonly-import-batch-minimal-reader',
+  entryAction: profile?.bestEntryAction,
+  summary: starterTemplate?.summary.fields ?? profile?.sharedSummaryFields ?? [],
+  items: starterTemplate?.items.sharedFields ?? [],
+  failure: starterTemplate?.failure.fields ?? [],
+  defaultFlowId:
+    starterTemplate?.flow.defaultConsumerFlowId ?? profile?.defaultConsumerFlowId,
 }
 ```
 

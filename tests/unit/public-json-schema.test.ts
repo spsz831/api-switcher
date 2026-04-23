@@ -899,6 +899,9 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.starterTemplate).toEqual({
+      $ref: '#/$defs/SchemaConsumerProfileStarterTemplate',
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.defaultConsumerFlowId).toEqual({
       type: 'string',
     })
@@ -954,6 +957,34 @@ describe('public JSON contract types', () => {
       'primaryFields',
       'purpose',
     ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplate?.required).toEqual(expect.arrayContaining([
+      'id',
+      'summary',
+      'items',
+      'failure',
+      'flow',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplate?.properties?.summary).toEqual({
+      $ref: '#/$defs/SchemaConsumerProfileStarterTemplateSection',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplate?.properties?.items).toEqual({
+      $ref: '#/$defs/SchemaConsumerProfileStarterTemplateItems',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplate?.properties?.failure).toEqual({
+      $ref: '#/$defs/SchemaConsumerProfileStarterTemplateSection',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplate?.properties?.flow).toEqual({
+      $ref: '#/$defs/SchemaConsumerProfileStarterTemplateFlow',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplateSection?.required).toEqual(expect.arrayContaining([
+      'fields',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplateItems?.required).toEqual(expect.arrayContaining([
+      'sharedFields',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileStarterTemplateFlow?.properties?.defaultConsumerFlowId).toEqual({
+      type: 'string',
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileAction?.properties?.use).toEqual({
       type: 'string',
       enum: ['overview', 'governance', 'gating', 'routing'],

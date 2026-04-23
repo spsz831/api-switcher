@@ -289,4 +289,89 @@ describe('schema summary sections integration', () => {
     expect(byProfile('single-platform-write')?.defaultConsumerFlowId).toBeUndefined()
     expect(byProfile('single-platform-write')?.consumerFlow).toBeUndefined()
   })
+
+  it('schema --json 只为只读 consumer profile 暴露最小机器消费模板', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog?: {
+        consumerProfiles?: Array<{
+          id: string
+          starterTemplate?: {
+            id: string
+            summary: {
+              fields: string[]
+            }
+            items: {
+              sharedFields: string[]
+            }
+            failure: {
+              fields: string[]
+            }
+            flow: {
+              defaultConsumerFlowId?: string
+            }
+          }
+        }>
+      }
+    }>(result.stdout)
+
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')?.starterTemplate).toEqual({
+      id: 'readonly-state-audit-minimal-reader',
+      summary: {
+        fields: [
+          'summary.platformStats',
+          'summary.referenceStats',
+          'summary.executabilityStats',
+          'summary.triageStats',
+        ],
+      },
+      items: {
+        sharedFields: [
+          'platformSummary',
+          'referenceSummary',
+        ],
+      },
+      failure: {
+        fields: [
+          'error.code',
+          'error.message',
+        ],
+      },
+      flow: {
+        defaultConsumerFlowId: 'overview-to-items',
+      },
+    })
+    expect(byProfile('readonly-import-batch')?.starterTemplate).toEqual({
+      id: 'readonly-import-batch-minimal-reader',
+      summary: {
+        fields: [
+          'summary.sourceExecutability',
+          'summary.executabilityStats',
+          'summary.platformStats',
+          'summary.triageStats',
+        ],
+      },
+      items: {
+        sharedFields: [
+          'platformSummary',
+          'exportedObservation',
+          'localObservation',
+          'previewDecision',
+        ],
+      },
+      failure: {
+        fields: [
+          'error.code',
+          'error.message',
+        ],
+      },
+      flow: {
+        defaultConsumerFlowId: 'source-to-repair',
+      },
+    })
+    expect(byProfile('single-platform-write')?.starterTemplate).toBeUndefined()
+  })
 })

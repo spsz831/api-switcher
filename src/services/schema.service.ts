@@ -130,6 +130,21 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         purpose: '当只读结果需要决定是否继续进入写入链路时，优先查看 executability 与 item 级 reference 证据。',
       },
     ],
+    starterTemplate: {
+      id: 'readonly-state-audit-minimal-reader',
+      summary: {
+        fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'],
+      },
+      items: {
+        sharedFields: ['platformSummary', 'referenceSummary'],
+      },
+      failure: {
+        fields: ['error.code', 'error.message'],
+      },
+      flow: {
+        defaultConsumerFlowId: 'overview-to-items',
+      },
+    },
     consumerFlow: [
       {
         id: 'overview-to-items',
@@ -293,6 +308,21 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
         purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合和 item 级 platform explainable 分组。',
       },
     ],
+    starterTemplate: {
+      id: 'readonly-import-batch-minimal-reader',
+      summary: {
+        fields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats'],
+      },
+      items: {
+        sharedFields: ['platformSummary', 'exportedObservation', 'localObservation', 'previewDecision'],
+      },
+      failure: {
+        fields: ['error.code', 'error.message'],
+      },
+      flow: {
+        defaultConsumerFlowId: 'source-to-repair',
+      },
+    },
     consumerFlow: [
       {
         id: 'source-to-repair',

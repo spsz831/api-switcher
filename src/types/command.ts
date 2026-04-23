@@ -307,6 +307,7 @@ export interface SchemaConsumerProfile {
   followUpHints?: SchemaConsumerProfileFollowUpHint[]
   triageBuckets?: SchemaConsumerProfileTriageBucket[]
   consumerActions?: SchemaConsumerProfileAction[]
+  starterTemplate?: SchemaConsumerProfileStarterTemplate
   defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
   consumerFlow?: SchemaConsumerProfileFlowStep[]
 }
@@ -423,6 +424,26 @@ export interface SchemaConsumerProfileFlowStep {
   consumerActionId: SchemaConsumerProfileAction['id']
   nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
   purpose: string
+}
+
+export interface SchemaConsumerProfileStarterTemplateSection {
+  fields: string[]
+}
+
+export interface SchemaConsumerProfileStarterTemplateItems {
+  sharedFields: string[]
+}
+
+export interface SchemaConsumerProfileStarterTemplateFlow {
+  defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
+}
+
+export interface SchemaConsumerProfileStarterTemplate {
+  id: string
+  summary: SchemaConsumerProfileStarterTemplateSection
+  items: SchemaConsumerProfileStarterTemplateItems
+  failure: SchemaConsumerProfileStarterTemplateSection
+  flow: SchemaConsumerProfileStarterTemplateFlow
 }
 
 export interface SchemaActionFailureCode {

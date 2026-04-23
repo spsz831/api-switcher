@@ -706,6 +706,9 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileAction" }
         },
+        "starterTemplate": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplate"
+        },
         "defaultConsumerFlowId": {
           "type": "string"
         },
@@ -825,6 +828,57 @@
           "items": { "type": "string" }
         },
         "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplate": {
+      "type": "object",
+      "required": ["id", "summary", "items", "failure", "flow"],
+      "properties": {
+        "id": { "type": "string" },
+        "summary": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateSection"
+        },
+        "items": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateItems"
+        },
+        "failure": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateSection"
+        },
+        "flow": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateFlow"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateSection": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateItems": {
+      "type": "object",
+      "required": ["sharedFields"],
+      "properties": {
+        "sharedFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateFlow": {
+      "type": "object",
+      "properties": {
+        "defaultConsumerFlowId": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
