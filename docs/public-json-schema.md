@@ -3054,6 +3054,151 @@ type UseCommandOutput = {
 
 `use --dry-run --json` 与 `import apply --dry-run --json` 保持同一 execution contract：`dryRun=true` 表示只执行写入前检查，不创建备份、不落盘；此时 `backupId` 不存在，`changedFiles=[]`、`noChanges=true`，计划差异仍应从 `preview.diffSummary[]` 读取。
 
+Gemini `use --dry-run --json` 成功样例：
+
+```bash
+api-switcher use gemini-prod --scope project --force --dry-run --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "use",
+  "data": {
+    "profile": {
+      "id": "gemini-prod",
+      "platform": "gemini",
+      "name": "Gemini 生产"
+    },
+    "dryRun": true,
+    "changedFiles": [],
+    "noChanges": true,
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
+    "preview": {
+      "platform": "gemini",
+      "profileId": "gemini-prod",
+      "targetFiles": [
+        {
+          "path": "C:/work/.gemini/settings.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "partial-fields",
+          "scope": "project",
+          "managedKeys": [
+            "enforcedAuthType"
+          ]
+        }
+      ],
+      "effectiveFields": [],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "C:/work/.gemini/settings.json",
+          "changedKeys": [
+            "enforcedAuthType"
+          ],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": [
+        {
+          "code": "GEMINI_API_KEY_ENV_REQUIRED",
+          "message": "GEMINI_API_KEY 仍需通过环境变量生效。"
+        }
+      ],
+      "riskLevel": "high",
+      "requiresConfirmation": true,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "high",
+      "reasons": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 0,
+          "backupCreated": false,
+          "noChanges": true
+        }
+      ],
+      "warnings": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/work/.gemini/settings.json"
+      }
+    ],
+    "scopeCapabilities": [
+      {
+        "scope": "user",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "normal"
+      },
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ]
+  }
+}
+```
+
+这个 dry-run 样例里没有 `backupId`，`changedFiles=[]` / `summary.platformStats[0].changedFileCount=0` 表示本次没有实际写入；`preview.diffSummary[]` 仍保留 planned diff，适合 UI 展示即将修改的文件和字段。
+
 确认失败时，`error.details` 至少包含：
 
 ```ts

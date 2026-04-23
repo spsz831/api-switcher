@@ -3404,6 +3404,151 @@ redacted 字段:
 
 `use --json` 成功时除了 `scopeCapabilities` 与 `scopeAvailability`，还会返回 `platformSummary`。同时，`data.summary.platformStats[]`、`data.summary.referenceStats`、`data.summary.executabilityStats` 也会一起给出稳定 summary 入口。推荐机器消费方先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 和 `summary.executabilityStats` 做 secret 形态与写入可执行性判断，最后再展开 `platformSummary` 与 `preview` 细节。文本输出也按这个顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后再进入写入细节。`use --dry-run --json` 会执行同一套写入前检查并返回 `data.dryRun=true`，但不会写入文件、不会创建 `backupId`，且返回 `changedFiles=[]`、`noChanges=true`；计划差异仍保留在 `data.preview.diffSummary[]`。
 
+下面是一份 Gemini `use --dry-run --json` 成功样例，展示“计划有差异，但实际不写入”的返回：
+
+```bash
+api-switcher use gemini-prod --scope project --force --dry-run --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "use",
+  "data": {
+    "profile": {
+      "id": "gemini-prod",
+      "platform": "gemini",
+      "name": "Gemini 生产"
+    },
+    "dryRun": true,
+    "changedFiles": [],
+    "noChanges": true,
+    "platformSummary": {
+      "kind": "scope-precedence",
+      "precedence": [
+        "system-defaults",
+        "user",
+        "project",
+        "system-overrides"
+      ],
+      "currentScope": "project",
+      "facts": [
+        {
+          "code": "GEMINI_SCOPE_PRECEDENCE",
+          "message": "Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。"
+        },
+        {
+          "code": "GEMINI_PROJECT_OVERRIDES_USER",
+          "message": "project scope 会覆盖 user 中的同名字段。"
+        }
+      ]
+    },
+    "preview": {
+      "platform": "gemini",
+      "profileId": "gemini-prod",
+      "targetFiles": [
+        {
+          "path": "C:/work/.gemini/settings.json",
+          "format": "json",
+          "exists": true,
+          "managedScope": "partial-fields",
+          "scope": "project",
+          "managedKeys": [
+            "enforcedAuthType"
+          ]
+        }
+      ],
+      "effectiveFields": [],
+      "storedOnlyFields": [],
+      "diffSummary": [
+        {
+          "path": "C:/work/.gemini/settings.json",
+          "changedKeys": [
+            "enforcedAuthType"
+          ],
+          "hasChanges": true
+        }
+      ],
+      "warnings": [],
+      "limitations": [
+        {
+          "code": "GEMINI_API_KEY_ENV_REQUIRED",
+          "message": "GEMINI_API_KEY 仍需通过环境变量生效。"
+        }
+      ],
+      "riskLevel": "high",
+      "requiresConfirmation": true,
+      "backupPlanned": true,
+      "noChanges": false
+    },
+    "risk": {
+      "allowed": true,
+      "riskLevel": "high",
+      "reasons": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "summary": {
+      "platformStats": [
+        {
+          "platform": "gemini",
+          "profileCount": 1,
+          "profileId": "gemini-prod",
+          "targetScope": "project",
+          "warningCount": 1,
+          "limitationCount": 1,
+          "changedFileCount": 0,
+          "backupCreated": false,
+          "noChanges": true
+        }
+      ],
+      "warnings": [
+        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+      ],
+      "limitations": [
+        "GEMINI_API_KEY 仍需通过环境变量生效。"
+      ]
+    },
+    "scopeAvailability": [
+      {
+        "scope": "project",
+        "status": "available",
+        "detected": true,
+        "writable": true,
+        "path": "C:/work/.gemini/settings.json"
+      }
+    ],
+    "scopeCapabilities": [
+      {
+        "scope": "user",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "normal"
+      },
+      {
+        "scope": "project",
+        "detect": true,
+        "preview": true,
+        "use": true,
+        "rollback": true,
+        "writable": true,
+        "risk": "high",
+        "confirmationRequired": true
+      }
+    ]
+  }
+}
+```
+
+这个 dry-run 样例里没有 `backupId`，`changedFiles=[]` / `summary.platformStats[0].changedFileCount=0` 表示本次没有实际写入；如果要展示“将会修改哪些文件”，应读取 `data.preview.diffSummary[]`，不要从 `changedFiles` 反推 planned diff。
+
 `use --json` 需要区分成功态和确认门槛失败态。成功时会把平台 precedence / 多文件组合语义和本次写入结果一起交给机器消费方；失败时，`error.details` 里会带结构化的 `risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`。如果失败同时涉及 secret/reference 治理，机器消费方应读取 `error.details.referenceGovernance`，不要从失败 envelope 里寻找 `summary.referenceStats`。推荐失败读取顺序是 `error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` 细节：
 
 ```json
