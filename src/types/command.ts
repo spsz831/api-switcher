@@ -306,6 +306,7 @@ export interface SchemaConsumerProfile {
   followUpHints?: SchemaConsumerProfileFollowUpHint[]
   triageBuckets?: SchemaConsumerProfileTriageBucket[]
   consumerActions?: SchemaConsumerProfileAction[]
+  defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
   consumerFlow?: SchemaConsumerProfileFlowStep[]
 }
 

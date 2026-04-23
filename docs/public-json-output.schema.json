@@ -703,6 +703,9 @@
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileAction" }
         },
+        "defaultConsumerFlowId": {
+          "type": "string"
+        },
         "consumerFlow": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaConsumerProfileFlowStep" }

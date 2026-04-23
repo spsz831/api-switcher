@@ -201,6 +201,7 @@ describe('readonly summary sections', () => {
         purpose: '当只读结果需要决定是否继续进入写入链路时，优先查看 executability 与 item 级 reference 证据。',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-state-audit')?.defaultConsumerFlowId).toBe('overview-to-items')
     expect(profiles.find((item) => item.id === 'readonly-state-audit')?.consumerFlow).toEqual([
       {
         id: 'overview-to-items',
@@ -286,6 +287,7 @@ describe('readonly summary sections', () => {
         purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合和 item 级 platform explainable 分组。',
       },
     ])
+    expect(profiles.find((item) => item.id === 'readonly-import-batch')?.defaultConsumerFlowId).toBe('source-to-repair')
     expect(profiles.find((item) => item.id === 'readonly-import-batch')?.consumerFlow).toEqual([
       {
         id: 'source-to-repair',
@@ -334,6 +336,7 @@ describe('readonly summary sections', () => {
     expect(profiles.find((item) => item.id === 'single-platform-write')?.followUpHints).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.triageBuckets).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerActions).toBeUndefined()
+    expect(profiles.find((item) => item.id === 'single-platform-write')?.defaultConsumerFlowId).toBeUndefined()
     expect(profiles.find((item) => item.id === 'single-platform-write')?.consumerFlow).toBeUndefined()
   })
 
@@ -380,6 +383,9 @@ describe('readonly summary sections', () => {
     expect(consumerProfile?.properties?.consumerActions).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
+    })
+    expect(consumerProfile?.properties?.defaultConsumerFlowId).toEqual({
+      type: 'string',
     })
     expect(consumerProfile?.properties?.consumerFlow).toEqual({
       type: 'array',

@@ -471,6 +471,7 @@ describe('cli commands integration', () => {
             primaryFields: string[]
             purpose: string
           }>
+          defaultConsumerFlowId?: string
           triageBuckets?: Array<{
             id: string
             title: string
@@ -685,6 +686,7 @@ describe('cli commands integration', () => {
             purpose: '当只读结果需要决定能否继续进入 use/import apply 时，先结合 executability 聚合与 item 级 reference 细节判断。',
           },
         ],
+        defaultConsumerFlowId: 'overview-to-items',
         triageBuckets: [
           {
             id: 'overview',
@@ -872,6 +874,7 @@ describe('cli commands integration', () => {
             purpose: '当 mixed-batch 需要拆分处理时，先按平台聚合与 item 级 platform explainable 分组。',
           },
         ],
+        defaultConsumerFlowId: 'source-to-repair',
         triageBuckets: [
           {
             id: 'source-blocked',

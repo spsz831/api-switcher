@@ -820,6 +820,9 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
     })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.defaultConsumerFlowId).toEqual({
+      type: 'string',
+    })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfile?.properties?.consumerFlow).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaConsumerProfileFlowStep' },
