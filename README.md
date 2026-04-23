@@ -288,6 +288,42 @@ api-switcher schema --json --action import-apply
 
 这不会裁剪 `commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `actions[]` 缩到目标命令；未知 action 会返回 `SCHEMA_ACTION_NOT_FOUND`。
 
+如果调用方想先确认 dry-run 模式下该读哪些稳定字段，可以直接读取 action 过滤后的最小片段。例如 `use` 会显式公开 `dryRun / changedFiles / backupId` 的出现条件：
+
+```json
+{
+  "action": "use",
+  "primaryFields": ["dryRun", "changedFiles", "backupId"],
+  "fieldPresence": [
+    { "path": "dryRun", "conditionCode": "WHEN_DRY_RUN_IS_REQUESTED" },
+    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" }
+  ],
+  "readOrderGroups": {
+    "success": [
+      { "group": "artifacts", "fields": ["dryRun", "changedFiles", "backupId"] }
+    ]
+  }
+}
+```
+
+`import-apply` 的读取方式保持同一契约形状，调用方可以把 action catalog 当成“发现入口”，再去对齐真实 dry-run payload：
+
+```json
+{
+  "action": "import-apply",
+  "primaryFields": ["dryRun", "changedFiles", "backupId"],
+  "fieldPresence": [
+    { "path": "dryRun", "conditionCode": "WHEN_DRY_RUN_IS_REQUESTED" },
+    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" }
+  ],
+  "readOrderGroups": {
+    "success": [
+      { "group": "artifacts", "fields": ["dryRun", "changedFiles", "backupId"] }
+    ]
+  }
+}
+```
+
 如果只需要某一个稳定动作词条，可以用 `--recommended-action <code>` 过滤 `commandCatalog.recommendedActions[]`，例如：
 
 ```bash

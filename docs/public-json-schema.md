@@ -337,6 +337,42 @@ type PlatformExplainableSummary = {
 
 `schema --json --action <action>` 是对称的命令级轻量过滤入口。它只过滤 `commandCatalog.actions[]`，不会裁剪 `commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `current`、`import-apply` 等单个命令的调用方。未知 action 返回 `SCHEMA_ACTION_NOT_FOUND`。
 
+如果调用方只想确认 dry-run 能力的稳定发现入口，可以直接读取 action 过滤后的最小片段。例如 `use` 会在 action catalog 里显式公开 `dryRun / changedFiles / backupId` 这组三元字段及其出现条件：
+
+```json
+{
+  "action": "use",
+  "primaryFields": ["dryRun", "changedFiles", "backupId"],
+  "fieldPresence": [
+    { "path": "dryRun", "conditionCode": "WHEN_DRY_RUN_IS_REQUESTED" },
+    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" }
+  ],
+  "readOrderGroups": {
+    "success": [
+      { "group": "artifacts", "fields": ["dryRun", "changedFiles", "backupId"] }
+    ]
+  }
+}
+```
+
+`import-apply` 也沿用同一最小发现形状，外部调用方可以先靠 action catalog 识别 dry-run 读取顺序，再决定是否继续读取完整 schema 或真实执行返回：
+
+```json
+{
+  "action": "import-apply",
+  "primaryFields": ["dryRun", "changedFiles", "backupId"],
+  "fieldPresence": [
+    { "path": "dryRun", "conditionCode": "WHEN_DRY_RUN_IS_REQUESTED" },
+    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" }
+  ],
+  "readOrderGroups": {
+    "success": [
+      { "group": "artifacts", "fields": ["dryRun", "changedFiles", "backupId"] }
+    ]
+  }
+}
+```
+
 `schema --json --recommended-action <code>` 是稳定动作词表的轻量直取入口。它只过滤 `commandCatalog.recommendedActions[]`，不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `continue-to-write`、`fix-input-and-retry` 这类动作短码目录。未知 code 返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
 `schema --json --catalog-summary` 是 schema catalog 的轻量目录模式。它直接返回 `data.catalogSummary`，只暴露 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`，适合只想先发现入口、还不需要下载整份 catalog 的调用方。`consumerProfiles[]` 还会额外公开 `hasStarterTemplate`、`starterTemplateId` 与 `recommendedEntryMode`，让调用方在不下载完整 `commandCatalog.consumerProfiles[]` 的前提下，先判断某条画像是否已经提供最小机器消费模板，以及下一步更推荐走 `starter-template` 还是完整 `consumerProfile`。
