@@ -411,6 +411,7 @@ type SchemaCommandOutput = {
         priority: number
         defaultEntry: boolean
         defaultOnBucket: boolean
+        selectionReason: string
         summarySectionIds: Array<'platform' | 'reference' | 'executability' | 'source-executability'>
         triageBucketIds?: Array<'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'>
         readFields: string[]
@@ -532,6 +533,7 @@ type SchemaCommandOutput = {
 - `consumerActions[].appliesWhen / triggerFields`：补一层动作 discoverability，回答“什么情况下优先选这个动作”和“先看哪些稳定字段”。
 - `consumerFlow`：把“命中哪段 summary / 哪个 triage bucket”稳定映射到“该读哪些字段、该选哪个动作卡片、下一步短码是什么”。
 - `consumerFlow[].defaultEntry / defaultOnBucket`：补一层轻量 discoverability，回答“默认先从哪条 flow 开始”以及“命中当前 bucket 时优先走哪条 flow”。
+- `consumerFlow[].selectionReason`：解释为什么推荐该 flow 作为默认入口或 bucket 命中后的优先路径，方便 UI/自动化直接展示原因。
 - `failureCodes[].appliesWhen / triggerFields`、`referenceGovernanceCodes[].appliesWhen / triggerFields`：补一层失败恢复 discoverability，回答“什么情况下优先按这个失败码处理”和“先看哪些稳定错误字段”。
 - `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
@@ -590,6 +592,7 @@ const flowCards = (profile?.consumerFlow ?? []).map((step) => ({
   id: step.id,
   defaultEntry: step.defaultEntry,
   defaultOnBucket: step.defaultOnBucket,
+  selectionReason: step.selectionReason,
   summarySections: step.summarySectionIds,
   triageBuckets: step.triageBucketIds ?? [],
   readFields: step.readFields,

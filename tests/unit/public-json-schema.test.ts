@@ -907,6 +907,7 @@ describe('public JSON contract types', () => {
       'priority',
       'defaultEntry',
       'defaultOnBucket',
+      'selectionReason',
       'summarySectionIds',
       'readFields',
       'consumerActionId',
@@ -918,6 +919,9 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.defaultOnBucket).toEqual({
       type: 'boolean',
+    })
+    expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.selectionReason).toEqual({
+      type: 'string',
     })
     expect(publicJsonSchema.$defs?.SchemaConsumerProfileFlowStep?.properties?.summarySectionIds).toEqual({
       type: 'array',

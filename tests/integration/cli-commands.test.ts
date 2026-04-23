@@ -498,6 +498,7 @@ describe('cli commands integration', () => {
             priority: number
             defaultEntry: boolean
             defaultOnBucket: boolean
+            selectionReason: string
             summarySectionIds: string[]
             triageBucketIds?: string[]
             readFields: string[]
@@ -758,6 +759,7 @@ describe('cli commands integration', () => {
             priority: 1,
             defaultEntry: true,
             defaultOnBucket: true,
+            selectionReason: '默认先看平台 overview，因为它成本最低，能快速判断后续是否需要展开 item 明细。',
             summarySectionIds: ['platform'],
             triageBucketIds: ['overview'],
             readFields: ['summary.platformStats', 'summary.triageStats', 'detections', 'platformSummary'],
@@ -771,6 +773,7 @@ describe('cli commands integration', () => {
             priority: 2,
             defaultEntry: false,
             defaultOnBucket: true,
+            selectionReason: '当 reference-governance bucket 有命中时优先选择，用于直接进入 secret/reference 治理复核。',
             summarySectionIds: ['reference'],
             triageBucketIds: ['reference-governance'],
             readFields: ['summary.referenceStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
@@ -784,6 +787,7 @@ describe('cli commands integration', () => {
             priority: 3,
             defaultEntry: false,
             defaultOnBucket: true,
+            selectionReason: '当 write-readiness bucket 有命中时优先选择，用于判断是否可以继续进入写入链路。',
             summarySectionIds: ['executability'],
             triageBucketIds: ['write-readiness'],
             readFields: ['summary.executabilityStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
@@ -942,6 +946,7 @@ describe('cli commands integration', () => {
             priority: 1,
             defaultEntry: true,
             defaultOnBucket: true,
+            selectionReason: '默认先看 source gating，因为导入源一旦阻断 apply，后续目标侧分析都应让位于 source 修复。',
             summarySectionIds: ['source-executability'],
             triageBucketIds: ['source-blocked'],
             readFields: ['summary.sourceExecutability', 'summary.triageStats', 'sourceCompatibility', 'items.previewDecision'],
@@ -955,6 +960,7 @@ describe('cli commands integration', () => {
             priority: 2,
             defaultEntry: false,
             defaultOnBucket: true,
+            selectionReason: '当 write-readiness bucket 有命中时优先选择，用于在 source 通过后判断是否继续 apply。',
             summarySectionIds: ['executability'],
             triageBucketIds: ['write-readiness'],
             readFields: ['summary.executabilityStats', 'summary.triageStats', 'items.previewDecision', 'items.fidelity'],
@@ -968,6 +974,7 @@ describe('cli commands integration', () => {
             priority: 3,
             defaultEntry: false,
             defaultOnBucket: true,
+            selectionReason: '当 platform-routing bucket 有命中时优先选择，用于把 mixed-batch 按平台拆分处理。',
             summarySectionIds: ['platform'],
             triageBucketIds: ['platform-routing'],
             readFields: ['summary.platformStats', 'summary.triageStats', 'platformSummary'],
