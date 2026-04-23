@@ -465,6 +465,18 @@ Catalog Summary:
 
 这条链路回答的是四个逐层问题：`catalogSummary` 先回答“应该看哪类入口”，`--action` 再回答“这个命令结果先读哪些字段”，`--recommended-action` 再回答“命中 next step 后该把动作解释成 inspect / repair / route / execute 哪一类”，最后再回到真实 runtime payload。
 
+如果调用方想把这组跳转直接固化成接入侧的最小 recipe，可以先按下面的文档片段实现，而不必自己再拼装：
+
+```json
+{
+  "recipeId": "single-platform-write-preview-to-execute",
+  "discover": "api-switcher schema --json --catalog-summary",
+  "action": "api-switcher schema --json --action preview",
+  "nextStep": "api-switcher schema --json --recommended-action continue-to-write",
+  "runtime": "api-switcher preview <selector> --json"
+}
+```
+
 ```ts
 type SchemaCommandOutput = {
   schemaVersion: '2026-04-15.public-json.v1'

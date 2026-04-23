@@ -428,6 +428,18 @@ Catalog Summary:
 
 这条链路的语义是：先从 `catalogSummary` 找到代表 action 和 next step，再读取 action capability 确认 success/failure 优先字段，最后读取 recommended action 判断下一步是 inspect、repair、route 还是 execute，并回到真实 runtime payload。
 
+如果你想把这组跳转直接固化成接入侧的最小 recipe，可以先按下面的文档片段实现，而不必自己再拼装：
+
+```json
+{
+  "recipeId": "single-platform-write-preview-to-execute",
+  "discover": "api-switcher schema --json --catalog-summary",
+  "action": "api-switcher schema --json --action preview",
+  "nextStep": "api-switcher schema --json --recommended-action continue-to-write",
+  "runtime": "api-switcher preview <selector> --json"
+}
+```
+
 最小稳定返回示例：
 
 ```json
