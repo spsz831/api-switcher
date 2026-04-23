@@ -624,12 +624,27 @@ const nextActions = (profile?.consumerActions ?? []).map((action) => ({
 }))
 ```
 
-如果你想让接入层按“先读什么，再做什么”直接推进，而不是自己把 `summarySections / triageBuckets / consumerActions` 做三次 join，可以直接消费 `consumerFlow[]`：
+如果你想让接入层按“先读什么，再做什么”直接推进，而不是自己把 `summarySections / triageBuckets / consumerActions` 做三次 join，可以直接消费 `consumerFlow[]`。只读画像的最轻量入口是 `defaultConsumerFlowId -> consumerFlow[] -> consumerActions[] -> recommendedActions[]`，这条链路不需要新增字段，也不需要外部调用方自行扫描 `defaultEntry: true`：
 
 ```ts
 const defaultFlow = (profile?.consumerFlow ?? []).find(
   (step) => step.id === profile?.defaultConsumerFlowId,
 )
+const defaultAction = (profile?.consumerActions ?? []).find(
+  (action) => action.id === defaultFlow?.consumerActionId,
+)
+const defaultRecommendedAction = schema.data.commandCatalog.recommendedActions.find(
+  (action) => action.code === defaultFlow?.nextStep,
+)
+
+const defaultReadonlyConsumerPath = {
+  flowId: defaultFlow?.id,
+  readFields: defaultFlow?.readFields ?? [],
+  actionId: defaultAction?.id,
+  nextStep: defaultRecommendedAction?.code ?? defaultFlow?.nextStep,
+  nextStepFamily: defaultRecommendedAction?.family,
+  reason: defaultFlow?.selectionReason,
+}
 
 const consumerFlow = (profile?.consumerFlow ?? []).map((step) => ({
   id: step.id,

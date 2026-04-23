@@ -588,12 +588,27 @@ const actionCards = (profile?.consumerActions ?? []).map((action) => ({
 }))
 ```
 
-如果外部调用方希望直接拿到“该先看什么，再走什么动作”的稳定映射，而不是自己把 section、bucket 和 action 目录再 join 一遍，可以直接消费 `consumerFlow[]`：
+如果外部调用方希望直接拿到“该先看什么，再走什么动作”的稳定映射，而不是自己把 section、bucket 和 action 目录再 join 一遍，可以直接消费 `consumerFlow[]`。只读画像的最轻量入口是 `defaultConsumerFlowId -> consumerFlow[] -> consumerActions[] -> recommendedActions[]`，这条链路复用现有字段即可得到默认读取字段、动作卡片和稳定下一步短码：
 
 ```ts
 const defaultFlow = (profile?.consumerFlow ?? []).find(
   (step) => step.id === profile?.defaultConsumerFlowId,
 )
+const defaultAction = (profile?.consumerActions ?? []).find(
+  (action) => action.id === defaultFlow?.consumerActionId,
+)
+const defaultRecommendedAction = schema.data.commandCatalog.recommendedActions.find(
+  (action) => action.code === defaultFlow?.nextStep,
+)
+
+const defaultReadonlyConsumerPath = {
+  flowId: defaultFlow?.id,
+  readFields: defaultFlow?.readFields ?? [],
+  actionId: defaultAction?.id,
+  nextStep: defaultRecommendedAction?.code ?? defaultFlow?.nextStep,
+  nextStepFamily: defaultRecommendedAction?.family,
+  reason: defaultFlow?.selectionReason,
+}
 
 const flowCards = (profile?.consumerFlow ?? []).map((step) => ({
   id: step.id,
