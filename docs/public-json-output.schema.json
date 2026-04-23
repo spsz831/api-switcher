@@ -824,11 +824,13 @@
     },
     "SchemaConsumerProfileFlowStep": {
       "type": "object",
-      "required": ["id", "title", "priority", "summarySectionIds", "readFields", "consumerActionId", "nextStep", "purpose"],
+      "required": ["id", "title", "priority", "defaultEntry", "defaultOnBucket", "summarySectionIds", "readFields", "consumerActionId", "nextStep", "purpose"],
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
         "priority": { "type": "integer", "minimum": 1 },
+        "defaultEntry": { "type": "boolean" },
+        "defaultOnBucket": { "type": "boolean" },
         "summarySectionIds": {
           "type": "array",
           "items": {

@@ -409,6 +409,8 @@ type SchemaCommandOutput = {
         id: string
         title: string
         priority: number
+        defaultEntry: boolean
+        defaultOnBucket: boolean
         summarySectionIds: Array<'platform' | 'reference' | 'executability' | 'source-executability'>
         triageBucketIds?: Array<'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'>
         readFields: string[]
@@ -529,6 +531,7 @@ type SchemaCommandOutput = {
 - `consumerActions`：把 `summarySections / triageBuckets / followUpHints` 收口成可直接消费的动作目录，回答“现在最适合执行什么消费动作、应读哪些 section/字段、下一步走什么短码”。
 - `consumerActions[].appliesWhen / triggerFields`：补一层动作 discoverability，回答“什么情况下优先选这个动作”和“先看哪些稳定字段”。
 - `consumerFlow`：把“命中哪段 summary / 哪个 triage bucket”稳定映射到“该读哪些字段、该选哪个动作卡片、下一步短码是什么”。
+- `consumerFlow[].defaultEntry / defaultOnBucket`：补一层轻量 discoverability，回答“默认先从哪条 flow 开始”以及“命中当前 bucket 时优先走哪条 flow”。
 - `failureCodes[].appliesWhen / triggerFields`、`referenceGovernanceCodes[].appliesWhen / triggerFields`：补一层失败恢复 discoverability，回答“什么情况下优先按这个失败码处理”和“先看哪些稳定错误字段”。
 - `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
@@ -585,6 +588,8 @@ const actionCards = (profile?.consumerActions ?? []).map((action) => ({
 ```ts
 const flowCards = (profile?.consumerFlow ?? []).map((step) => ({
   id: step.id,
+  defaultEntry: step.defaultEntry,
+  defaultOnBucket: step.defaultOnBucket,
   summarySections: step.summarySectionIds,
   triageBuckets: step.triageBucketIds ?? [],
   readFields: step.readFields,

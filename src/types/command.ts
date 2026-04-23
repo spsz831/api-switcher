@@ -393,6 +393,8 @@ export interface SchemaConsumerProfileFlowStep {
   id: string
   title: string
   priority: number
+  defaultEntry: boolean
+  defaultOnBucket: boolean
   summarySectionIds: SchemaSummarySection['id'][]
   triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
   readFields: string[]

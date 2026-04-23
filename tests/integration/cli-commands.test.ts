@@ -496,6 +496,8 @@ describe('cli commands integration', () => {
             id: string
             title: string
             priority: number
+            defaultEntry: boolean
+            defaultOnBucket: boolean
             summarySectionIds: string[]
             triageBucketIds?: string[]
             readFields: string[]
@@ -754,6 +756,8 @@ describe('cli commands integration', () => {
             id: 'overview-to-items',
             title: 'Overview to items',
             priority: 1,
+            defaultEntry: true,
+            defaultOnBucket: true,
             summarySectionIds: ['platform'],
             triageBucketIds: ['overview'],
             readFields: ['summary.platformStats', 'summary.triageStats', 'detections', 'platformSummary'],
@@ -765,6 +769,8 @@ describe('cli commands integration', () => {
             id: 'reference-to-governance',
             title: 'Reference to governance',
             priority: 2,
+            defaultEntry: false,
+            defaultOnBucket: true,
             summarySectionIds: ['reference'],
             triageBucketIds: ['reference-governance'],
             readFields: ['summary.referenceStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
@@ -776,6 +782,8 @@ describe('cli commands integration', () => {
             id: 'executability-to-write',
             title: 'Executability to write',
             priority: 3,
+            defaultEntry: false,
+            defaultOnBucket: true,
             summarySectionIds: ['executability'],
             triageBucketIds: ['write-readiness'],
             readFields: ['summary.executabilityStats', 'summary.triageStats', 'detections.referenceSummary', 'profiles.referenceSummary'],
@@ -932,6 +940,8 @@ describe('cli commands integration', () => {
             id: 'source-to-repair',
             title: 'Source to repair',
             priority: 1,
+            defaultEntry: true,
+            defaultOnBucket: true,
             summarySectionIds: ['source-executability'],
             triageBucketIds: ['source-blocked'],
             readFields: ['summary.sourceExecutability', 'summary.triageStats', 'sourceCompatibility', 'items.previewDecision'],
@@ -943,6 +953,8 @@ describe('cli commands integration', () => {
             id: 'executability-to-apply',
             title: 'Executability to apply',
             priority: 2,
+            defaultEntry: false,
+            defaultOnBucket: true,
             summarySectionIds: ['executability'],
             triageBucketIds: ['write-readiness'],
             readFields: ['summary.executabilityStats', 'summary.triageStats', 'items.previewDecision', 'items.fidelity'],
@@ -954,6 +966,8 @@ describe('cli commands integration', () => {
             id: 'platform-to-routing',
             title: 'Platform to routing',
             priority: 3,
+            defaultEntry: false,
+            defaultOnBucket: true,
             summarySectionIds: ['platform'],
             triageBucketIds: ['platform-routing'],
             readFields: ['summary.platformStats', 'summary.triageStats', 'platformSummary'],
