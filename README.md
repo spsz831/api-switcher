@@ -417,6 +417,17 @@ Catalog Summary:
     - readonly-import-batch: entry=import, recommended=starter-template, starterTemplate=readonly-import-batch-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-import-batch
 ```
 
+如果你要把轻量目录直接接成固定发现链路，可以把 `catalog-summary -> action -> recommended-action -> runtime payload` 固化成下面这组跳转：
+
+```text
+1. api-switcher schema --json --catalog-summary
+2. api-switcher schema --json --action preview
+3. api-switcher schema --json --recommended-action continue-to-write
+4. api-switcher preview <selector> --json
+```
+
+这条链路的语义是：先从 `catalogSummary` 找到代表 action 和 next step，再读取 action capability 确认 success/failure 优先字段，最后读取 recommended action 判断下一步是 inspect、repair、route 还是 execute，并回到真实 runtime payload。
+
 最小稳定返回示例：
 
 ```json
