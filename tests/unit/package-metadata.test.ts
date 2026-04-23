@@ -53,6 +53,21 @@ describe('package metadata', () => {
     expect(smokeScript).toContain("consumerFlow source-to-repair")
   })
 
+  it('release smoke script verifies schema consumer profile filtering contract', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema consumer profile filter json'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch')
+    expect(smokeScript).toContain('schema --json --consumer-profile returned more than one profile')
+    expect(smokeScript).toContain('schema --json --consumer-profile unexpectedly trimmed commandCatalog.actions')
+    expect(smokeScript).toContain('schema --json --consumer-profile unexpectedly trimmed schema')
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema consumer profile filter failure json'")
+    expect(smokeScript).toContain("-ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--consumer-profile', 'missing-profile')")
+    expect(smokeScript).toContain('SCHEMA_CONSUMER_PROFILE_NOT_FOUND')
+    expect(smokeScript).toContain('schema consumer profile failure payload failed public schema validation')
+  })
+
   it('release smoke script verifies current/list json platformSummary contracts', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

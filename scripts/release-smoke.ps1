@@ -306,6 +306,63 @@ Invoke-Step -Name 'schema json' -Action {
     throw 'schema --json missing readonly-import-batch consumerFlow source-to-repair'
   }
 }
+Invoke-Step -Name 'schema consumer profile filter json' -Action {
+  $payload = node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'schema --json --consumer-profile returned no payload'
+  }
+  if (-not $payload.ok -or $payload.action -ne 'schema') {
+    throw "unexpected schema --json --consumer-profile envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+
+  $consumerProfiles = @($payload.data.commandCatalog.consumerProfiles)
+  if ($consumerProfiles.Count -ne 1) {
+    throw 'schema --json --consumer-profile returned more than one profile'
+  }
+  if ($consumerProfiles[0].id -ne 'readonly-import-batch') {
+    throw "schema --json --consumer-profile returned unexpected profile: $($consumerProfiles[0].id)"
+  }
+  if (@($payload.data.commandCatalog.actions).Count -le 1) {
+    throw 'schema --json --consumer-profile unexpectedly trimmed commandCatalog.actions'
+  }
+  if ($null -eq $payload.data.schema) {
+    throw 'schema --json --consumer-profile unexpectedly trimmed schema'
+  }
+}
+Invoke-Step -Name 'schema consumer profile filter failure json' -Action {
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $stdoutPath = [System.IO.Path]::GetTempFileName()
+  $stderrPath = [System.IO.Path]::GetTempFileName()
+  $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--consumer-profile', 'missing-profile') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+  $renderedStdout = Get-Content -LiteralPath $stdoutPath -Raw
+  $renderedStderr = Get-Content -LiteralPath $stderrPath -Raw
+  Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force
+
+  if ($process.ExitCode -ne 1) {
+    throw "unexpected exit code for schema consumer profile failure: $($process.ExitCode)"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($renderedStderr)) {
+    throw "unexpected stderr for schema consumer profile failure: $renderedStderr"
+  }
+
+  $payload = $renderedStdout | ConvertFrom-Json
+  if ($payload.schemaVersion -ne $publicJsonSchemaVersion) {
+    throw "unexpected top-level schemaVersion for schema consumer profile failure: $($payload.schemaVersion)"
+  }
+  if ($payload.ok -ne $false -or $payload.action -ne 'schema') {
+    throw "unexpected schema consumer profile failure envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+  if ($null -eq $payload.error -or $payload.error.code -ne 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND') {
+    throw "unexpected error code for schema consumer profile failure: $($payload.error.code)"
+  }
+  if ($payload.error.details.consumerProfileId -ne 'missing-profile') {
+    throw "unexpected consumerProfileId for schema consumer profile failure: $($payload.error.details.consumerProfileId)"
+  }
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema)) {
+    throw "schema consumer profile failure payload failed public schema validation"
+  }
+}
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
   if ($null -eq $payload) {

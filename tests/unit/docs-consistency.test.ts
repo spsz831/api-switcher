@@ -277,6 +277,7 @@ describe('docs consistency', () => {
     expect(releaseChecklist).toContain('发布前一键 smoke 入口')
     expect(releaseChecklist).toContain('CLI help / schema --json')
     expect(releaseChecklist).toContain('schema --schema-version --json')
+    expect(releaseChecklist).toContain('schema --json --consumer-profile readonly-import-batch')
     expect(releaseChecklist).toContain('`dist` 构建产物')
     expect(releaseChecklist).toContain('当前公开 contract')
     expect(releaseChecklist).toContain('可发现性')
