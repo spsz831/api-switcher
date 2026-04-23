@@ -477,7 +477,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'import':
       return ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats', 'items', 'sourceCompatibility']
     case 'import-apply':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'changedFiles', 'backupId']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'dryRun', 'changedFiles', 'backupId']
     case 'list':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
@@ -710,7 +710,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'scopeCapabilities', channel: 'success', presence: 'always' },
         { path: 'scopeAvailability', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_SCOPE_AVAILABILITY_IS_RESOLVED' },
         { path: 'changedFiles', channel: 'success', presence: 'always' },
-        { path: 'backupId', channel: 'success', presence: 'always' },
+        { path: 'dryRun', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_DRY_RUN_IS_REQUESTED' },
+        { path: 'backupId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_BACKUP_IS_CREATED' },
         { path: 'error.details.referenceGovernance', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED' },
         { path: 'error.details.previewDecision', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_IMPORT_APPLY_FAILURE_PROVIDES_PREVIEW_DECISION' },
         { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
@@ -1128,7 +1129,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看 apply 的平台级聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义和 scope 决策。' },
-          { stage: 'artifacts', fields: ['changedFiles', 'backupId'], purpose: '最后消费落盘产物。' },
+          { stage: 'artifacts', fields: ['dryRun', 'changedFiles', 'backupId'], purpose: '最后消费执行模式和落盘产物。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
