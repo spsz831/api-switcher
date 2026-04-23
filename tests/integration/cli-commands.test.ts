@@ -1553,6 +1553,7 @@ describe('cli commands integration', () => {
       failureCodes: [
         { code: 'SCHEMA_ACTION_NOT_FOUND', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry', appliesWhen: '当错误来自输入参数或命令参数不合法时优先使用。', triggerFields: ['error.code'] },
         { code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry', appliesWhen: '当错误来自输入参数或命令参数不合法时优先使用。', triggerFields: ['error.code'] },
+        { code: 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry', appliesWhen: '当错误来自输入参数或命令参数不合法时优先使用。', triggerFields: ['error.code'] },
       ],
       fieldPresence: [
         { path: 'schemaVersion', channel: 'success', presence: 'always' },
@@ -1672,6 +1673,63 @@ describe('cli commands integration', () => {
       details: {
         action: 'missing-action',
         availableActions: ['add', 'current', 'export', 'import', 'import-apply', 'list', 'preview', 'rollback', 'schema', 'use', 'validate'],
+      },
+    })
+    expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
+  })
+
+  it('schema --json --recommended-action 只返回目标 recommended action', async () => {
+    const result = await runCli(['schema', '--json', '--recommended-action', 'continue-to-write'])
+    const payload = parseJsonResult<{
+      commandCatalog: {
+        recommendedActions?: Array<{ code: string }>
+        actions: Array<{ action: string }>
+        consumerProfiles?: Array<{ id: string }>
+      }
+      schema?: Record<string, unknown>
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+    expect(payload.data?.commandCatalog.recommendedActions?.map((item) => item.code)).toEqual(['continue-to-write'])
+    expect(payload.data?.commandCatalog.actions.length).toBeGreaterThan(1)
+    expect(payload.data?.commandCatalog.consumerProfiles?.length).toBeGreaterThan(1)
+    expect(payload.data?.schema).toBeDefined()
+  })
+
+  it('schema --json --recommended-action 对未知 code 返回稳定失败 envelope', async () => {
+    const result = await runCli(['schema', '--json', '--recommended-action', 'missing-step'])
+    const staticSchema = JSON.parse(await fs.readFile(publicJsonSchemaPath, 'utf8')) as JsonSchema
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('schema')
+    expect(payload.error).toEqual({
+      code: 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND',
+      message: '未找到指定 schema recommended action: missing-step',
+      details: {
+        code: 'missing-step',
+        availableRecommendedActions: [
+          'inspect-items',
+          'review-reference-details',
+          'repair-source-input',
+          'group-by-platform',
+          'continue-to-write',
+          'fix-input-and-retry',
+          'select-existing-resource',
+          'resolve-scope-before-retry',
+          'confirm-before-write',
+          'check-platform-support',
+          'inspect-runtime-details',
+          'check-import-source',
+          'fix-reference-input',
+          'resolve-reference-support',
+          'migrate-inline-secret',
+        ],
       },
     })
     expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
@@ -1812,6 +1870,7 @@ describe('cli commands integration', () => {
     expect(schema.stdout).toContain('--schema-version')
     expect(schema.stdout).toContain('--consumer-profile <id>')
     expect(schema.stdout).toContain('--action <action>')
+    expect(schema.stdout).toContain('--recommended-action <code>')
   })
 
   it('schema --schema-version 只输出当前 public JSON schema 版本', async () => {

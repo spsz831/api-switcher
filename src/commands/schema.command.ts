@@ -10,12 +10,14 @@ export function registerSchemaCommand(program: Command): void {
     .option('--schema-version', '仅输出 public JSON schema 版本')
     .option('--consumer-profile <id>', '仅返回指定 commandCatalog.consumerProfiles 条目')
     .option('--action <action>', '仅返回指定 commandCatalog.actions 条目')
-    .action(async (options: { json?: boolean; schemaVersion?: boolean; consumerProfile?: string; action?: string }) => {
+    .option('--recommended-action <code>', '仅返回指定 commandCatalog.recommendedActions 条目')
+    .action(async (options: { json?: boolean; schemaVersion?: boolean; consumerProfile?: string; action?: string; recommendedAction?: string }) => {
       const service = new SchemaService()
       outputCommandResult(
         options.schemaVersion ? service.getPublicJsonSchemaVersion() : service.getPublicJsonSchema({
           consumerProfile: options.consumerProfile,
           action: options.action,
+          recommendedAction: options.recommendedAction,
         }),
         options.json,
       )

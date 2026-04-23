@@ -288,6 +288,14 @@ api-switcher schema --json --action import-apply
 
 这不会裁剪 `commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `actions[]` 缩到目标命令；未知 action 会返回 `SCHEMA_ACTION_NOT_FOUND`。
 
+如果只需要某一个稳定动作词条，可以用 `--recommended-action <code>` 过滤 `commandCatalog.recommendedActions[]`，例如：
+
+```bash
+api-switcher schema --json --recommended-action continue-to-write
+```
+
+这不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `recommendedActions[]` 缩到目标动作；未知 code 会返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
+
 最小稳定返回示例：
 
 ```json

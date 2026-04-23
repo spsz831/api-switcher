@@ -22,6 +22,7 @@ import {
 
 export type SchemaConsumerProfileFilter = SchemaConsumerProfile['id']
 export type SchemaActionFilter = typeof COMMAND_ACTIONS[number]
+export type SchemaRecommendedActionFilter = SchemaRecommendedAction['code']
 
 const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
   {
@@ -551,6 +552,7 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
       return withFailureGuidance([
         { code: 'SCHEMA_ACTION_NOT_FOUND', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
       ])
     case 'use':
       return withFailureGuidance([
@@ -1356,18 +1358,25 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
   }
 }
 
-function buildCommandCatalog(options: { consumerProfile?: SchemaConsumerProfileFilter; action?: SchemaActionFilter } = {}) {
+function buildCommandCatalog(options: {
+  consumerProfile?: SchemaConsumerProfileFilter
+  action?: SchemaActionFilter
+  recommendedAction?: SchemaRecommendedActionFilter
+} = {}) {
   const consumerProfiles = options.consumerProfile
     ? SCHEMA_CONSUMER_PROFILES.filter((profile) => profile.id === options.consumerProfile)
     : SCHEMA_CONSUMER_PROFILES
   const actions = options.action
     ? SCHEMA_ACTION_CAPABILITIES.filter((capability) => capability.action === options.action)
     : SCHEMA_ACTION_CAPABILITIES
+  const recommendedActions = options.recommendedAction
+    ? SCHEMA_RECOMMENDED_ACTIONS.filter((action) => action.code === options.recommendedAction)
+    : SCHEMA_RECOMMENDED_ACTIONS
 
   return {
     actions,
     consumerProfiles,
-    recommendedActions: SCHEMA_RECOMMENDED_ACTIONS,
+    recommendedActions,
   }
 }
 
@@ -1382,9 +1391,10 @@ export class SchemaService {
     }
   }
 
-  getPublicJsonSchema(options: { consumerProfile?: string; action?: string } = {}): CommandResult<SchemaCommandOutput> {
+  getPublicJsonSchema(options: { consumerProfile?: string; action?: string; recommendedAction?: string } = {}): CommandResult<SchemaCommandOutput> {
     let consumerProfileFilter: SchemaConsumerProfileFilter | undefined
     let actionFilter: SchemaActionFilter | undefined
+    let recommendedActionFilter: SchemaRecommendedActionFilter | undefined
 
     if (options.consumerProfile) {
       const consumerProfile = SCHEMA_CONSUMER_PROFILES.find((profile) => profile.id === options.consumerProfile)
@@ -1424,6 +1434,25 @@ export class SchemaService {
       actionFilter = action
     }
 
+    if (options.recommendedAction) {
+      const recommendedAction = SCHEMA_RECOMMENDED_ACTIONS.find((item) => item.code === options.recommendedAction)
+      if (!recommendedAction) {
+        return {
+          ok: false,
+          action: 'schema',
+          error: {
+            code: 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND',
+            message: `未找到指定 schema recommended action: ${options.recommendedAction}`,
+            details: {
+              code: options.recommendedAction,
+              availableRecommendedActions: SCHEMA_RECOMMENDED_ACTIONS.map((item) => item.code),
+            },
+          },
+        }
+      }
+      recommendedActionFilter = recommendedAction.code
+    }
+
     return {
       ok: true,
       action: 'schema',
@@ -1433,6 +1462,7 @@ export class SchemaService {
         commandCatalog: buildCommandCatalog({
           consumerProfile: consumerProfileFilter,
           action: actionFilter,
+          recommendedAction: recommendedActionFilter,
         }),
         schema: publicJsonSchema,
       },

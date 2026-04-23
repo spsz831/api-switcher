@@ -83,6 +83,22 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema action failure payload failed public schema validation')
   })
 
+  it('release smoke script verifies schema recommended action filtering contract', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema recommended action filter json'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --json --recommended-action continue-to-write')
+    expect(smokeScript).toContain('schema --json --recommended-action returned more than one recommended action')
+    expect(smokeScript).toContain('schema --json --recommended-action unexpectedly trimmed commandCatalog.actions')
+    expect(smokeScript).toContain('schema --json --recommended-action unexpectedly trimmed commandCatalog.consumerProfiles')
+    expect(smokeScript).toContain('schema --json --recommended-action unexpectedly trimmed schema')
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema recommended action filter failure json'")
+    expect(smokeScript).toContain("-ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--recommended-action', 'missing-step')")
+    expect(smokeScript).toContain('SCHEMA_RECOMMENDED_ACTION_NOT_FOUND')
+    expect(smokeScript).toContain('schema recommended action failure payload failed public schema validation')
+  })
+
   it('release smoke script verifies current/list json platformSummary contracts', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

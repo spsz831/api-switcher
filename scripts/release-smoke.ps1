@@ -420,6 +420,66 @@ Invoke-Step -Name 'schema action filter failure json' -Action {
     throw "schema action failure payload failed public schema validation"
   }
 }
+Invoke-Step -Name 'schema recommended action filter json' -Action {
+  $payload = node dist/src/cli/index.js schema --json --recommended-action continue-to-write | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'schema --json --recommended-action returned no payload'
+  }
+  if (-not $payload.ok -or $payload.action -ne 'schema') {
+    throw "unexpected schema --json --recommended-action envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+
+  $recommendedActions = @($payload.data.commandCatalog.recommendedActions)
+  if ($recommendedActions.Count -ne 1) {
+    throw 'schema --json --recommended-action returned more than one recommended action'
+  }
+  if ($recommendedActions[0].code -ne 'continue-to-write') {
+    throw "schema --json --recommended-action returned unexpected code: $($recommendedActions[0].code)"
+  }
+  if (@($payload.data.commandCatalog.actions).Count -le 1) {
+    throw 'schema --json --recommended-action unexpectedly trimmed commandCatalog.actions'
+  }
+  if (@($payload.data.commandCatalog.consumerProfiles).Count -le 1) {
+    throw 'schema --json --recommended-action unexpectedly trimmed commandCatalog.consumerProfiles'
+  }
+  if ($null -eq $payload.data.schema) {
+    throw 'schema --json --recommended-action unexpectedly trimmed schema'
+  }
+}
+Invoke-Step -Name 'schema recommended action filter failure json' -Action {
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $stdoutPath = [System.IO.Path]::GetTempFileName()
+  $stderrPath = [System.IO.Path]::GetTempFileName()
+  $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--recommended-action', 'missing-step') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+  $renderedStdout = Get-Content -LiteralPath $stdoutPath -Raw
+  $renderedStderr = Get-Content -LiteralPath $stderrPath -Raw
+  Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force
+
+  if ($process.ExitCode -ne 1) {
+    throw "unexpected exit code for schema recommended action failure: $($process.ExitCode)"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($renderedStderr)) {
+    throw "unexpected stderr for schema recommended action failure: $renderedStderr"
+  }
+
+  $payload = $renderedStdout | ConvertFrom-Json
+  if ($payload.schemaVersion -ne $publicJsonSchemaVersion) {
+    throw "unexpected top-level schemaVersion for schema recommended action failure: $($payload.schemaVersion)"
+  }
+  if ($payload.ok -ne $false -or $payload.action -ne 'schema') {
+    throw "unexpected schema recommended action failure envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+  if ($null -eq $payload.error -or $payload.error.code -ne 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND') {
+    throw "unexpected error code for schema recommended action failure: $($payload.error.code)"
+  }
+  if ($payload.error.details.code -ne 'missing-step') {
+    throw "unexpected code for schema recommended action failure: $($payload.error.details.code)"
+  }
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema)) {
+    throw "schema recommended action failure payload failed public schema validation"
+  }
+}
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
   if ($null -eq $payload) {

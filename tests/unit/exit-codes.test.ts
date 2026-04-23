@@ -27,6 +27,7 @@ const businessFailureCodes = [
   'IMPORT_APPLY_FAILED',
   'SCHEMA_CONSUMER_PROFILE_NOT_FOUND',
   'SCHEMA_ACTION_NOT_FOUND',
+  'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND',
 ] as const
 
 describe('exit codes', () => {

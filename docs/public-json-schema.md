@@ -11,6 +11,7 @@ api-switcher schema --json
 api-switcher schema --schema-version --json
 api-switcher schema --json --consumer-profile readonly-import-batch
 api-switcher schema --json --action import-apply
+api-switcher schema --json --recommended-action continue-to-write
 ```
 
 ## 文档分工
@@ -334,6 +335,8 @@ type PlatformExplainableSummary = {
 `schema --json --consumer-profile <id>` 是同一份 schema catalog 的轻量过滤入口。它只过滤 `commandCatalog.consumerProfiles[]`，不会裁剪 `commandCatalog.actions[]` 或 `schema`，适合只接入 `readonly-state-audit`、`readonly-import-batch` 或 `single-platform-write` 其中一类产品面。未知 id 返回 `SCHEMA_CONSUMER_PROFILE_NOT_FOUND`。
 
 `schema --json --action <action>` 是对称的命令级轻量过滤入口。它只过滤 `commandCatalog.actions[]`，不会裁剪 `commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `current`、`import-apply` 等单个命令的调用方。未知 action 返回 `SCHEMA_ACTION_NOT_FOUND`。
+
+`schema --json --recommended-action <code>` 是稳定动作词表的轻量直取入口。它只过滤 `commandCatalog.recommendedActions[]`，不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `continue-to-write`、`fix-input-and-retry` 这类动作短码目录。未知 code 返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
 ```ts
 type SchemaCommandOutput = {
