@@ -70,6 +70,20 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema --json missing readonly-import-batch starter recipe')
   })
 
+  it('release smoke script verifies schema starter templates discoverability', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain('starterTemplate')
+    expect(smokeScript).toContain('readonly-state-audit-minimal-reader')
+    expect(smokeScript).toContain('readonly-import-batch-minimal-reader')
+    expect(smokeScript).toContain('summary.platformStats')
+    expect(smokeScript).toContain('summary.sourceExecutability')
+    expect(smokeScript).toContain('error.code')
+    expect(smokeScript).toContain('schema --json missing readonly-state-audit starter template')
+    expect(smokeScript).toContain('schema --json missing readonly-import-batch starter template')
+  })
+
   it('release smoke script verifies schema consumer profile filtering contract', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

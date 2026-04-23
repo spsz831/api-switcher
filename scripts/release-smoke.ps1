@@ -318,6 +318,30 @@ Invoke-Step -Name 'schema json' -Action {
     throw 'schema --json missing readonly-import-batch consumerFlow source-to-repair'
   }
 
+  $readonlyStateAuditStarterTemplate = $readonlyStateAudit.starterTemplate
+  if (
+    $null -eq $readonlyStateAuditStarterTemplate `
+      -or $readonlyStateAuditStarterTemplate.id -ne 'readonly-state-audit-minimal-reader' `
+      -or (@($readonlyStateAuditStarterTemplate.summary.fields) -notcontains 'summary.platformStats') `
+      -or (@($readonlyStateAuditStarterTemplate.items.sharedFields) -notcontains 'platformSummary') `
+      -or (@($readonlyStateAuditStarterTemplate.failure.fields) -notcontains 'error.code') `
+      -or $readonlyStateAuditStarterTemplate.flow.defaultConsumerFlowId -ne 'overview-to-items'
+  ) {
+    throw 'schema --json missing readonly-state-audit starter template'
+  }
+
+  $readonlyImportBatchStarterTemplate = $readonlyImportBatch.starterTemplate
+  if (
+    $null -eq $readonlyImportBatchStarterTemplate `
+      -or $readonlyImportBatchStarterTemplate.id -ne 'readonly-import-batch-minimal-reader' `
+      -or (@($readonlyImportBatchStarterTemplate.summary.fields) -notcontains 'summary.sourceExecutability') `
+      -or (@($readonlyImportBatchStarterTemplate.items.sharedFields) -notcontains 'previewDecision') `
+      -or (@($readonlyImportBatchStarterTemplate.failure.fields) -notcontains 'error.code') `
+      -or $readonlyImportBatchStarterTemplate.flow.defaultConsumerFlowId -ne 'source-to-repair'
+  ) {
+    throw 'schema --json missing readonly-import-batch starter template'
+  }
+
   $readonlyStateAuditStarterRecipe = @($readonlyStateAudit.starterRecipes | Where-Object {
     $_.id -eq 'readonly-state-audit-overview' `
       -and $_.discover -eq 'api-switcher schema --json --catalog-summary' `
