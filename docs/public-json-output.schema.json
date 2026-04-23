@@ -556,6 +556,9 @@
         "commandCatalog": {
           "$ref": "#/$defs/SchemaCommandCatalog"
         },
+        "catalogSummary": {
+          "$ref": "#/$defs/SchemaCatalogSummary"
+        },
         "schema": {
           "type": "object"
         }
@@ -1135,6 +1138,102 @@
         "recommendedActions": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaRecommendedAction" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummary": {
+      "type": "object",
+      "description": "schema --json --catalog-summary 的轻量目录模式。只暴露 consumerProfiles / actions / recommendedActions 的稳定摘要和计数，不再展开完整 commandCatalog、schemaId 或 schema。",
+      "required": ["counts", "consumerProfiles", "actions", "recommendedActions"],
+      "properties": {
+        "counts": { "$ref": "#/$defs/SchemaCatalogSummaryCounts" },
+        "consumerProfiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryConsumerProfile" }
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryAction" }
+        },
+        "recommendedActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryRecommendedAction" }
+        }
+      },
+      "examples": [
+        {
+          "counts": {
+            "consumerProfiles": 3,
+            "actions": 11,
+            "recommendedActions": 15
+          },
+          "consumerProfiles": [
+            { "id": "readonly-state-audit", "bestEntryAction": "current" },
+            { "id": "single-platform-write", "bestEntryAction": "preview" },
+            { "id": "readonly-import-batch", "bestEntryAction": "import" }
+          ],
+          "actions": [
+            { "action": "add" },
+            { "action": "current" },
+            { "action": "export" }
+          ],
+          "recommendedActions": [
+            { "code": "inspect-items", "family": "inspect" },
+            { "code": "continue-to-write", "family": "execute" },
+            { "code": "migrate-inline-secret", "family": "repair" }
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryCounts": {
+      "type": "object",
+      "required": ["consumerProfiles", "actions", "recommendedActions"],
+      "properties": {
+        "consumerProfiles": { "type": "integer", "minimum": 0 },
+        "actions": { "type": "integer", "minimum": 0 },
+        "recommendedActions": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryConsumerProfile": {
+      "type": "object",
+      "required": ["id", "bestEntryAction"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
+        },
+        "bestEntryAction": {
+          "type": "string",
+          "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryAction": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["add", "current", "export", "import", "import-apply", "list", "preview", "rollback", "schema", "use", "validate"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryRecommendedAction": {
+      "type": "object",
+      "required": ["code", "family"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write", "fix-input-and-retry", "select-existing-resource", "resolve-scope-before-retry", "confirm-before-write", "check-platform-support", "inspect-runtime-details", "check-import-source", "fix-reference-input", "resolve-reference-support", "migrate-inline-secret"]
+        },
+        "family": {
+          "type": "string",
+          "enum": ["inspect", "repair", "route", "execute"]
         }
       },
       "additionalProperties": false

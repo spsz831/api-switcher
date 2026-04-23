@@ -14,6 +14,8 @@ import {
   type SchemaActionFieldSource,
   type SchemaActionFieldStability,
   type SchemaCommandOutput,
+  type SchemaCommandCatalog,
+  type SchemaCatalogSummary,
   type SchemaFieldSemanticBinding,
   type SchemaReadOrderGroups,
   type SchemaRecommendedAction,
@@ -1380,6 +1382,31 @@ function buildCommandCatalog(options: {
   }
 }
 
+function buildCatalogSummary(commandCatalog: SchemaCommandCatalog): SchemaCatalogSummary {
+  const consumerProfiles = commandCatalog.consumerProfiles ?? []
+  const actions = commandCatalog.actions
+  const recommendedActions = commandCatalog.recommendedActions ?? []
+
+  return {
+    counts: {
+      consumerProfiles: consumerProfiles.length,
+      actions: actions.length,
+      recommendedActions: recommendedActions.length,
+    },
+    consumerProfiles: consumerProfiles.map((profile) => ({
+      id: profile.id,
+      bestEntryAction: profile.bestEntryAction,
+    })),
+    actions: actions.map((action) => ({
+      action: action.action,
+    })),
+    recommendedActions: recommendedActions.map((action) => ({
+      code: action.code,
+      family: action.family,
+    })),
+  }
+}
+
 export class SchemaService {
   getPublicJsonSchemaVersion(): CommandResult<SchemaCommandOutput> {
     return {
@@ -1391,7 +1418,7 @@ export class SchemaService {
     }
   }
 
-  getPublicJsonSchema(options: { consumerProfile?: string; action?: string; recommendedAction?: string } = {}): CommandResult<SchemaCommandOutput> {
+  getPublicJsonSchema(options: { consumerProfile?: string; action?: string; recommendedAction?: string; catalogSummary?: boolean } = {}): CommandResult<SchemaCommandOutput> {
     let consumerProfileFilter: SchemaConsumerProfileFilter | undefined
     let actionFilter: SchemaActionFilter | undefined
     let recommendedActionFilter: SchemaRecommendedActionFilter | undefined
@@ -1453,18 +1480,26 @@ export class SchemaService {
       recommendedActionFilter = recommendedAction.code
     }
 
+    const commandCatalog = buildCommandCatalog({
+      consumerProfile: consumerProfileFilter,
+      action: actionFilter,
+      recommendedAction: recommendedActionFilter,
+    })
+
     return {
       ok: true,
       action: 'schema',
       data: {
         schemaVersion: PUBLIC_JSON_SCHEMA_VERSION,
-        schemaId: publicJsonSchema.$id,
-        commandCatalog: buildCommandCatalog({
-          consumerProfile: consumerProfileFilter,
-          action: actionFilter,
-          recommendedAction: recommendedActionFilter,
-        }),
-        schema: publicJsonSchema,
+        ...(options.catalogSummary
+          ? {
+            catalogSummary: buildCatalogSummary(commandCatalog),
+          }
+          : {
+            schemaId: publicJsonSchema.$id,
+            commandCatalog,
+            schema: publicJsonSchema,
+          }),
       },
     }
   }

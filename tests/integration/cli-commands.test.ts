@@ -1735,6 +1735,75 @@ describe('cli commands integration', () => {
     expect(validatePayloadAgainstPublicSchema(staticSchema, payload)).toBe(true)
   })
 
+  it('schema --json --catalog-summary 只返回轻量 catalog 索引', async () => {
+    const result = await runCli(['schema', '--json', '--catalog-summary'])
+    const payload = parseJsonResult<{
+      catalogSummary?: {
+        counts: {
+          consumerProfiles: number
+          actions: number
+          recommendedActions: number
+        }
+        consumerProfiles: Array<{ id: string; bestEntryAction: string }>
+        actions: Array<{ action: string }>
+        recommendedActions: Array<{ code: string; family: string }>
+      }
+      commandCatalog?: unknown
+      schema?: unknown
+      schemaId?: string
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+    expect(payload.data?.catalogSummary).toEqual({
+      counts: {
+        consumerProfiles: 3,
+        actions: 11,
+        recommendedActions: 15,
+      },
+      consumerProfiles: [
+        { id: 'readonly-state-audit', bestEntryAction: 'current' },
+        { id: 'single-platform-write', bestEntryAction: 'preview' },
+        { id: 'readonly-import-batch', bestEntryAction: 'import' },
+      ],
+      actions: [
+        { action: 'add' },
+        { action: 'current' },
+        { action: 'export' },
+        { action: 'import' },
+        { action: 'import-apply' },
+        { action: 'list' },
+        { action: 'preview' },
+        { action: 'rollback' },
+        { action: 'schema' },
+        { action: 'use' },
+        { action: 'validate' },
+      ],
+      recommendedActions: [
+        { code: 'inspect-items', family: 'inspect' },
+        { code: 'review-reference-details', family: 'inspect' },
+        { code: 'repair-source-input', family: 'repair' },
+        { code: 'group-by-platform', family: 'route' },
+        { code: 'continue-to-write', family: 'execute' },
+        { code: 'fix-input-and-retry', family: 'repair' },
+        { code: 'select-existing-resource', family: 'repair' },
+        { code: 'resolve-scope-before-retry', family: 'repair' },
+        { code: 'confirm-before-write', family: 'execute' },
+        { code: 'check-platform-support', family: 'repair' },
+        { code: 'inspect-runtime-details', family: 'inspect' },
+        { code: 'check-import-source', family: 'repair' },
+        { code: 'fix-reference-input', family: 'repair' },
+        { code: 'resolve-reference-support', family: 'repair' },
+        { code: 'migrate-inline-secret', family: 'repair' },
+      ],
+    })
+    expect(payload.data?.commandCatalog).toBeUndefined()
+    expect(payload.data?.schema).toBeUndefined()
+    expect(payload.data?.schemaId).toBeUndefined()
+  })
+
   it('schema --json 暴露 use/import-apply 失败态 referenceGovernance 消费入口', async () => {
     const result = await runCli(['schema', '--json'])
     const payload = parseJsonResult<{
@@ -1871,6 +1940,9 @@ describe('cli commands integration', () => {
     expect(schema.stdout).toContain('--consumer-profile <id>')
     expect(schema.stdout).toContain('--action <action>')
     expect(schema.stdout).toContain('--recommended-action <code>')
+    expect(schema.stdout).toContain('--catalog-summary')
+    expect(schema.stdout).toContain('先用 --catalog-summary')
+    expect(schema.stdout).toContain('完整 catalog')
   })
 
   it('schema --schema-version 只输出当前 public JSON schema 版本', async () => {

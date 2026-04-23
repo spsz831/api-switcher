@@ -73,6 +73,18 @@ function Get-ObjectPropertyValue {
   return $Value.PSObject.Properties[$Name].Value
 }
 
+function Get-PublicSchema {
+  $cachedSchemaVariable = Get-Variable -Name CachedPublicSchema -Scope Script -ErrorAction SilentlyContinue
+  if ($null -ne $cachedSchemaVariable -and $null -ne $cachedSchemaVariable.Value) {
+    return $cachedSchemaVariable.Value
+  }
+
+  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
+  $normalizedSchemaJson = node -e "const fs=require('fs'); const path=process.argv[1]; process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync(path,'utf8'))));" $schemaPath
+  $script:CachedPublicSchema = $normalizedSchemaJson | ConvertFrom-Json
+  return $script:CachedPublicSchema
+}
+
 function Resolve-SchemaRef {
   param(
     [Parameter(Mandatory = $true)]
@@ -330,8 +342,7 @@ Invoke-Step -Name 'schema consumer profile filter json' -Action {
   }
 }
 Invoke-Step -Name 'schema consumer profile filter failure json' -Action {
-  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
-  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $publicSchema = Get-PublicSchema
   $stdoutPath = [System.IO.Path]::GetTempFileName()
   $stderrPath = [System.IO.Path]::GetTempFileName()
   $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--consumer-profile', 'missing-profile') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
@@ -387,8 +398,7 @@ Invoke-Step -Name 'schema action filter json' -Action {
   }
 }
 Invoke-Step -Name 'schema action filter failure json' -Action {
-  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
-  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $publicSchema = Get-PublicSchema
   $stdoutPath = [System.IO.Path]::GetTempFileName()
   $stderrPath = [System.IO.Path]::GetTempFileName()
   $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--action', 'missing-action') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
@@ -447,8 +457,7 @@ Invoke-Step -Name 'schema recommended action filter json' -Action {
   }
 }
 Invoke-Step -Name 'schema recommended action filter failure json' -Action {
-  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
-  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $publicSchema = Get-PublicSchema
   $stdoutPath = [System.IO.Path]::GetTempFileName()
   $stderrPath = [System.IO.Path]::GetTempFileName()
   $process = Start-Process -FilePath 'node' -ArgumentList @('dist/src/cli/index.js', 'schema', '--json', '--recommended-action', 'missing-step') -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
@@ -480,6 +489,38 @@ Invoke-Step -Name 'schema recommended action filter failure json' -Action {
     throw "schema recommended action failure payload failed public schema validation"
   }
 }
+Invoke-Step -Name 'schema catalog summary json' -Action {
+  $publicSchema = Get-PublicSchema
+  $payload = node dist/src/cli/index.js schema --json --catalog-summary | ConvertFrom-Json
+  if ($null -eq $payload) {
+    throw 'schema --json --catalog-summary returned no payload'
+  }
+  if (-not $payload.ok -or $payload.action -ne 'schema') {
+    throw "unexpected schema --json --catalog-summary envelope: $($payload | ConvertTo-Json -Depth 20)"
+  }
+  if ($payload.data.catalogSummary.counts.consumerProfiles -ne 3) {
+    throw 'schema --json --catalog-summary returned unexpected catalogSummary.counts.consumerProfiles'
+  }
+  if ($payload.data.catalogSummary.counts.actions -ne 11) {
+    throw 'schema --json --catalog-summary returned unexpected catalogSummary.counts.actions'
+  }
+  if ($payload.data.catalogSummary.counts.recommendedActions -ne 15) {
+    throw 'schema --json --catalog-summary returned unexpected catalogSummary.counts.recommendedActions'
+  }
+  $dataPropertyNames = @($payload.data.PSObject.Properties.Name)
+  if ($dataPropertyNames -contains 'commandCatalog') {
+    throw 'schema --json --catalog-summary unexpectedly returned commandCatalog'
+  }
+  if ($dataPropertyNames -contains 'schemaId') {
+    throw 'schema --json --catalog-summary unexpectedly returned schemaId'
+  }
+  if ($dataPropertyNames -contains 'schema') {
+    throw 'schema --json --catalog-summary unexpectedly returned schema'
+  }
+  if (-not (Validate-SchemaNode -Schema $publicSchema -Value $payload -RootSchema $publicSchema)) {
+    throw 'schema catalog summary payload failed public schema validation'
+  }
+}
 Invoke-Step -Name 'schema version json' -Action {
   $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
   if ($null -eq $payload) {
@@ -499,12 +540,48 @@ Invoke-Step -Name 'schema version json' -Action {
   }
 }
 Invoke-Step -Name 'public schema validation smoke' -Action {
-  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
-  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $publicSchema = Get-PublicSchema
   $schemaVersionPayload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
 
   if (-not (Validate-SchemaNode -Schema $publicSchema -Value $schemaVersionPayload -RootSchema $publicSchema)) {
     throw "schemaVersion payload failed public schema validation"
+  }
+}
+Invoke-Step -Name 'public schema catalog summary discoverability' -Action {
+  $publicSchema = Get-PublicSchema
+  $schemaDefs = Get-ObjectPropertyValue -Value $publicSchema -Name '$defs'
+  $schemaCatalogSummary = Get-ObjectPropertyValue -Value $schemaDefs -Name 'SchemaCatalogSummary'
+
+  if ($null -eq $schemaCatalogSummary) {
+    throw 'public schema missing SchemaCatalogSummary'
+  }
+  if ([string]::IsNullOrWhiteSpace($schemaCatalogSummary.description)) {
+    throw 'SchemaCatalogSummary missing description for catalog-summary discoverability'
+  }
+  if ($schemaCatalogSummary.description -notmatch 'consumerProfiles / actions / recommendedActions') {
+    throw 'SchemaCatalogSummary description lost catalogSummary summary fields'
+  }
+
+  $examples = @($schemaCatalogSummary.examples)
+  if ($examples.Count -lt 1) {
+    throw 'SchemaCatalogSummary missing examples for catalog-summary discoverability'
+  }
+
+  $firstExample = $examples[0]
+  if ($firstExample.counts.consumerProfiles -ne 3) {
+    throw 'SchemaCatalogSummary example lost consumerProfiles count'
+  }
+  if ($firstExample.counts.actions -ne 11) {
+    throw 'SchemaCatalogSummary example lost actions count'
+  }
+  if ($firstExample.counts.recommendedActions -ne 15) {
+    throw 'SchemaCatalogSummary example lost recommendedActions count'
+  }
+  if ($null -eq ($firstExample.consumerProfiles | Where-Object { $_.id -eq 'readonly-state-audit' -and $_.bestEntryAction -eq 'current' } | Select-Object -First 1)) {
+    throw 'SchemaCatalogSummary example lost readonly-state-audit consumer profile'
+  }
+  if ($null -eq ($firstExample.recommendedActions | Where-Object { $_.code -eq 'continue-to-write' -and $_.family -eq 'execute' } | Select-Object -First 1)) {
+    throw 'SchemaCatalogSummary example lost continue-to-write recommended action'
   }
 }
 Invoke-Step -Name 'current list json platform summaries' -Action {
@@ -682,8 +759,7 @@ Invoke-Step -Name 'unknown command failure' -Action {
   }
 }
 Invoke-Step -Name 'json failure envelope' -Action {
-  $schemaPath = Join-Path -Path $repoRoot -ChildPath 'docs/public-json-output.schema.json'
-  $publicSchema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+  $publicSchema = Get-PublicSchema
   $missingImportFile = Join-Path -Path $repoRoot -ChildPath 'missing-file.json'
   $stdoutPath = [System.IO.Path]::GetTempFileName()
   $stderrPath = [System.IO.Path]::GetTempFileName()

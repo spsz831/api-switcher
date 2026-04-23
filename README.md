@@ -296,6 +296,51 @@ api-switcher schema --json --recommended-action continue-to-write
 
 这不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或完整 `schema`，只把 `recommendedActions[]` 缩到目标动作；未知 code 会返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
+如果只是想先拿一份轻量目录索引，而不是完整 schema catalog，可以用 `--catalog-summary`：
+
+```bash
+api-switcher schema --json --catalog-summary
+```
+
+它会返回 `data.catalogSummary`，只包含 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`。
+
+推荐的最小发现顺序是：先用 `schema --json --catalog-summary` 找到目标 `consumerProfile / action / recommendedAction`，只在需要字段级 contract、机器可读 schema 或完整 capability catalog 时，再按需切到完整 `schema --json`。
+
+`--catalog-summary` 的最小成功样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "schema",
+  "data": {
+    "schemaVersion": "2026-04-15.public-json.v1",
+    "catalogSummary": {
+      "counts": {
+        "consumerProfiles": 3,
+        "actions": 11,
+        "recommendedActions": 15
+      },
+      "consumerProfiles": [
+        { "id": "readonly-state-audit", "bestEntryAction": "current" },
+        { "id": "single-platform-write", "bestEntryAction": "preview" },
+        { "id": "readonly-import-batch", "bestEntryAction": "import" }
+      ],
+      "actions": [
+        { "action": "add" },
+        { "action": "current" },
+        { "action": "export" }
+      ],
+      "recommendedActions": [
+        { "code": "inspect-items", "family": "inspect" },
+        { "code": "continue-to-write", "family": "execute" },
+        { "code": "migrate-inline-secret", "family": "repair" }
+      ]
+    }
+  }
+}
+```
+
 最小稳定返回示例：
 
 ```json

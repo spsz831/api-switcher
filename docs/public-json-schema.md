@@ -12,6 +12,7 @@ api-switcher schema --schema-version --json
 api-switcher schema --json --consumer-profile readonly-import-batch
 api-switcher schema --json --action import-apply
 api-switcher schema --json --recommended-action continue-to-write
+api-switcher schema --json --catalog-summary
 ```
 
 ## 文档分工
@@ -338,10 +339,82 @@ type PlatformExplainableSummary = {
 
 `schema --json --recommended-action <code>` 是稳定动作词表的轻量直取入口。它只过滤 `commandCatalog.recommendedActions[]`，不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `continue-to-write`、`fix-input-and-retry` 这类动作短码目录。未知 code 返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
+`schema --json --catalog-summary` 是 schema catalog 的轻量目录模式。它直接返回 `data.catalogSummary`，只暴露 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`，适合只想先发现入口、还不需要下载整份 catalog 的调用方。
+
+推荐的最小发现顺序可以固定为：先读取 `catalogSummary` 判断该走哪类画像、命令或推荐动作；如果需要字段级 contract，再切到完整 `schema --json`；如果只需要某一小块 catalog，则继续走 `--consumer-profile`、`--action` 或 `--recommended-action` 这三条过滤入口。
+
+`schema --json --catalog-summary` 的最小成功样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "schema",
+  "data": {
+    "schemaVersion": "2026-04-15.public-json.v1",
+    "catalogSummary": {
+      "counts": {
+        "consumerProfiles": 3,
+        "actions": 11,
+        "recommendedActions": 15
+      },
+      "consumerProfiles": [
+        { "id": "readonly-state-audit", "bestEntryAction": "current" },
+        { "id": "single-platform-write", "bestEntryAction": "preview" },
+        { "id": "readonly-import-batch", "bestEntryAction": "import" }
+      ],
+      "actions": [
+        { "action": "add" },
+        { "action": "current" },
+        { "action": "export" }
+      ],
+      "recommendedActions": [
+        { "code": "inspect-items", "family": "inspect" },
+        { "code": "continue-to-write", "family": "execute" },
+        { "code": "migrate-inline-secret", "family": "repair" }
+      ]
+    }
+  }
+}
+```
+
 ```ts
 type SchemaCommandOutput = {
   schemaVersion: '2026-04-15.public-json.v1'
   schemaId: 'https://api-switcher.local/schemas/public-json-output.schema.json'
+  catalogSummary?: {
+    counts: {
+      consumerProfiles: number
+      actions: number
+      recommendedActions: number
+    }
+    consumerProfiles: Array<{
+      id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
+      bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+    }>
+    actions: Array<{
+      action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
+    }>
+    recommendedActions: Array<{
+      code:
+        | 'inspect-items'
+        | 'review-reference-details'
+        | 'repair-source-input'
+        | 'group-by-platform'
+        | 'continue-to-write'
+        | 'fix-input-and-retry'
+        | 'select-existing-resource'
+        | 'resolve-scope-before-retry'
+        | 'confirm-before-write'
+        | 'check-platform-support'
+        | 'inspect-runtime-details'
+        | 'check-import-source'
+        | 'fix-reference-input'
+        | 'resolve-reference-support'
+        | 'migrate-inline-secret'
+      family: 'inspect' | 'repair' | 'route' | 'execute'
+    }>
+  }
   commandCatalog?: {
     recommendedActions?: Array<{
       code:

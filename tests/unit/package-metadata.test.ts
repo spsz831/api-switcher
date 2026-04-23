@@ -99,6 +99,35 @@ describe('package metadata', () => {
     expect(smokeScript).toContain('schema recommended action failure payload failed public schema validation')
   })
 
+  it('release smoke script verifies schema catalog summary contract', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'schema catalog summary json'")
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --json --catalog-summary')
+    expect(smokeScript).toContain('catalogSummary.counts.consumerProfiles -ne 3')
+    expect(smokeScript).toContain('catalogSummary.counts.actions -ne 11')
+    expect(smokeScript).toContain('catalogSummary.counts.recommendedActions -ne 15')
+    expect(smokeScript).toContain('schema --json --catalog-summary unexpectedly returned commandCatalog')
+    expect(smokeScript).toContain('schema --json --catalog-summary unexpectedly returned schemaId')
+    expect(smokeScript).toContain('schema --json --catalog-summary unexpectedly returned schema')
+    expect(smokeScript).toContain('schema catalog summary payload failed public schema validation')
+  })
+
+  it('release smoke script verifies machine-readable schema catalog summary discoverability', () => {
+    const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
+    const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
+
+    expect(smokeScript).toContain("Invoke-Step -Name 'public schema catalog summary discoverability'")
+    expect(smokeScript).toContain("$schemaDefs = Get-ObjectPropertyValue -Value $publicSchema -Name '$defs'")
+    expect(smokeScript).toContain("$schemaCatalogSummary = Get-ObjectPropertyValue -Value $schemaDefs -Name 'SchemaCatalogSummary'")
+    expect(smokeScript).toContain("SchemaCatalogSummary missing description for catalog-summary discoverability")
+    expect(smokeScript).toContain("SchemaCatalogSummary description lost catalogSummary summary fields")
+    expect(smokeScript).toContain("SchemaCatalogSummary missing examples for catalog-summary discoverability")
+    expect(smokeScript).toContain("SchemaCatalogSummary example lost consumerProfiles count")
+    expect(smokeScript).toContain("SchemaCatalogSummary example lost continue-to-write recommended action")
+  })
+
   it('release smoke script verifies current/list json platformSummary contracts', () => {
     const smokeScriptPath = path.resolve(__dirname, '../../scripts/release-smoke.ps1')
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')

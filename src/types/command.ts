@@ -285,6 +285,7 @@ export interface SchemaCommandOutput {
   schemaVersion: string
   schemaId?: string
   commandCatalog?: SchemaCommandCatalog
+  catalogSummary?: SchemaCatalogSummary
   schema?: Record<string, unknown>
 }
 
@@ -335,6 +336,25 @@ export interface SchemaCommandCatalog {
   actions: SchemaActionCapability[]
   consumerProfiles?: SchemaConsumerProfile[]
   recommendedActions?: SchemaRecommendedAction[]
+}
+
+export interface SchemaCatalogSummary {
+  counts: {
+    consumerProfiles: number
+    actions: number
+    recommendedActions: number
+  }
+  consumerProfiles: Array<{
+    id: SchemaConsumerProfile['id']
+    bestEntryAction: SchemaConsumerProfile['bestEntryAction']
+  }>
+  actions: Array<{
+    action: SchemaActionCapability['action']
+  }>
+  recommendedActions: Array<{
+    code: SchemaRecommendedAction['code']
+    family: SchemaRecommendedAction['family']
+  }>
 }
 
 export interface SchemaFieldSemanticBinding {

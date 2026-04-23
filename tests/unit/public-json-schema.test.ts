@@ -349,6 +349,42 @@ describe('public JSON contract types', () => {
     }>()
   })
 
+  it('用类型断言定义 schema catalogSummary 的最小公共 contract', () => {
+    expectTypeOf<NonNullable<SchemaCommandOutput['catalogSummary']>>().toMatchTypeOf<{
+      counts: {
+        consumerProfiles: number
+        actions: number
+        recommendedActions: number
+      }
+      consumerProfiles: Array<{
+        id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
+        bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+      }>
+      actions: Array<{
+        action: typeof COMMAND_ACTIONS[number]
+      }>
+      recommendedActions: Array<{
+        code:
+          | 'inspect-items'
+          | 'review-reference-details'
+          | 'repair-source-input'
+          | 'group-by-platform'
+          | 'continue-to-write'
+          | 'fix-input-and-retry'
+          | 'select-existing-resource'
+          | 'resolve-scope-before-retry'
+          | 'confirm-before-write'
+          | 'check-platform-support'
+          | 'inspect-runtime-details'
+          | 'check-import-source'
+          | 'fix-reference-input'
+          | 'resolve-reference-support'
+          | 'migrate-inline-secret'
+        family: 'inspect' | 'repair' | 'route' | 'execute'
+      }>
+    }>()
+  })
+
   it('machine-readable schema 覆盖 import-apply action 与 success contract defs', () => {
     expect(publicJsonSchema.properties?.action).toMatchObject({
       type: 'string',
@@ -710,9 +746,37 @@ describe('public JSON contract types', () => {
   })
 
   it('machine-readable schema 覆盖 schema commandCatalog defs', () => {
+    const schemaCatalogSummaryDef = publicJsonSchema.$defs?.SchemaCatalogSummary as Record<string, unknown> | undefined
+
     expect(publicJsonSchema.$defs?.SchemaCommandOutput?.properties?.commandCatalog).toEqual({
       $ref: '#/$defs/SchemaCommandCatalog',
     })
+    expect(publicJsonSchema.$defs?.SchemaCommandOutput?.properties?.catalogSummary).toEqual({
+      $ref: '#/$defs/SchemaCatalogSummary',
+    })
+    expect(schemaCatalogSummaryDef?.description).toContain('轻量目录模式')
+    expect(schemaCatalogSummaryDef?.description).toContain('consumerProfiles / actions / recommendedActions')
+    expect(schemaCatalogSummaryDef?.description).toContain('不再展开完整 commandCatalog')
+    expect(schemaCatalogSummaryDef?.examples).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        counts: expect.objectContaining({
+          consumerProfiles: 3,
+          actions: 11,
+          recommendedActions: 15,
+        }),
+      }),
+    ]))
+    expect((schemaCatalogSummaryDef?.examples as Array<Record<string, unknown>> | undefined)?.[0]).toEqual(expect.objectContaining({
+      consumerProfiles: expect.arrayContaining([
+        expect.objectContaining({ id: 'readonly-state-audit', bestEntryAction: 'current' }),
+      ]),
+      actions: expect.arrayContaining([
+        expect.objectContaining({ action: 'add' }),
+      ]),
+      recommendedActions: expect.arrayContaining([
+        expect.objectContaining({ code: 'continue-to-write', family: 'execute' }),
+      ]),
+    }))
     expect(publicJsonSchema.$defs?.SchemaCommandCatalog?.properties?.actions).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaActionCapability' },
@@ -724,6 +788,21 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaCommandCatalog?.properties?.recommendedActions).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaRecommendedAction' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.counts).toEqual({
+      $ref: '#/$defs/SchemaCatalogSummaryCounts',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.consumerProfiles).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaCatalogSummaryConsumerProfile' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.actions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaCatalogSummaryAction' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummary?.properties?.recommendedActions).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/SchemaCatalogSummaryRecommendedAction' },
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.required).toEqual(expect.arrayContaining([
       'action',
