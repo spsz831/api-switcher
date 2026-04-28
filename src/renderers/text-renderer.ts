@@ -139,6 +139,10 @@ function renderReferenceStats(stats?: SecretReferenceStats): string[] {
     lines.push('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
   }
 
+  if (stats.hasReferenceProfiles || stats.hasInlineProfiles || stats.hasWriteUnsupportedProfiles) {
+    lines.push(`  - 下一步: ${buildReferenceStatsNextStep(stats)}`)
+  }
+
   return lines
 }
 
@@ -165,6 +169,10 @@ function renderExecutabilityStats(stats?: ExecutabilityStats): string[] {
     lines.push('  - 提示: 当前存在 redacted 导入源 profiles，后续 import apply 不可直接执行。')
   }
 
+  if (stats.profileCount > 0) {
+    lines.push(`  - 下一步: ${buildExecutabilityStatsNextStep(stats)}`)
+  }
+
   return lines
 }
 
@@ -173,7 +181,64 @@ function renderImportSourceExecutability(summary: ImportPreviewCommandOutput['su
     '导入源可执行性:',
     `  - total=${summary.totalItems}, apply-ready=${summary.applyReadyCount}, preview-only=${summary.previewOnlyCount}, blocked=${summary.blockedCount}`,
     ...summary.blockedByCodeStats.map((item) => `  - ${item.code}: total=${item.totalCount}`),
+    `  - 下一步: ${buildImportSourceExecutabilityNextStep(summary)}`,
   ]
+}
+
+function buildReferenceStatsNextStep(stats: SecretReferenceStats): string {
+  if (stats.hasMissingReferenceProfiles || stats.hasUnsupportedReferenceProfiles) {
+    return '先修复缺失或不受支持的引用，再决定是否继续进入 preview/use/import apply。'
+  }
+
+  if (stats.hasWriteUnsupportedProfiles) {
+    return '先展开 reference 摘要确认哪些 profile 属于 write-unsupported，再决定是否迁移 secret 形态或切换后续写入路径。'
+  }
+
+  if (stats.hasResolvedReferenceProfiles) {
+    return '当前存在可解析 reference，可继续结合 executability 与平台能力判断是否进入 preview/use/import apply。'
+  }
+
+  if (stats.hasInlineProfiles) {
+    return '当前存在 inline-ready profile，可继续执行 preview/use/import apply。'
+  }
+
+  return '当前批次暂无需要继续处理的 secret/reference 治理动作。'
+}
+
+function buildExecutabilityStatsNextStep(stats: ExecutabilityStats): string {
+  if (stats.hasSourceRedactedProfiles) {
+    return '先修复 redacted 导入源或补回真实 secret，再继续进入 import apply。'
+  }
+
+  if (stats.hasReferenceMissingProfiles) {
+    return '先修复未解析或不受支持的 reference，再继续进入写入链路。'
+  }
+
+  if (stats.hasWriteUnsupportedProfiles) {
+    return '先展开 reference 细节确认 write-unsupported 项，再决定是否改用受支持的 secret 形态。'
+  }
+
+  if (stats.hasReferenceReadyProfiles || stats.hasInlineReadyProfiles) {
+    return '当前存在可执行项，可继续进入 preview/use/import apply。'
+  }
+
+  return '当前批次暂无可继续推进到写入链路的 executability 信号。'
+}
+
+function buildImportSourceExecutabilityNextStep(summary: ImportPreviewCommandOutput['summary']['sourceExecutability']): string {
+  if (summary.blockedCount > 0) {
+    return '先修复 blocked source 项；apply-ready 项可继续进入 import apply。'
+  }
+
+  if (summary.previewOnlyCount > 0) {
+    return 'preview-only 项继续停留在分析面；apply-ready 项可继续进入 import apply。'
+  }
+
+  if (summary.applyReadyCount > 0) {
+    return '当前导入源已具备 apply-ready 项，可继续进入 import apply。'
+  }
+
+  return '当前导入源暂无可继续推进到 import apply 的项。'
 }
 
 function renderImportPreviewPlatformStats(stats: ImportPreviewCommandOutput['summary']['platformStats']): string[] {
@@ -961,6 +1026,7 @@ function renderPreview(data: PreviewCommandOutput): string {
     ...renderPreviewScopeSummary(data),
     ...renderScopeCapabilities(data.scopeCapabilities),
     ...renderScopeAvailability(data.scopeAvailability),
+    ...renderReferenceGovernanceDetails(data.referenceGovernance),
     ...renderTargetFiles(data.preview.targetFiles),
     ...renderFieldCollection('生效字段', data.preview.effectiveFields),
     ...renderFieldCollection('仅存档字段', data.preview.storedOnlyFields),
@@ -1009,6 +1075,10 @@ function renderUse(data: UseCommandOutput): string {
 }
 
 function renderAdd(data: AddCommandOutput): string {
+  const referenceOnlyBoundaryNote = data.summary.referenceStats?.hasReferenceProfiles
+    ? ['  说明: add 只记录 reference 输入；真正的本地解析、治理判断和写入可执行性检查在 preview/use/import apply 阶段完成。']
+    : []
+
   return [
     ...renderSinglePlatformStats(data.summary.platformStats),
     ...renderReferenceStats(data.summary.referenceStats),
@@ -1030,6 +1100,7 @@ function renderAdd(data: AddCommandOutput): string {
     ...renderEffectiveConfig(data.preview.effectiveConfig),
     ...renderManagedBoundaries(data.preview.managedBoundaries),
     ...renderSecretReferences(data.preview.secretReferences),
+    ...referenceOnlyBoundaryNote,
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('预览警告', data.preview.warnings),
     ...renderValidationIssues('预览限制', data.preview.limitations),
@@ -1176,6 +1247,26 @@ function renderReferenceGovernanceDetails(referenceGovernance?: ReferenceGoverna
     ...renderItems('已解析但当前不会写入', resolvedEnv),
     ...renderItems('不支持的引用 scheme', unsupportedSchemes),
     ...renderItems('缺少引用值', missingValues),
+  ]
+}
+
+function renderReferenceGovernanceOverview(referenceGovernance?: ReferenceGovernanceFailureDetails): string[] {
+  if (!referenceGovernance?.referenceDetails || referenceGovernance.referenceDetails.length === 0) {
+    return []
+  }
+
+  const missingCount = referenceGovernance.referenceDetails.filter((item) =>
+    item.code === 'REFERENCE_ENV_UNRESOLVED' || item.code === 'REFERENCE_VALUE_MISSING').length
+  const resolvedCount = referenceGovernance.referenceDetails.filter((item) =>
+    item.code === 'REFERENCE_ENV_RESOLVED').length
+  const unsupportedCount = referenceGovernance.referenceDetails.filter((item) =>
+    item.code === 'REFERENCE_SCHEME_UNSUPPORTED').length
+
+  return [
+    'reference 摘要:',
+    `  - hasReferenceProfiles=${referenceGovernance.hasReferenceProfiles ? 'yes' : 'no'}, hasInlineProfiles=${referenceGovernance.hasInlineProfiles ? 'yes' : 'no'}, hasWriteUnsupportedProfiles=${referenceGovernance.hasWriteUnsupportedProfiles ? 'yes' : 'no'}`,
+    `  - missing=${missingCount}, resolved-but-not-writable=${resolvedCount}, unsupported=${unsupportedCount}`,
+    ...(referenceGovernance.reasonCodes.length > 0 ? [`  - reasonCodes: ${referenceGovernance.reasonCodes.join(', ')}`] : []),
   ]
 }
 
@@ -1330,6 +1421,8 @@ function renderSchema(data: SchemaCommandOutput): string {
             `entry=${profile.bestEntryAction}`,
             `recommended=${profile.recommendedEntryMode ?? 'full-consumer-profile'}`,
             profile.starterTemplateId ? `starterTemplate=${profile.starterTemplateId}` : null,
+            profile.defaultConsumerActionId ? `defaultAction=${profile.defaultConsumerActionId}` : null,
+            profile.defaultCommandExample ? `command=${profile.defaultCommandExample}` : null,
             `next=api-switcher schema --json --consumer-profile ${profile.id}`,
           ].filter(Boolean).join(', ')
 
@@ -1687,6 +1780,10 @@ function renderFailure(result: CommandResult): string {
     result.error?.message ?? '未知错误',
     ...(confirmationDetails ? renderRiskSummary(confirmationDetails.risk) : []),
     ...renderFailurePlatformSummary(result),
+    ...renderReferenceGovernanceOverview(
+      referenceGovernanceDetails
+      ?? (confirmationDetails as ParsedConfirmationRequiredDetails | undefined)?.referenceGovernance,
+    ),
     ...renderReferenceGovernanceDetails(
       referenceGovernanceDetails
       ?? (confirmationDetails as ParsedConfirmationRequiredDetails | undefined)?.referenceGovernance,

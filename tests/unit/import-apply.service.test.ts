@@ -109,6 +109,225 @@ function createImportedSource(
 }
 
 describe('import apply service', () => {
+  it('batch apply 遇到跨平台 profile 时返回 IMPORT_APPLY_BATCH_PLATFORM_MISMATCH', async () => {
+    const service = new ImportApplyService({
+      load: async () => ({
+        sourceFile: 'E:/tmp/export.json',
+        sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+        profiles: [
+          createImportedSource({ profile: createCodexProfile({ id: 'codex-a', name: 'codex-a' }) }),
+          createImportedSource({ profile: createClaudeProfile({ id: 'claude-b', name: 'claude-b' }) }),
+        ],
+      }),
+    } as any)
+
+    const result = await service.applyMany('E:/tmp/export.json', {
+      profiles: ['codex-a', 'claude-b'],
+    } as any)
+
+    expect(result.ok).toBe(false)
+    expect(result.action).toBe('import-apply')
+    expect(result.error).toEqual(expect.objectContaining({
+      code: 'IMPORT_APPLY_BATCH_PLATFORM_MISMATCH',
+      message: '批量 import apply 第一版只支持同平台 profiles。',
+    }))
+  })
+
+  it('batch apply 对同平台多条 profile 返回批量成功结果', async () => {
+    const service = new ImportApplyService({
+      load: async () => ({
+        sourceFile: 'E:/tmp/export.json',
+        sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+        profiles: [
+          createImportedSource({ profile: createCodexProfile({ id: 'codex-a', name: 'codex-a' }), exportedObservation: {} }),
+          createImportedSource({ profile: createCodexProfile({ id: 'codex-b', name: 'codex-b' }), exportedObservation: {} }),
+        ],
+      }),
+    } as any)
+
+    const result = await service.applyMany('E:/tmp/export.json', {
+      profiles: ['codex-a', 'codex-b'],
+      force: true,
+    } as any)
+
+    expect(result.ok).toBe(true)
+    expect(result.action).toBe('import-apply')
+    expect(result.data).toEqual(expect.objectContaining({
+      sourceFile: 'E:/tmp/export.json',
+      results: [
+        expect.objectContaining({ profileId: 'codex-a', platform: 'codex', ok: true, noChanges: expect.any(Boolean) }),
+        expect.objectContaining({ profileId: 'codex-b', platform: 'codex', ok: true, noChanges: expect.any(Boolean) }),
+      ],
+      summary: {
+        totalProfiles: 2,
+        appliedCount: 2,
+        failedCount: 0,
+      },
+    }))
+  })
+
+  it('batch apply 会在 item 级返回轻量 explainable 字段', async () => {
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [
+            createImportedSource({ profile: createProfile({ id: 'gemini-a', name: 'gemini-a' }) }),
+            createImportedSource({ profile: createProfile({ id: 'gemini-b', name: 'gemini-b' }) }),
+          ],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'user',
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [
+              {
+                code: 'READY_USING_LOCAL_OBSERVATION',
+                blocking: false,
+                message: '当前本地 observation 足以继续 apply。',
+              },
+            ],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({ currentProfile: null, scopeAvailability: [] }),
+          validate: async () => createValidationResult(),
+          preview: async (profile: Profile) => createPreviewResult({
+            profileId: profile.id,
+            noChanges: profile.id === 'gemini-b',
+            targetFiles: [
+              {
+                path: 'C:/Users/test/.gemini/settings.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'user',
+                role: 'settings',
+                managedKeys: ['enforcedAuthType'],
+              },
+            ],
+            diffSummary: profile.id === 'gemini-b'
+              ? []
+              : [
+                  {
+                    path: 'C:/Users/test/.gemini/settings.json',
+                    changedKeys: ['enforcedAuthType'],
+                    hasChanges: true,
+                  },
+                ],
+          }),
+          apply: async (profile: Profile) => ({
+            ok: true,
+            changedFiles: profile.id === 'gemini-b' ? [] : ['C:/Users/test/.gemini/settings.json'],
+            noChanges: profile.id === 'gemini-b',
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({ backupId: 'snapshot-gemini-batch' }),
+      } as any,
+    )
+
+    const result = await service.applyMany('E:/tmp/export.json', {
+      profiles: ['gemini-a', 'gemini-b'],
+      force: true,
+      scope: 'user',
+    } as any)
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.results).toEqual([
+      expect.objectContaining({
+        profileId: 'gemini-a',
+        platform: 'gemini',
+        appliedScope: 'user',
+        ok: true,
+        noChanges: false,
+      }),
+      expect.objectContaining({
+        profileId: 'gemini-b',
+        platform: 'gemini',
+        appliedScope: 'user',
+        ok: true,
+        noChanges: true,
+      }),
+    ])
+  })
+
+  it('batch apply 部分失败时会在失败 item 返回轻量 failure explainable', async () => {
+    const service = new ImportApplyService({
+      load: async () => ({
+        sourceFile: 'E:/tmp/export.json',
+        sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+        profiles: [
+          createImportedSource({ profile: createProfile({ id: 'gemini-ok', name: 'gemini-ok' }) }),
+          createImportedSource({ profile: createProfile({ id: 'gemini-fail', name: 'gemini-fail' }) }),
+        ],
+      }),
+    } as any)
+
+    const originalApply = service.apply.bind(service)
+    service.apply = (async (sourceFile: string, options: { profile?: string }) => {
+      if (options.profile === 'gemini-fail') {
+        return {
+          ok: false,
+          action: 'import-apply',
+          error: {
+            code: 'IMPORT_APPLY_NOT_READY',
+            message: '当前 profile 还不能进入 apply 设计。',
+            details: {
+              previewDecision: {
+                canProceedToApplyDesign: false,
+                requiresLocalResolution: true,
+                reasonCodes: ['BLOCKED_BY_FIDELITY_MISMATCH'],
+                reasons: [],
+              },
+            },
+          },
+        }
+      }
+
+      return originalApply(sourceFile, options as any)
+    }) as typeof service.apply
+
+    const result = await service.applyMany('E:/tmp/export.json', {
+      profiles: ['gemini-ok', 'gemini-fail'],
+      force: true,
+    } as any)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('IMPORT_APPLY_BATCH_PARTIAL_FAILURE')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      results: expect.arrayContaining([
+        expect.objectContaining({
+          profileId: 'gemini-fail',
+          platform: 'gemini',
+          ok: false,
+          failureCategory: 'state',
+          reasonCodes: ['BLOCKED_BY_FIDELITY_MISMATCH'],
+          error: expect.objectContaining({
+            code: 'IMPORT_APPLY_NOT_READY',
+          }),
+        }),
+      ]),
+    }))
+  })
+
   it('source file 不存在时返回 IMPORT_SOURCE_NOT_FOUND', async () => {
     const service = new ImportApplyService({
       load: async () => {
@@ -732,7 +951,7 @@ describe('import apply service', () => {
     expect(result.data?.changedFiles).toEqual(['C:/Users/test/.claude/settings.local.json'])
   })
 
-  it('import apply 的 referenceGovernance 会输出 resolver-aware referenceDetails', async () => {
+  it('import apply 的 referenceGovernance 会输出 resolver-aware referenceDetails，并在 blocking reference 时直接阻断', async () => {
     const importedProfile = createClaudeProfile({
       source: { secret_ref: 'env://API_SWITCHER_MISSING_SECRET' },
       apply: { auth_reference: 'vault://claude/prod' } as any,
@@ -796,19 +1015,26 @@ describe('import apply service', () => {
     const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
 
     expect(result.ok).toBe(false)
-    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.code).toBe('IMPORT_APPLY_FAILED')
     expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceDecision: {
+        writeDecision: 'reference-blocked',
+        writeStrategy: 'blocked',
+        requiresForce: false,
+        blocking: true,
+        reasonCodes: ['REFERENCE_ENV_UNRESOLVED'],
+      },
       referenceGovernance: {
         hasReferenceProfiles: true,
         hasInlineProfiles: false,
         hasWriteUnsupportedProfiles: true,
-        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
-        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        primaryReason: 'REFERENCE_MISSING',
+        reasonCodes: ['REFERENCE_MISSING'],
         referenceDetails: [
           {
             code: 'REFERENCE_ENV_UNRESOLVED',
             field: 'source.secret_ref',
-            status: 'missing',
+            status: 'unresolved',
             reference: 'env://API_SWITCHER_MISSING_SECRET',
             scheme: 'env',
             message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
@@ -822,6 +1048,194 @@ describe('import apply service', () => {
             message: 'profile.apply.auth_reference 使用的引用 scheme 当前不受支持。',
           },
         ],
+      },
+    }))
+  })
+
+  it('resolved auth_reference 导入 apply 成功时返回 referenceDecision，并按 reference profile 生成 summary', async () => {
+    process.env.API_SWITCHER_IMPORT_APPLY_KEY = 'gm-import-apply-123456'
+    const importedProfile = createProfile({
+      source: { secret_ref: 'env://API_SWITCHER_IMPORT_APPLY_KEY' } as any,
+      apply: { auth_reference: 'env://API_SWITCHER_IMPORT_APPLY_KEY', enforcedAuthType: 'gemini-api-key' } as any,
+    })
+    let validatedProfile: Profile | undefined
+    let previewedProfile: Profile | undefined
+    let appliedProfile: Profile | undefined
+
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'user',
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'gemini',
+            managed: true,
+            targetFiles: [],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
+            ],
+          }),
+          validate: async (profile: Profile) => {
+            validatedProfile = profile
+            return createValidationResult()
+          },
+          preview: async (profile: Profile) => {
+            previewedProfile = profile
+            return createPreviewResult()
+          },
+          apply: async (profile: Profile) => {
+            appliedProfile = profile
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/test/.gemini/settings.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-gemini-20260424124000-abcdef',
+          manifestPath: 'backups/gemini/snapshot-gemini-20260424124000-abcdef/manifest.json',
+          targetFiles: ['C:/Users/test/.gemini/settings.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, force: true })
+
+    expect(validatedProfile?.apply.GEMINI_API_KEY).toBe('gm-import-apply-123456')
+    expect(previewedProfile?.apply.GEMINI_API_KEY).toBe('gm-import-apply-123456')
+    expect(appliedProfile?.apply.GEMINI_API_KEY).toBe('gm-import-apply-123456')
+    expect(result.ok).toBe(true)
+    expect(result.data?.referenceDecision).toEqual({
+      writeDecision: 'inline-fallback-write',
+      writeStrategy: 'inline-fallback-only',
+      requiresForce: true,
+      blocking: false,
+      reasonCodes: ['REFERENCE_INLINE_FALLBACK_REQUIRED'],
+    })
+    expect(result.data?.summary.referenceStats).toEqual(expect.objectContaining({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      resolvedReferenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+    }))
+    expect(result.data?.summary.executabilityStats).toEqual(expect.objectContaining({
+      profileCount: 1,
+      referenceReadyProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      inlineReadyProfileCount: 0,
+    }))
+  })
+
+  it('resolved auth_reference 导入 apply 未 force 时返回 CONFIRMATION_REQUIRED，并携带 referenceDecision', async () => {
+    process.env.API_SWITCHER_IMPORT_APPLY_CONFIRM_KEY = 'gm-import-confirm-123456'
+    const importedProfile = createProfile({
+      source: { secret_ref: 'env://API_SWITCHER_IMPORT_APPLY_CONFIRM_KEY' } as any,
+      apply: { auth_reference: 'env://API_SWITCHER_IMPORT_APPLY_CONFIRM_KEY', enforcedAuthType: 'gemini-api-key' } as any,
+    })
+    let applyCalled = false
+
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: 'user',
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'gemini',
+            managed: true,
+            targetFiles: [],
+            scopeAvailability: [
+              { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
+            ],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            riskLevel: 'low',
+            requiresConfirmation: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/test/.gemini/settings.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
+
+    expect(applyCalled).toBe(false)
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceDecision: {
+        writeDecision: 'inline-fallback-write',
+        writeStrategy: 'inline-fallback-only',
+        requiresForce: true,
+        blocking: false,
+        reasonCodes: ['REFERENCE_INLINE_FALLBACK_REQUIRED'],
+      },
+      risk: {
+        allowed: false,
+        riskLevel: 'low',
+        reasons: [],
+        limitations: ['如继续执行，将以明文写入目标配置文件。'],
       },
     }))
   })

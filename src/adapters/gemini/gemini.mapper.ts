@@ -10,9 +10,10 @@ export function mergeGeminiSettings(current: Record<string, unknown>, apply: Rec
   return {
     ...current,
     ...pickGeminiSettingsFields(apply),
+    ...('GEMINI_API_KEY' in apply ? { GEMINI_API_KEY: apply.GEMINI_API_KEY } : {}),
   }
 }
 
 export function mapGeminiProfileToSettings(apply: Record<string, unknown>): Record<string, unknown> {
-  return pickGeminiSettingsFields(apply)
+  return mergeGeminiSettings({}, apply)
 }

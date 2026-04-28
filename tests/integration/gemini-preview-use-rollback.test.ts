@@ -23,6 +23,7 @@ beforeEach(async () => {
   process.env.API_SWITCHER_RUNTIME_DIR = runtimeDir
   process.env.API_SWITCHER_GEMINI_SETTINGS_PATH = geminiSettingsPath
   process.env.API_SWITCHER_GEMINI_PROJECT_ROOT = geminiProjectRoot
+  process.env.API_SWITCHER_GEMINI_REF_KEY = 'gm-ref-654321'
 
   const profilesStore = new ProfilesStore()
   await profilesStore.write({
@@ -35,6 +36,16 @@ beforeEach(async () => {
         source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key', notes: 'Gemini 主线路径' },
         apply: {
           GEMINI_API_KEY: 'gm-live-123456',
+          enforcedAuthType: 'gemini-api-key',
+        },
+      },
+      {
+        id: 'gemini-ref-prod',
+        name: 'gemini-ref-prod',
+        platform: 'gemini',
+        source: { secret_ref: 'env://API_SWITCHER_GEMINI_REF_KEY', authType: 'gemini-api-key' },
+        apply: {
+          auth_reference: 'env://API_SWITCHER_GEMINI_REF_KEY',
           enforcedAuthType: 'gemini-api-key',
         },
       },
@@ -66,6 +77,7 @@ afterEach(async () => {
   delete process.env.API_SWITCHER_RUNTIME_DIR
   delete process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
   delete process.env.API_SWITCHER_GEMINI_PROJECT_ROOT
+  delete process.env.API_SWITCHER_GEMINI_REF_KEY
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
@@ -509,6 +521,21 @@ describe('gemini preview/use/rollback integration', () => {
 
     const state = await new StateStore().read()
     expect(state.current.gemini).toBe('gemini-prod')
+  })
+
+  it('Gemini reference profile 会把解析后的 secret 写入目标 scope settings', async () => {
+    const result = await new SwitchService().use('gemini-ref-prod', { force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.referenceDecision).toEqual(expect.objectContaining({
+      writeDecision: 'inline-fallback-write',
+      requiresForce: true,
+    }))
+
+    const settings = JSON.parse(await fs.readFile(geminiSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(settings.enforcedAuthType).toBe('gemini-api-key')
+    expect(settings.GEMINI_API_KEY).toBe('gm-ref-654321')
+    expect((settings.ui as { theme?: string }).theme).toBe('dark')
   })
 
   it('use 会写入稳定 Gemini 设置，但把实验性 base URL 明确标记为未落盘', async () => {

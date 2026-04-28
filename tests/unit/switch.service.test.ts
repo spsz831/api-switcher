@@ -341,19 +341,19 @@ describe('switch service', () => {
     ).use(profile.id)
 
     expect(result.ok).toBe(false)
-    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.code).toBe('USE_FAILED')
     expect(result.error?.details).toEqual(expect.objectContaining({
       referenceGovernance: {
         hasReferenceProfiles: true,
         hasInlineProfiles: false,
         hasWriteUnsupportedProfiles: true,
-        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
-        reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+        primaryReason: 'REFERENCE_MISSING',
+        reasonCodes: ['REFERENCE_MISSING'],
         referenceDetails: [
           {
             code: 'REFERENCE_ENV_UNRESOLVED',
             field: 'source.secret_ref',
-            status: 'missing',
+            status: 'unresolved',
             reference: 'env://API_SWITCHER_MISSING_SECRET',
             scheme: 'env',
             message: 'profile.source.secret_ref 的 env 引用当前不可解析。',
@@ -369,6 +369,294 @@ describe('switch service', () => {
         ],
       },
     }))
+  })
+
+  it('resolved inline fallback reference 在未 force 时返回 CONFIRMATION_REQUIRED 且不进入 snapshot/apply', async () => {
+    process.env.API_SWITCHER_TEST_OPENAI_KEY = 'sk-openai-live-123456'
+    const profile = {
+      id: 'codex-inline-fallback-gated',
+      name: 'codex-inline-fallback-gated',
+      platform: 'codex' as const,
+      source: {},
+      apply: {
+        auth_reference: 'env://API_SWITCHER_TEST_OPENAI_KEY',
+      },
+    }
+    let snapshotCalled = false
+    let applyCalled = false
+
+    const result = await new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'codex',
+            profileId: profile.id,
+            targetFiles: [
+              {
+                path: 'E:\\WorkSpace\\.codex\\auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [
+              {
+                path: 'E:\\WorkSpace\\.codex\\auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['E:\\WorkSpace\\.codex\\auth.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-codex-20260424090000-abcdef',
+            manifestPath: 'backups/codex/manifest.json',
+            targetFiles: ['E:\\WorkSpace\\.codex\\auth.json'],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    ).use(profile.id)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: expect.objectContaining({
+        primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
+      }),
+      referenceDecision: expect.objectContaining({
+        writeDecision: 'inline-fallback-write',
+        requiresForce: true,
+      }),
+    }))
+    expect(snapshotCalled).toBe(false)
+    expect(applyCalled).toBe(false)
+  })
+
+  it('resolved inline fallback reference 在 force 后允许继续执行', async () => {
+    process.env.API_SWITCHER_TEST_OPENAI_KEY = 'sk-openai-live-123456'
+    const profile = {
+      id: 'codex-inline-fallback-force',
+      name: 'codex-inline-fallback-force',
+      platform: 'codex' as const,
+      source: {},
+      apply: {
+        auth_reference: 'env://API_SWITCHER_TEST_OPENAI_KEY',
+      },
+    }
+
+    const result = await new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'codex',
+            profileId: profile.id,
+            targetFiles: [
+              {
+                path: 'E:\\WorkSpace\\.codex\\auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [
+              {
+                path: 'E:\\WorkSpace\\.codex\\auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => ({
+            ok: true,
+            changedFiles: ['E:\\WorkSpace\\.codex\\auth.json'],
+            noChanges: false,
+            diffSummary: [
+              {
+                path: 'E:\\WorkSpace\\.codex\\auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+          }),
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => ({
+          backupId: 'snapshot-codex-20260424090500-abcdef',
+          manifestPath: 'backups/codex/manifest.json',
+          targetFiles: ['E:\\WorkSpace\\.codex\\auth.json'],
+          warnings: [],
+          limitations: [],
+        }),
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    ).use(profile.id, { force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(expect.objectContaining({
+      backupId: 'snapshot-codex-20260424090500-abcdef',
+      changedFiles: ['E:\\WorkSpace\\.codex\\auth.json'],
+      referenceDecision: expect.objectContaining({
+        writeDecision: 'inline-fallback-write',
+        requiresForce: true,
+      }),
+    }))
+  })
+
+  it('unresolved reference 会在 snapshot/apply 前直接失败', async () => {
+    const profile = {
+      id: 'claude-unresolved-reference-gated',
+      name: 'claude-unresolved-reference-gated',
+      platform: 'claude' as const,
+      source: {},
+      apply: {
+        auth_reference: 'env://API_SWITCHER_TEST_MISSING_TOKEN',
+      },
+    }
+    let snapshotCalled = false
+    let applyCalled = false
+
+    const result = await new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'claude',
+            profileId: profile.id,
+            targetFiles: [
+              {
+                path: 'E:\\WorkSpace\\.claude\\settings.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'partial-fields',
+                scope: 'project',
+                role: 'settings',
+                managedKeys: ['auth_reference'],
+              },
+            ],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [
+              {
+                path: 'E:\\WorkSpace\\.claude\\settings.json',
+                changedKeys: ['auth_reference'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['E:\\WorkSpace\\.claude\\settings.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-claude-20260424091000-abcdef',
+            manifestPath: 'backups/claude/manifest.json',
+            targetFiles: ['E:\\WorkSpace\\.claude\\settings.json'],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    ).use(profile.id)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('USE_FAILED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      referenceGovernance: expect.objectContaining({
+        primaryReason: 'REFERENCE_MISSING',
+      }),
+      referenceDecision: expect.objectContaining({
+        writeDecision: 'reference-blocked',
+        blocking: true,
+      }),
+    }))
+    expect(snapshotCalled).toBe(false)
+    expect(applyCalled).toBe(false)
   })
 
   it('project scope 不可用时先返回 availability 结构化失败，不进入 CONFIRMATION_REQUIRED', async () => {

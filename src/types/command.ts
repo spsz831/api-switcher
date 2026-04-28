@@ -61,6 +61,9 @@ export interface PreviewCommandOutput {
   preview: PreviewResult
   risk: PreviewRiskSummary
   summary: PreviewSummary
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+  referenceDecision?: ReferenceWriteDecision
+  referenceReadiness?: ReferenceReadiness
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
@@ -87,6 +90,8 @@ export interface ConfirmationRequiredDetails {
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   referenceGovernance?: ReferenceGovernanceFailureDetails
+  referenceDecision?: ReferenceWriteDecision
+  referenceReadiness?: ReferenceReadiness
 }
 
 export interface UseCommandOutput {
@@ -98,6 +103,7 @@ export interface UseCommandOutput {
   preview: PreviewResult
   risk: UseRiskSummary
   summary: UseSummary
+  referenceDecision?: ReferenceWriteDecision
   changedFiles: string[]
   noChanges: boolean
   scopeCapabilities?: PlatformScopeCapability[]
@@ -185,7 +191,7 @@ export type ReferenceGovernanceDetailCode =
 export interface ReferenceGovernanceDetail {
   code: ReferenceGovernanceDetailCode
   field: string
-  status: 'resolved' | 'missing' | 'unsupported-scheme'
+  status: 'resolved' | 'missing' | 'unresolved' | 'unsupported-scheme'
   reference?: string
   scheme?: string
   message: string
@@ -209,6 +215,33 @@ export interface ReferenceSummary {
   unsupportedReferenceCount: number
   missingValueCount: number
   referenceDetails?: ReferenceGovernanceDetail[]
+}
+
+export interface ReferenceWriteDecision {
+  writeDecision: 'native-reference-write' | 'inline-fallback-write' | 'reference-blocked'
+  writeStrategy: 'native-reference-supported' | 'inline-fallback-only' | 'blocked'
+  requiresForce: boolean
+  blocking: boolean
+  reasonCodes: Array<
+    | 'REFERENCE_NATIVE_WRITE_SUPPORTED'
+    | 'REFERENCE_INLINE_FALLBACK_REQUIRED'
+    | 'REFERENCE_ENV_UNRESOLVED'
+    | 'REFERENCE_SCHEME_UNSUPPORTED'
+  >
+}
+
+export interface ReferenceReadiness {
+  level: 'native-ready' | 'fallback-ready' | 'blocked'
+  primaryReason:
+    | 'REFERENCE_NATIVE_WRITE_SUPPORTED'
+    | 'REFERENCE_INLINE_FALLBACK_REQUIRED'
+    | 'REFERENCE_ENV_UNRESOLVED'
+    | 'REFERENCE_SCHEME_UNSUPPORTED'
+    | 'NO_REFERENCE_INPUT'
+  canProceedToUse: boolean
+  requiresForce: boolean
+  nextAction: 'proceed' | 'confirm-before-write' | 'fix-reference-before-write' | 'inspect-reference-details'
+  summary: string
 }
 
 export interface CurrentListPlatformStat {
@@ -304,6 +337,9 @@ export interface SchemaConsumerProfile {
   optionalFailureFields: string[]
   optionalArtifactFields: string[]
   recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
+  defaultConsumerActionId?: SchemaConsumerProfileAction['id']
+  defaultCommandExample?: string
+  defaultCommandPurpose?: string
   summarySectionGuidance?: SchemaConsumerProfileSummarySectionGuidance[]
   followUpHints?: SchemaConsumerProfileFollowUpHint[]
   triageBuckets?: SchemaConsumerProfileTriageBucket[]
@@ -333,6 +369,8 @@ export interface SchemaActionCapability {
   primaryFieldSemantics: SchemaFieldSemanticBinding[]
   primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
   referenceGovernanceCodes?: SchemaReferenceGovernanceCode[]
+  failureTextActions?: SchemaFailureTextAction[]
+  successTextEntries?: SchemaSuccessTextEntry[]
 }
 
 export interface SchemaCommandCatalog {
@@ -350,6 +388,9 @@ export interface SchemaCatalogSummary {
   consumerProfiles: Array<{
     id: SchemaConsumerProfile['id']
     bestEntryAction: SchemaConsumerProfile['bestEntryAction']
+    defaultConsumerActionId?: SchemaConsumerProfile['defaultConsumerActionId']
+    defaultCommandExample?: SchemaConsumerProfile['defaultCommandExample']
+    defaultCommandPurpose?: SchemaConsumerProfile['defaultCommandPurpose']
     hasStarterTemplate?: boolean
     starterTemplateId?: NonNullable<SchemaConsumerProfile['starterTemplate']>['id']
     recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
@@ -466,9 +507,39 @@ export interface SchemaActionFailureCode {
   priority: number
   category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
   recommendedHandling: SchemaRecommendedActionCode
+  textEntryPoint: SchemaFailureTextEntryPoint
   appliesWhen: string
   triggerFields: string[]
 }
+
+export interface SchemaFailureTextAction {
+  textEntryPoint: SchemaFailureTextEntryPoint
+  recommendedHandling: SchemaRecommendedActionCode
+  appliesToCodes: string[]
+}
+
+export interface SchemaSuccessTextEntry {
+  path: string
+  textEntryPoint: SchemaSuccessTextEntryPoint
+  note?: string
+}
+
+export type SchemaFailureTextEntryPoint =
+  | 'error-message'
+  | 'reference-summary'
+  | 'risk-summary'
+  | 'scope-availability'
+  | 'preview-decision'
+  | 'redacted-fields'
+
+export type SchemaSuccessTextEntryPoint =
+  | 'platform-summary'
+  | 'reference-stats-summary'
+  | 'executability-stats-summary'
+  | 'scope-availability'
+  | 'reference-summary'
+  | 'reference-details'
+  | 'preview-detail'
 
 export interface SchemaReferenceGovernanceCode {
   code: ReferenceGovernanceReasonCode
@@ -803,10 +874,36 @@ export interface ImportApplyCommandOutput {
   validation: ValidationResult
   preview: PreviewResult
   risk: ImportApplyRiskSummary
+  referenceDecision?: ReferenceWriteDecision
   backupId?: string
   changedFiles: string[]
   noChanges: boolean
   summary: ImportApplySummary
+}
+
+export interface ImportApplyBatchItemResult {
+  profileId: string
+  platform?: PlatformName
+  appliedScope?: string
+  ok: boolean
+  noChanges?: boolean
+  failureCategory?: string
+  reasonCodes?: string[]
+  backupId?: string
+  changedFiles?: string[]
+  error?: CommandError
+}
+
+export interface ImportApplyBatchSummary {
+  totalProfiles: number
+  appliedCount: number
+  failedCount: number
+}
+
+export interface ImportApplyBatchCommandOutput {
+  sourceFile: string
+  results: ImportApplyBatchItemResult[]
+  summary: ImportApplyBatchSummary
 }
 
 export interface AddSummary {

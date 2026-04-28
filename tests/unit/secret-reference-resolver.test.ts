@@ -77,13 +77,13 @@ describe('secret reference resolver', () => {
       hasReferenceProfiles: true,
       hasInlineProfiles: false,
       hasWriteUnsupportedProfiles: true,
-      primaryReason: 'REFERENCE_WRITE_UNSUPPORTED',
-      reasonCodes: ['REFERENCE_WRITE_UNSUPPORTED'],
+      primaryReason: 'REFERENCE_MISSING',
+      reasonCodes: ['REFERENCE_MISSING'],
       referenceDetails: [
         {
           code: 'REFERENCE_ENV_UNRESOLVED',
           field: 'source.secret_ref',
-          status: 'missing',
+          status: 'unresolved',
           reference: 'env://API_SWITCHER_MISSING_SECRET',
           scheme: 'env',
           message: 'profile.source.secret_ref 的 env 引用当前不可解析。',

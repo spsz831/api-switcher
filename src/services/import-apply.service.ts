@@ -1,12 +1,17 @@
 import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
+import { materializeReferenceProfile } from '../domain/materialize-reference-profile'
 import {
+  buildProfileReferenceSummary,
   buildReferenceGovernanceFailureDetails,
 } from '../domain/secret-inspection'
+import { planReferenceWrite } from '../domain/reference-write-governance'
+import { defaultSecretReferenceResolver } from '../domain/secret-reference-resolver'
 import { evaluateRisk } from '../domain/risk-engine'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { CurrentProfileResult, PreviewResult, ValidationResult } from '../types/adapter'
 import type {
   CommandResult,
+  ImportApplyBatchCommandOutput,
   ConfirmationRequiredDetails,
   ImportObservation,
   ImportApplyCommandOutput,
@@ -38,6 +43,16 @@ function findImportedProfile(
   profileId: string,
 ): ImportedProfileSource | undefined {
   return items.find((item) => item.profile.id === profileId)
+}
+
+function findImportedProfiles(
+  items: ImportedProfileSource[],
+  profileIds: string[],
+): ImportedProfileSource[] {
+  return profileIds.flatMap((profileId) => {
+    const matched = findImportedProfile(items, profileId)
+    return matched ? [matched] : []
+  })
 }
 
 function findScopeAvailability(
@@ -176,6 +191,25 @@ export class ImportApplyService {
       const appliedScope = resolveTargetScope(importedSource.profile.platform, options.scope)
       const detection = await adapter.detectCurrent([importedSource.profile])
       const previewItem = this.buildPreviewItem(importedSource, detection, appliedScope, Boolean(options.scope))
+      const profileReferenceSummary = buildProfileReferenceSummary(importedSource.profile, defaultSecretReferenceResolver)
+      const primaryReference = profileReferenceSummary?.referenceDetails?.find((item) =>
+        item.code === 'REFERENCE_ENV_RESOLVED'
+        || item.code === 'REFERENCE_ENV_UNRESOLVED'
+        || item.code === 'REFERENCE_SCHEME_UNSUPPORTED')
+      const referenceDecision = primaryReference
+        ? planReferenceWrite({
+            profile: importedSource.profile,
+            resolution: {
+              reference: primaryReference.reference ?? '',
+              status: primaryReference.code === 'REFERENCE_ENV_RESOLVED'
+                ? 'resolved'
+                : primaryReference.code === 'REFERENCE_ENV_UNRESOLVED'
+                  ? 'unresolved'
+                  : 'unsupported-scheme',
+              scheme: primaryReference.scheme,
+            },
+          })
+        : undefined
 
       if (!previewItem.previewDecision.canProceedToApplyDesign) {
         const details: ImportApplyNotReadyDetails = {
@@ -195,6 +229,38 @@ export class ImportApplyService {
             code: 'IMPORT_APPLY_NOT_READY',
             message: '当前 import preview 结果不允许进入 apply。',
             details,
+          },
+        }
+      }
+
+      if (referenceDecision?.blocking) {
+        return {
+          ok: false,
+          action: 'import-apply',
+          warnings: sourceWarnings,
+          error: {
+            code: 'IMPORT_APPLY_FAILED',
+            message: '当前 secret reference 无法进入 import apply 写入流程。',
+            details: {
+              scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {
+                requestedScope: options.scope,
+                resolvedScope: appliedScope,
+              }),
+              scopeCapabilities: getScopeCapabilityMatrix(importedSource.profile.platform),
+              scopeAvailability: detection?.scopeAvailability,
+              referenceGovernance: buildReferenceGovernanceFailureDetails(importedSource.profile, {
+                errors: [],
+                warnings: [],
+                limitations: [],
+              }, defaultSecretReferenceResolver),
+              referenceDecision: {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              },
+            },
           },
         }
       }
@@ -228,7 +294,8 @@ export class ImportApplyService {
         }
       }
 
-      const validation = await adapter.validate(importedSource.profile, { targetScope: appliedScope })
+      const materializedProfile = materializeReferenceProfile(importedSource.profile, defaultSecretReferenceResolver).profile
+      const validation = await adapter.validate(materializedProfile, { targetScope: appliedScope })
       if (!validation.ok) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(importedSource.profile, validation)
         const details: ValidationFailureDetails = {
@@ -249,7 +316,7 @@ export class ImportApplyService {
         }
       }
 
-      const preview = await adapter.preview(importedSource.profile, { targetScope: appliedScope })
+      const preview = await adapter.preview(materializedProfile, { targetScope: appliedScope })
       const decision = evaluateRisk(preview, validation, { force: options.force })
       const localConfirmationReasons = importedSource.profile.platform === 'claude' && appliedScope === 'local' && !options.force
         ? [
@@ -261,7 +328,8 @@ export class ImportApplyService {
             '如果你只是想共享项目级配置，优先使用 project scope，而不是 local scope。',
           ]
         : []
-      const confirmationAllowed = decision.allowed && localConfirmationReasons.length === 0
+      const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
+      const confirmationAllowed = decision.allowed && localConfirmationReasons.length === 0 && !requiresReferenceForce
 
       if (!confirmationAllowed) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(importedSource.profile, validation)
@@ -275,6 +343,9 @@ export class ImportApplyService {
             ),
             limitations: mergeUniqueMessages(
               decision.limitations,
+              referenceDecision?.decisionCode === 'inline-fallback-write'
+                ? ['如继续执行，将以明文写入目标配置文件。']
+                : [],
               localConfirmationLimitations,
             ),
           },
@@ -284,6 +355,15 @@ export class ImportApplyService {
           }),
           scopeCapabilities,
           scopeAvailability,
+          referenceDecision: referenceDecision
+            ? {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              }
+            : undefined,
           ...(referenceGovernance ? { referenceGovernance } : {}),
         }
 
@@ -346,6 +426,15 @@ export class ImportApplyService {
               reasons: dryRunSummary.warnings,
               limitations: dryRunSummary.limitations,
             },
+            referenceDecision: referenceDecision
+              ? {
+                  writeDecision: referenceDecision.decisionCode,
+                  writeStrategy: referenceDecision.writeStrategy,
+                  requiresForce: referenceDecision.requiresForce,
+                  blocking: referenceDecision.blocking,
+                  reasonCodes: referenceDecision.reasonCodes,
+                }
+              : undefined,
             changedFiles: [],
             noChanges: true,
             summary: dryRunSummary,
@@ -365,7 +454,7 @@ export class ImportApplyService {
           importedProfileId: importedSource.profile.id,
         },
       })
-      const applyResult = await adapter.apply(importedSource.profile, {
+      const applyResult = await adapter.apply(materializedProfile, {
         backupId: backup.backupId,
         targetScope: appliedScope,
       })
@@ -418,6 +507,15 @@ export class ImportApplyService {
             reasons: summary.warnings,
             limitations: summary.limitations,
           },
+          referenceDecision: referenceDecision
+            ? {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              }
+            : undefined,
           backupId: backup.backupId,
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
@@ -442,6 +540,140 @@ export class ImportApplyService {
         },
         warnings: summary.warnings,
         limitations: summary.limitations,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        action: 'import-apply',
+        error: {
+          code: error instanceof ImportSourceError
+            ? error.code
+            : error instanceof AdapterNotRegisteredError
+              ? 'ADAPTER_NOT_REGISTERED'
+              : error instanceof InvalidScopeError
+                ? 'INVALID_SCOPE'
+                : 'IMPORT_APPLY_FAILED',
+          message: error instanceof Error ? error.message : 'import apply 执行失败',
+        },
+      }
+    }
+  }
+
+  async applyMany(
+    filePath: string,
+    options: { profiles: string[]; force?: boolean; scope?: string; dryRun?: boolean },
+  ): Promise<CommandResult<ImportApplyBatchCommandOutput>> {
+    try {
+      const source = await this.importSourceService.load(filePath)
+      const sourceWarnings = source.sourceCompatibility.warnings
+      const importedProfiles = findImportedProfiles(source.profiles, options.profiles)
+
+      if (importedProfiles.length !== options.profiles.length) {
+        const missingProfileId = options.profiles.find((profileId) =>
+          !importedProfiles.some((item) => item.profile.id === profileId))
+
+        return {
+          ok: false,
+          action: 'import-apply',
+          warnings: sourceWarnings,
+          error: {
+            code: 'IMPORT_PROFILE_NOT_FOUND',
+            message: `导入文件中未找到配置档：${missingProfileId}`,
+            details: {
+              sourceFile: source.sourceFile,
+              profileId: missingProfileId,
+            },
+          },
+        }
+      }
+
+      const platforms = Array.from(new Set(importedProfiles.map((item) => item.profile.platform)))
+      if (platforms.length > 1) {
+        return {
+          ok: false,
+          action: 'import-apply',
+          warnings: sourceWarnings,
+          error: {
+            code: 'IMPORT_APPLY_BATCH_PLATFORM_MISMATCH',
+            message: '批量 import apply 第一版只支持同平台 profiles。',
+            details: {
+              sourceFile: source.sourceFile,
+              profileIds: options.profiles,
+              platforms,
+            },
+          },
+        }
+      }
+
+      const results: ImportApplyBatchCommandOutput['results'] = []
+      for (const profileId of options.profiles) {
+        const result = await this.apply(filePath, {
+          profile: profileId,
+          force: options.force,
+          scope: options.scope,
+          dryRun: options.dryRun,
+        })
+
+        if (result.ok) {
+          results.push({
+            profileId,
+            platform: importedProfiles.find((item) => item.profile.id === profileId)?.profile.platform,
+            appliedScope: result.data?.appliedScope,
+            ok: true,
+            noChanges: result.data?.noChanges,
+            backupId: result.data?.backupId,
+            changedFiles: result.data?.changedFiles,
+          })
+          continue
+        }
+
+        results.push({
+          profileId,
+          platform: importedProfiles.find((item) => item.profile.id === profileId)?.profile.platform,
+          ok: false,
+          failureCategory: this.getBatchFailureCategory(result.error?.code),
+          reasonCodes: this.getBatchFailureReasonCodes(result.error),
+          error: result.error,
+        })
+      }
+
+      const failedCount = results.filter((item) => !item.ok).length
+      const appliedCount = results.length - failedCount
+
+      if (failedCount > 0) {
+        return {
+          ok: false,
+          action: 'import-apply',
+          warnings: sourceWarnings,
+          error: {
+            code: 'IMPORT_APPLY_BATCH_PARTIAL_FAILURE',
+            message: '批量 import apply 未全部成功。',
+            details: {
+              sourceFile: source.sourceFile,
+              results,
+              summary: {
+                totalProfiles: results.length,
+                appliedCount,
+                failedCount,
+              },
+            },
+          },
+        }
+      }
+
+      return {
+        ok: true,
+        action: 'import-apply',
+        data: {
+          sourceFile: source.sourceFile,
+          results,
+          summary: {
+            totalProfiles: results.length,
+            appliedCount,
+            failedCount,
+          },
+        },
+        warnings: sourceWarnings,
       }
     } catch (error) {
       return {
@@ -498,5 +730,70 @@ export class ImportApplyService {
       fidelity,
       previewDecision,
     }
+  }
+
+  private getBatchFailureCategory(code: string | undefined): string | undefined {
+    if (!code) {
+      return undefined
+    }
+
+    switch (code) {
+      case 'IMPORT_SOURCE_NOT_FOUND':
+      case 'IMPORT_SOURCE_INVALID':
+      case 'IMPORT_UNSUPPORTED_SCHEMA':
+      case 'IMPORT_PROFILE_NOT_FOUND':
+      case 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS':
+        return 'source'
+      case 'INVALID_SCOPE':
+        return 'input'
+      case 'IMPORT_SCOPE_UNAVAILABLE':
+        return 'scope'
+      case 'IMPORT_APPLY_NOT_READY':
+      case 'PROFILE_NOT_FOUND':
+        return 'state'
+      case 'CONFIRMATION_REQUIRED':
+        return 'confirmation'
+      case 'IMPORT_PLATFORM_NOT_SUPPORTED':
+      case 'ADAPTER_NOT_REGISTERED':
+      case 'IMPORT_APPLY_BATCH_PLATFORM_MISMATCH':
+        return 'platform'
+      case 'VALIDATION_FAILED':
+      case 'IMPORT_APPLY_FAILED':
+      case 'USE_FAILED':
+      case 'ROLLBACK_FAILED':
+        return 'runtime'
+      default:
+        return 'runtime'
+    }
+  }
+
+  private getBatchFailureReasonCodes(error: CommandResult['error']): string[] | undefined {
+    const details = error?.details
+    if (!details || typeof details !== 'object') {
+      return undefined
+    }
+
+    const failureDetails = details as {
+      previewDecision?: { reasonCodes?: string[] }
+      referenceGovernance?: { reasonCodes?: string[] }
+      errors?: Array<{ code?: string }>
+    }
+
+    if (Array.isArray(failureDetails.previewDecision?.reasonCodes) && failureDetails.previewDecision.reasonCodes.length > 0) {
+      return failureDetails.previewDecision.reasonCodes
+    }
+
+    if (Array.isArray(failureDetails.referenceGovernance?.reasonCodes) && failureDetails.referenceGovernance.reasonCodes.length > 0) {
+      return failureDetails.referenceGovernance.reasonCodes
+    }
+
+    if (Array.isArray(failureDetails.errors) && failureDetails.errors.length > 0) {
+      const codes = failureDetails.errors
+        .map((item) => item.code)
+        .filter((code): code is string => typeof code === 'string' && code.length > 0)
+      return codes.length > 0 ? codes : undefined
+    }
+
+    return undefined
   }
 }

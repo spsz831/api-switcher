@@ -158,11 +158,11 @@ function collectReferenceGovernanceDetails(
       }]
     }
 
-    if (resolution.status === 'missing') {
+    if (resolution.status === 'unresolved') {
       return [{
         code: 'REFERENCE_ENV_UNRESOLVED',
         field,
-        status: 'missing',
+        status: 'unresolved',
         reference,
         scheme: resolution.scheme,
         message: `profile.${field} 的 ${resolution.scheme ?? 'reference'} 引用当前不可解析。`,
@@ -261,7 +261,7 @@ export function buildSecretReferenceStats(
   const missingReferenceProfileCount = profiles.filter((profile) => {
     const hasMissingInput = collectProfileSecretReferenceIssues(profile).length > 0
     const references = collectProfileSecretReferenceValues(profile)
-    return hasMissingInput || references.some((reference) => resolver.resolve(reference).status === 'missing')
+    return hasMissingInput || references.some((reference) => resolver.resolve(reference).status === 'unresolved')
   }).length
   const unsupportedReferenceProfileCount = profiles.filter((profile) =>
     collectProfileSecretReferenceValues(profile).some((reference) => resolver.resolve(reference).status === 'unsupported-scheme')).length
@@ -432,17 +432,25 @@ export function buildReferenceGovernanceFailureDetails(
   const referenceDetails = collectReferenceGovernanceDetails(profile, resolver)
   const hasReferenceProfiles = hasProfileUsableSecretReference(profile)
   const hasInlineProfiles = hasProfileInlineSecrets(profile)
+  const hasBlockedReferenceDetails = referenceDetails.some((item) =>
+    item.code === 'REFERENCE_VALUE_MISSING'
+    || item.code === 'REFERENCE_ENV_UNRESOLVED'
+    || item.code === 'REFERENCE_SCHEME_UNSUPPORTED')
   const hasWriteUnsupportedProfiles = hasReferenceProfiles
     || validationCodes.has(SECRET_REFERENCE_WRITE_UNSUPPORTED)
 
   const reasonCodes = new Set<ReferenceGovernanceReasonCode>()
-  if (hasWriteUnsupportedProfiles) {
+  if (hasWriteUnsupportedProfiles && !hasBlockedReferenceDetails) {
     reasonCodes.add('REFERENCE_WRITE_UNSUPPORTED')
   }
   if (hasInlineProfiles || validationCodes.has(INLINE_SECRET_IN_PROFILE)) {
     reasonCodes.add('INLINE_SECRET_PRESENT')
   }
-  if (referenceIssues.length > 0 || validationCodes.has(SECRET_REFERENCE_MISSING)) {
+  if (
+    referenceIssues.length > 0
+    || validationCodes.has(SECRET_REFERENCE_MISSING)
+    || hasBlockedReferenceDetails
+  ) {
     reasonCodes.add('REFERENCE_MISSING')
   }
 

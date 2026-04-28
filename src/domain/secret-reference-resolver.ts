@@ -1,9 +1,10 @@
-export type SecretReferenceResolutionStatus = 'resolved' | 'missing' | 'unsupported-scheme'
+export type SecretReferenceResolutionStatus = 'resolved' | 'unresolved' | 'unsupported-scheme'
 
 export interface SecretReferenceResolution {
   reference: string
   status: SecretReferenceResolutionStatus
   scheme?: string
+  resolvedValue?: string
 }
 
 export interface SecretReferenceResolver {
@@ -34,8 +35,9 @@ export class EnvSecretReferenceResolver implements SecretReferenceResolver {
     const value = name ? this.env[name] : undefined
     return {
       reference: trimmed,
-      status: value && value.trim().length > 0 ? 'resolved' : 'missing',
+      status: value && value.trim().length > 0 ? 'resolved' : 'unresolved',
       scheme,
+      ...(value && value.trim().length > 0 ? { resolvedValue: value } : {}),
     }
   }
 }

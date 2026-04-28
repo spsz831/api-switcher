@@ -1,7 +1,11 @@
 import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
+import { materializeReferenceProfile } from '../domain/materialize-reference-profile'
 import {
   buildReferenceGovernanceFailureDetails,
+  buildProfileReferenceSummary,
 } from '../domain/secret-inspection'
+import { planReferenceWrite } from '../domain/reference-write-governance'
+import { defaultSecretReferenceResolver } from '../domain/secret-reference-resolver'
 import { evaluateRisk } from '../domain/risk-engine'
 import type { ValidationResult } from '../types/adapter'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
@@ -70,7 +74,59 @@ export class SwitchService {
         }
       }
 
-      const validation = await adapter.validate(profile, { targetScope: resolvedScope })
+      const profileReferenceSummary = buildProfileReferenceSummary(profile, defaultSecretReferenceResolver)
+      const primaryReference = profileReferenceSummary?.referenceDetails?.find((item) =>
+        item.code === 'REFERENCE_ENV_RESOLVED'
+        || item.code === 'REFERENCE_ENV_UNRESOLVED'
+        || item.code === 'REFERENCE_SCHEME_UNSUPPORTED')
+      const referenceDecision = primaryReference
+        ? planReferenceWrite({
+            profile,
+            resolution: {
+              reference: primaryReference.reference ?? '',
+              status: primaryReference.code === 'REFERENCE_ENV_RESOLVED'
+                ? 'resolved'
+                : primaryReference.code === 'REFERENCE_ENV_UNRESOLVED'
+                  ? 'unresolved'
+                  : 'unsupported-scheme',
+              scheme: primaryReference.scheme,
+            },
+          })
+        : undefined
+
+      if (referenceDecision?.blocking) {
+        return {
+          ok: false,
+          action: 'use',
+          error: {
+            code: 'USE_FAILED',
+            message: '当前 secret reference 无法进入 use 写入流程。',
+            details: {
+              scopePolicy: buildSnapshotScopePolicy(profile.platform, {
+                requestedScope: options.scope,
+                resolvedScope,
+              }),
+              scopeCapabilities,
+              scopeAvailability,
+              referenceGovernance: buildReferenceGovernanceFailureDetails(profile, {
+                errors: [],
+                warnings: [],
+                limitations: [],
+              }, defaultSecretReferenceResolver),
+              referenceDecision: {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              },
+            },
+          },
+        }
+      }
+
+      const materializedProfile = materializeReferenceProfile(profile, defaultSecretReferenceResolver).profile
+      const validation = await adapter.validate(materializedProfile, { targetScope: resolvedScope })
 
       if (!validation.ok) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
@@ -92,13 +148,19 @@ export class SwitchService {
         }
       }
 
-      const preview = await adapter.preview(profile, { targetScope: resolvedScope })
+      const preview = await adapter.preview(materializedProfile, { targetScope: resolvedScope })
+
       const decision = evaluateRisk(preview, validation, { force: options.force })
       const risk = {
         allowed: decision.allowed,
         riskLevel: decision.riskLevel,
         reasons: Array.from(new Set(decision.reasons)),
-        limitations: Array.from(new Set(decision.limitations)),
+        limitations: Array.from(new Set([
+          ...decision.limitations,
+          ...(referenceDecision?.decisionCode === 'inline-fallback-write'
+            ? ['如继续执行，将以明文写入目标配置文件。']
+            : []),
+        ])),
       }
       const summary = buildSingleProfileCommandSummary({
         platform: profile.platform,
@@ -118,7 +180,8 @@ export class SwitchService {
         warnings: risk.reasons,
         limitations: risk.limitations,
       })
-      if (!decision.allowed) {
+      const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
+      if (!decision.allowed || requiresReferenceForce) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
         const details: ConfirmationRequiredDetails = {
           risk,
@@ -128,6 +191,15 @@ export class SwitchService {
           }),
           scopeCapabilities,
           scopeAvailability,
+          referenceDecision: referenceDecision
+            ? {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              }
+            : undefined,
           ...(referenceGovernance ? { referenceGovernance } : {}),
         }
         return {
@@ -177,6 +249,15 @@ export class SwitchService {
             validation,
             preview,
             risk,
+            referenceDecision: referenceDecision
+              ? {
+                  writeDecision: referenceDecision.decisionCode,
+                  writeStrategy: referenceDecision.writeStrategy,
+                  requiresForce: referenceDecision.requiresForce,
+                  blocking: referenceDecision.blocking,
+                  reasonCodes: referenceDecision.reasonCodes,
+                }
+              : undefined,
             summary: dryRunSummary,
             changedFiles: [],
             noChanges: true,
@@ -202,6 +283,15 @@ export class SwitchService {
             validation,
             preview,
             risk,
+            referenceDecision: referenceDecision
+              ? {
+                  writeDecision: referenceDecision.decisionCode,
+                  writeStrategy: referenceDecision.writeStrategy,
+                  requiresForce: referenceDecision.requiresForce,
+                  blocking: referenceDecision.blocking,
+                  reasonCodes: referenceDecision.reasonCodes,
+                }
+              : undefined,
             summary,
             changedFiles: [],
             noChanges: true,
@@ -218,7 +308,7 @@ export class SwitchService {
         validation,
         requestedScope: options.scope,
       })
-      const applyResult = await adapter.apply(profile, { backupId: backup.backupId, targetScope: resolvedScope })
+      const applyResult = await adapter.apply(materializedProfile, { backupId: backup.backupId, targetScope: resolvedScope })
       if (!applyResult.ok) {
         return {
           ok: false,
@@ -267,6 +357,15 @@ export class SwitchService {
             reasons: warnings,
             limitations,
           },
+          referenceDecision: referenceDecision
+            ? {
+                writeDecision: referenceDecision.decisionCode,
+                writeStrategy: referenceDecision.writeStrategy,
+                requiresForce: referenceDecision.requiresForce,
+                blocking: referenceDecision.blocking,
+                reasonCodes: referenceDecision.reasonCodes,
+              }
+            : undefined,
           summary: buildSingleProfileCommandSummary({
             platform: profile.platform,
             profileId: profile.id,
