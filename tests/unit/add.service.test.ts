@@ -202,6 +202,28 @@ describe('add service', () => {
       auth_reference: 'vault://codex/prod',
       base_url: 'https://gateway.example.com/openai/v1',
     })
+    expect(result.data?.summary.referenceStats).toMatchObject({
+      profileCount: 1,
+      referenceProfileCount: 1,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(result.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
     expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
   })
 
