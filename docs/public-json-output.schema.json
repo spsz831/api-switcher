@@ -463,11 +463,39 @@
         "field": { "type": "string" },
         "status": {
           "type": "string",
-          "enum": ["resolved", "missing", "unsupported-scheme"]
+          "enum": ["resolved", "missing", "unresolved", "unsupported-scheme"]
         },
         "reference": { "type": "string" },
         "scheme": { "type": "string" },
         "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceReadiness": {
+      "type": "object",
+      "required": ["level", "primaryReason", "canProceedToUse", "requiresForce", "nextAction", "summary"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["native-ready", "fallback-ready", "blocked"]
+        },
+        "primaryReason": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_NATIVE_WRITE_SUPPORTED",
+            "REFERENCE_INLINE_FALLBACK_REQUIRED",
+            "REFERENCE_ENV_UNRESOLVED",
+            "REFERENCE_SCHEME_UNSUPPORTED",
+            "NO_REFERENCE_INPUT"
+          ]
+        },
+        "canProceedToUse": { "type": "boolean" },
+        "requiresForce": { "type": "boolean" },
+        "nextAction": {
+          "type": "string",
+          "enum": ["proceed", "confirm-before-write", "fix-reference-before-write", "inspect-reference-details"]
+        },
+        "summary": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -567,7 +595,7 @@
     },
     "SchemaActionCapability": {
       "type": "object",
-      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "failureCodes", "fieldPresence", "fieldSources", "fieldStability", "readOrderGroups", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "failureCodes", "failureTextActions", "successTextEntries", "fieldPresence", "fieldSources", "fieldStability", "readOrderGroups", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
       "properties": {
         "action": {
           "type": "string",
@@ -596,6 +624,16 @@
         "failureCodes": {
           "type": "array",
           "items": { "$ref": "#/$defs/SchemaActionFailureCode" }
+        },
+        "failureTextActions": {
+          "type": "array",
+          "description": "Failure text-to-action index. Group by both textEntryPoint and recommendedHandling; the same textEntryPoint may appear multiple times when one non-JSON text entry maps to multiple stable recovery actions.",
+          "items": { "$ref": "#/$defs/SchemaFailureTextAction" }
+        },
+        "successTextEntries": {
+          "type": "array",
+          "description": "Success field to non-JSON text-entry mapping. Use when a stable success field should be located via an existing text summary or detail section.",
+          "items": { "$ref": "#/$defs/SchemaSuccessTextEntry" }
         },
         "fieldPresence": {
           "type": "array",
@@ -689,6 +727,15 @@
             "type": "string",
             "enum": ["summary", "selection", "items", "detail", "artifacts"]
           }
+        },
+        "defaultConsumerActionId": {
+          "type": "string"
+        },
+        "defaultCommandExample": {
+          "type": "string"
+        },
+        "defaultCommandPurpose": {
+          "type": "string"
         },
         "summarySectionGuidance": {
           "type": "array",
@@ -983,9 +1030,73 @@
       },
       "additionalProperties": false
     },
+    "SchemaFailureTextAction": {
+      "type": "object",
+      "required": ["textEntryPoint", "recommendedHandling", "appliesToCodes"],
+      "properties": {
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "error-message",
+            "reference-summary",
+            "risk-summary",
+            "scope-availability",
+            "preview-decision",
+            "redacted-fields"
+          ]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
+          ]
+        },
+        "appliesToCodes": {
+          "type": "array",
+          "description": "Stable error.code values routed to this textEntryPoint + recommendedHandling pair.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSuccessTextEntry": {
+      "type": "object",
+      "required": ["path", "textEntryPoint"],
+      "properties": {
+        "path": { "type": "string" },
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "platform-summary",
+            "reference-stats-summary",
+            "executability-stats-summary",
+            "scope-availability",
+            "reference-summary",
+            "reference-details",
+            "preview-detail"
+          ]
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "SchemaActionFailureCode": {
       "type": "object",
-      "required": ["code", "priority", "category", "recommendedHandling", "appliesWhen", "triggerFields"],
+      "required": ["code", "priority", "category", "recommendedHandling", "textEntryPoint", "appliesWhen", "triggerFields"],
       "properties": {
         "code": { "type": "string" },
         "priority": { "type": "integer", "minimum": 1 },
@@ -1011,6 +1122,17 @@
             "fix-reference-input",
             "resolve-reference-support",
             "migrate-inline-secret"
+          ]
+        },
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "error-message",
+            "reference-summary",
+            "risk-summary",
+            "scope-availability",
+            "preview-decision",
+            "redacted-fields"
           ]
         },
         "appliesWhen": { "type": "string" },
@@ -1250,6 +1372,9 @@
             {
               "id": "readonly-state-audit",
               "bestEntryAction": "current",
+              "defaultConsumerActionId": "inspect-overview",
+              "defaultCommandExample": "api-switcher current --json",
+              "defaultCommandPurpose": "先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。",
               "recommendedEntryMode": "starter-template",
               "hasStarterTemplate": true,
               "starterTemplateId": "readonly-state-audit-minimal-reader"
@@ -1262,6 +1387,9 @@
             {
               "id": "readonly-import-batch",
               "bestEntryAction": "import",
+              "defaultConsumerActionId": "repair-source-blockers",
+              "defaultCommandExample": "api-switcher import <file> --json",
+              "defaultCommandPurpose": "先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。",
               "recommendedEntryMode": "starter-template",
               "hasStarterTemplate": true,
               "starterTemplateId": "readonly-import-batch-minimal-reader"
@@ -1302,6 +1430,15 @@
         "bestEntryAction": {
           "type": "string",
           "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+        },
+        "defaultConsumerActionId": {
+          "type": "string"
+        },
+        "defaultCommandExample": {
+          "type": "string"
+        },
+        "defaultCommandPurpose": {
+          "type": "string"
         },
         "hasStarterTemplate": {
           "type": "boolean"
@@ -2095,12 +2232,59 @@
       },
       "additionalProperties": true
     },
+    "ImportApplyBatchItemResult": {
+      "type": "object",
+      "required": ["profileId", "ok"],
+      "properties": {
+        "profileId": { "type": "string" },
+        "platform": { "type": "string" },
+        "appliedScope": { "type": "string" },
+        "ok": { "type": "boolean" },
+        "noChanges": { "type": "boolean" },
+        "failureCategory": { "type": "string" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "backupId": { "type": "string" },
+        "changedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "$ref": "#/$defs/CommandError" }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplyBatchSummary": {
+      "type": "object",
+      "required": ["totalProfiles", "appliedCount", "failedCount"],
+      "properties": {
+        "totalProfiles": { "type": "integer", "minimum": 0 },
+        "appliedCount": { "type": "integer", "minimum": 0 },
+        "failedCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplyBatchCommandOutput": {
+      "type": "object",
+      "required": ["sourceFile", "results", "summary"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportApplyBatchItemResult" }
+        },
+        "summary": { "$ref": "#/$defs/ImportApplyBatchSummary" }
+      },
+      "additionalProperties": false
+    },
     "ImportApplyFailureDetails": {
       "anyOf": [
         { "$ref": "#/$defs/ImportApplySourceDetails" },
         { "$ref": "#/$defs/ImportApplyRedactedSecretDetails" },
         { "$ref": "#/$defs/ImportApplyNotReadyDetails" },
         { "$ref": "#/$defs/ImportScopeUnavailableDetails" },
+        { "$ref": "#/$defs/ImportApplyBatchCommandOutput" },
         { "$ref": "#/$defs/ConfirmationRequiredDetails" },
         { "$ref": "#/$defs/ValidationFailureDetails" }
       ]
@@ -2115,7 +2299,12 @@
         },
         "ok": { "const": true },
         "action": { "const": "import-apply" },
-        "data": { "$ref": "#/$defs/ImportApplyCommandOutput" },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/$defs/ImportApplyCommandOutput" },
+            { "$ref": "#/$defs/ImportApplyBatchCommandOutput" }
+          ]
+        },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -2185,6 +2374,7 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
+        "referenceReadiness": { "$ref": "#/$defs/ReferenceReadiness" },
         "summary": { "$ref": "#/$defs/UseSummary" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
@@ -2255,6 +2445,7 @@
       "required": ["risk"],
       "properties": {
         "risk": { "$ref": "#/$defs/UseRiskSummary" },
+        "referenceReadiness": { "$ref": "#/$defs/ReferenceReadiness" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",

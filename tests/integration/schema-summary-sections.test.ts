@@ -290,6 +290,42 @@ describe('schema summary sections integration', () => {
     expect(byProfile('single-platform-write')?.consumerFlow).toBeUndefined()
   })
 
+  it('schema --json 只为稳定只读画像暴露默认动作与默认命令入口', async () => {
+    const result = await runCli(['schema', '--json'])
+    const payload = parseJsonResult<{
+      commandCatalog?: {
+        consumerProfiles?: Array<{
+          id: string
+          defaultConsumerActionId?: string
+          defaultCommandExample?: string
+          defaultCommandPurpose?: string
+        }>
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('schema')
+
+    const consumerProfiles = payload.data?.commandCatalog?.consumerProfiles ?? []
+    const byProfile = (id: string) => consumerProfiles.find((item) => item.id === id)
+
+    expect(byProfile('readonly-state-audit')).toEqual(expect.objectContaining({
+      defaultConsumerActionId: 'inspect-overview',
+      defaultCommandExample: 'api-switcher current --json',
+      defaultCommandPurpose: '先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。',
+    }))
+    expect(byProfile('readonly-import-batch')).toEqual(expect.objectContaining({
+      defaultConsumerActionId: 'repair-source-blockers',
+      defaultCommandExample: 'api-switcher import <file> --json',
+      defaultCommandPurpose: '先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。',
+    }))
+    expect(byProfile('single-platform-write')?.defaultConsumerActionId).toBeUndefined()
+    expect(byProfile('single-platform-write')?.defaultCommandExample).toBeUndefined()
+    expect(byProfile('single-platform-write')?.defaultCommandPurpose).toBeUndefined()
+  })
+
   it('schema --json 只为只读 consumer profile 暴露最小机器消费模板', async () => {
     const result = await runCli(['schema', '--json'])
     const payload = parseJsonResult<{

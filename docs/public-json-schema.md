@@ -49,6 +49,16 @@ type CommandResult<T> = {
 - `ok=false` 时，失败信息在 `error`。
 - `warnings` 与 `limitations` 是顶层 explainable 摘要，适合 CLI/UI 直接展示。
 
+## Reference Resolver Preview/Use
+
+`preview/use` 第一阶段已消费 `env://VAR_NAME` 引用。
+
+- `native-reference-write`：当前平台会保留原始引用写入原生字段。
+- `inline-fallback-write`：当前平台会先解析环境变量，再以明文 fallback 写入目标配置文件。
+- `reference-blocked`：当前引用 unresolved 或 scheme 不受支持。对 `preview`，它会作为成功态观测结果中的 blocking decision 出现；对 `use/import apply`，它仍会直接阻断。
+
+当命中 `inline-fallback-write` 时，顶层 `limitations` 会稳定追加：`如继续执行，将以明文写入目标配置文件。`
+
 ## ScopeCapability
 
 `preview/use/rollback` 会在支持 scope policy 的平台上输出 `scopeCapabilities`。Codex 当前没有 scoped target，因此该数组为空或不存在。
@@ -361,17 +371,30 @@ type PlatformExplainableSummary = {
 {
   "action": "import-apply",
   "primaryFields": ["dryRun", "changedFiles", "backupId"],
+  "primaryErrorFields": ["error.code", "error.message", "error.details.results[].failureCategory", "error.details.results[].reasonCodes"],
   "fieldPresence": [
     { "path": "dryRun", "conditionCode": "WHEN_DRY_RUN_IS_REQUESTED" },
-    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" }
+    { "path": "backupId", "conditionCode": "WHEN_BACKUP_IS_CREATED" },
+    { "path": "error.details.results[].failureCategory", "conditionCode": "WHEN_BATCH_PARTIAL_FAILURE_RESULTS_ARE_EMITTED" },
+    { "path": "error.details.results[].reasonCodes", "conditionCode": "WHEN_BATCH_PARTIAL_FAILURE_RESULTS_ARE_EMITTED" }
+  ],
+  "primaryErrorFieldSemantics": [
+    { "path": "error.details.results[].failureCategory", "semantic": "error-details" },
+    { "path": "error.details.results[].reasonCodes", "semantic": "error-details" }
   ],
   "readOrderGroups": {
     "success": [
       { "group": "artifacts", "fields": ["dryRun", "changedFiles", "backupId"] }
+    ],
+    "failure": [
+      { "stage": "error-core", "fields": ["error.code", "error.message"] },
+      { "stage": "error-details", "fields": ["error.details.results[].failureCategory", "error.details.results[].reasonCodes"] }
     ]
   }
 }
 ```
+
+如果调用方还要消费批量 `IMPORT_APPLY_BATCH_PARTIAL_FAILURE`，建议把这两个 item 级轻量字段当成第一跳 discoverability：先按 `failureCategory / reasonCodes[]` 做批量分流，再决定是否继续读取单条 `error.code / error.details`。
 
 `schema --json --recommended-action <code>` 是稳定动作词表的轻量直取入口。它只过滤 `commandCatalog.recommendedActions[]`，不会裁剪 `commandCatalog.actions[]`、`commandCatalog.consumerProfiles[]` 或 `schema`，适合只接入 `continue-to-write`、`fix-input-and-retry` 这类动作短码目录。未知 code 返回 `SCHEMA_RECOMMENDED_ACTION_NOT_FOUND`。
 
@@ -388,7 +411,7 @@ type PlatformExplainableSummary = {
 
 这层 discoverability 适合和 `--action` 过滤结果一起消费：前者回答“命中这个 next step 之后该把它当成 inspect / repair / route / execute 哪一类动作”，后者回答“为了走到这一步，当前命令结果最先应该读取哪些字段”。
 
-`schema --json --catalog-summary` 是 schema catalog 的轻量目录模式。它直接返回 `data.catalogSummary`，只暴露 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`，适合只想先发现入口、还不需要下载整份 catalog 的调用方。`consumerProfiles[]` 还会额外公开 `hasStarterTemplate`、`starterTemplateId` 与 `recommendedEntryMode`，让调用方在不下载完整 `commandCatalog.consumerProfiles[]` 的前提下，先判断某条画像是否已经提供最小机器消费模板，以及下一步更推荐走 `starter-template` 还是完整 `consumerProfile`。
+`schema --json --catalog-summary` 是 schema catalog 的轻量目录模式。它直接返回 `data.catalogSummary`，只暴露 `consumerProfiles / actions / recommendedActions` 的稳定摘要和计数，不再展开完整 `commandCatalog`、`schemaId` 或 `schema`，适合只想先发现入口、还不需要下载整份 catalog 的调用方。`consumerProfiles[]` 还会额外公开 `hasStarterTemplate`、`starterTemplateId` 与 `recommendedEntryMode`，以及稳定只读画像的 `defaultConsumerActionId`、`defaultCommandExample`、`defaultCommandPurpose`，让调用方在不下载完整 `commandCatalog.consumerProfiles[]` 的前提下，先判断某条画像是否已经提供最小机器消费模板、下一步更推荐走 `starter-template` 还是完整 `consumerProfile`，以及默认第一跳该怎么起步。
 
 推荐的最小发现顺序可以固定为：先读取 `catalogSummary` 判断该走哪类画像、命令或推荐动作；如果需要字段级 contract，再切到完整 `schema --json`；如果只需要某一小块 catalog，则继续走 `--consumer-profile`、`--action` 或 `--recommended-action` 这三条过滤入口。
 
@@ -411,6 +434,9 @@ type PlatformExplainableSummary = {
         {
           "id": "readonly-state-audit",
           "bestEntryAction": "current",
+          "defaultConsumerActionId": "inspect-overview",
+          "defaultCommandExample": "api-switcher current --json",
+          "defaultCommandPurpose": "先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。",
           "recommendedEntryMode": "starter-template",
           "hasStarterTemplate": true,
           "starterTemplateId": "readonly-state-audit-minimal-reader"
@@ -423,6 +449,9 @@ type PlatformExplainableSummary = {
         {
           "id": "readonly-import-batch",
           "bestEntryAction": "import",
+          "defaultConsumerActionId": "repair-source-blockers",
+          "defaultCommandExample": "api-switcher import <file> --json",
+          "defaultCommandPurpose": "先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。",
           "recommendedEntryMode": "starter-template",
           "hasStarterTemplate": true,
           "starterTemplateId": "readonly-import-batch-minimal-reader"
@@ -449,9 +478,9 @@ type PlatformExplainableSummary = {
 Catalog Summary:
   - consumerProfiles=3, actions=11, recommendedActions=15
   - 推荐画像入口:
-    - readonly-state-audit: entry=current, recommended=starter-template, starterTemplate=readonly-state-audit-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-state-audit
+    - readonly-state-audit: entry=current, recommended=starter-template, starterTemplate=readonly-state-audit-minimal-reader, defaultAction=inspect-overview, command=api-switcher current --json, next=api-switcher schema --json --consumer-profile readonly-state-audit
     - single-platform-write: entry=preview, recommended=full-consumer-profile, next=api-switcher schema --json --consumer-profile single-platform-write
-    - readonly-import-batch: entry=import, recommended=starter-template, starterTemplate=readonly-import-batch-minimal-reader, next=api-switcher schema --json --consumer-profile readonly-import-batch
+    - readonly-import-batch: entry=import, recommended=starter-template, starterTemplate=readonly-import-batch-minimal-reader, defaultAction=repair-source-blockers, command=api-switcher import <file> --json, next=api-switcher schema --json --consumer-profile readonly-import-batch
 ```
 
 如果调用方希望把轻量目录直接接成稳定发现链路，可以把 `catalog-summary -> action -> recommended-action -> runtime payload` 固化成下面这组跳转：
@@ -487,12 +516,15 @@ type SchemaCommandOutput = {
       actions: number
       recommendedActions: number
     }
-    consumerProfiles: Array<{
-      id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
-      bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
-      hasStarterTemplate?: boolean
-      starterTemplateId?: 'readonly-state-audit-minimal-reader' | 'readonly-import-batch-minimal-reader'
-      recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
+      consumerProfiles: Array<{
+        id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
+        bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+        defaultConsumerActionId?: string
+        defaultCommandExample?: string
+        defaultCommandPurpose?: string
+        hasStarterTemplate?: boolean
+        starterTemplateId?: 'readonly-state-audit-minimal-reader' | 'readonly-import-batch-minimal-reader'
+        recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
     }>
     actions: Array<{
       action: 'add' | 'current' | 'export' | 'import' | 'import-apply' | 'list' | 'preview' | 'rollback' | 'schema' | 'use' | 'validate'
@@ -699,7 +731,9 @@ type SchemaCommandOutput = {
 }
 ```
 
-`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；只读画像还会额外公开 `starterTemplate`，把 `summary / items / failure / flow` 四层最小读取骨架直接作为稳定模板暴露出来，目前仅对 `readonly-state-audit` 和 `readonly-import-batch` 开放；现在又补了一层 `starterRecipes`，把 `discover / action / nextStep / runtime` 这组最小命令跳转 recipe 稳定挂到画像上，适合把 schema catalog 的发现路径直接固化成接入配置；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。建议固定分工如下：
+`commandCatalog.actions[]` 是 `schema --json` 的稳定命令级能力索引，适合接入方先判断某个 action 是否会输出 `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.triageStats`、`scopeCapabilities`、`scopeAvailability`、`scopePolicy`。其中 `primaryFields` 表示 success payload 的机器消费优先顺序，`primaryErrorFields` 表示 action 级失败 envelope 的优先读取顺序，均使用点路径表达；`readOrderGroups` 把 success / failure 两侧的推荐阅读阶段结构化；`summarySections` 则专门把 summary 这一层内部再拆成稳定 section 导航，避免外部调用方从自然语言说明或测试里反推“先看哪一个 summary 字段”。`commandCatalog.consumerProfiles[]` 则补了一层共享消费画像，适合先识别“这是不是某类共同产品面”，再复用同一套读取骨架。当前已公开三条画像：`readonly-state-audit` 统一 `current / list / validate / export` 这条只读状态审计面；`readonly-import-batch` 统一 `import / import preview` 这条只读批量导入分析面；`single-platform-write` 统一 `add / preview / use / rollback / import-apply` 这条单平台写入面。现在每条画像还会额外公开 `sharedItemFields` / `optionalItemFields` 与 `sharedFailureFields` / `optionalFailureFields`，帮助调用方直接发现 item 级和 failure 级的优先字段与可选 explainable；稳定只读画像还会额外公开 `defaultConsumerActionId`、`defaultCommandExample` 与 `defaultCommandPurpose`，直接暴露默认第一跳；只读画像还会额外公开 `starterTemplate`，把 `summary / items / failure / flow` 四层最小读取骨架直接作为稳定模板暴露出来，目前仅对 `readonly-state-audit` 和 `readonly-import-batch` 开放；现在又补了一层 `starterRecipes`，把 `discover / action / nextStep / runtime` 这组最小命令跳转 recipe 稳定挂到画像上，适合把 schema catalog 的发现路径直接固化成接入配置；`exampleActions` 与 `bestEntryAction` 则补了一层接入起点导航。现在 `failureCodes[]` 还会额外公开 `textEntryPoint`，把稳定 failure contract 直接映射到非 JSON 文本入口；`failureTextActions[]` 则继续把这层文本入口映射为稳定恢复动作分组，而且按 `textEntryPoint + recommendedHandling` 组合分组，因此同一个 `textEntryPoint` 可以合法出现多条记录。success 侧现在还补了一层 `successTextEntries[]`，用于把稳定 success 字段映射到非 JSON 文本模式下应优先查看的已有摘要或细节区块。建议固定分工如下：
+
+完整 `commandCatalog.actions[]` 大样例里，`import-apply` 也会沿用同一组批量失败入口：`primaryErrorFields` 先暴露 `error.code / error.message / error.details.results[].failureCategory / error.details.results[].reasonCodes`，`readOrderGroups.failure` 再固定为 `error-core -> error-details`。这样调用方即使不走前面的 `--action import-apply` 最小 discoverability 片段，也能直接从完整 catalog 大样例里拿到同一套批量失败读取顺序。
 
 - `primaryFields`：先读哪些字段。
 - `readOrderGroups`：先读哪一层，再读哪一层。
@@ -713,6 +747,7 @@ type SchemaCommandOutput = {
 - `starterRecipes`：画像级最小命令跳转 recipe，直接告诉调用方 discover / action / nextStep / runtime 这四步该如何串起来。
 - `exampleActions`：这一类画像有哪些代表命令。
 - `bestEntryAction`：第一次接入这类画像时优先参考哪个 action。
+- `defaultConsumerActionId / defaultCommandExample / defaultCommandPurpose`：如果这类画像存在稳定第一跳，默认先做什么、先跑什么、为什么先这样跑。
 - `summarySectionGuidance`：这一类画像里的 summary section 适合拿来做 overview、governance、gating 还是 routing。
 - `followUpHints`：看完 summary 之后，下一步更适合展开哪些字段，或者走哪种处理动作。
 - `triageBuckets`：把 summary 和 item explainable 进一步归成稳定分流桶，便于 dashboard、告警或自动化流程直接按桶接入。
@@ -723,11 +758,14 @@ type SchemaCommandOutput = {
 - `consumerFlow[].selectionReason`：解释为什么推荐该 flow 作为默认入口或 bucket 命中后的优先路径，方便 UI/自动化直接展示原因。
 - `defaultConsumerFlowId`：给只读画像补一层默认 flow 直取索引，调用方不必每次扫描 `consumerFlow[]` 再找 `defaultEntry: true`。
 - `failureCodes[].appliesWhen / triggerFields`、`referenceGovernanceCodes[].appliesWhen / triggerFields`：补一层失败恢复 discoverability，回答“什么情况下优先按这个失败码处理”和“先看哪些稳定错误字段”。
+- `failureCodes[].textEntryPoint`：把稳定 failure contract 直接映射到非 JSON 文本入口，回答“如果不是 JSON 模式，优先该看哪段摘要”，例如 `error-message`、`reference-summary`、`risk-summary`、`scope-availability`、`preview-decision`、`redacted-fields`。
+- `failureTextActions[]`：把某个非 JSON 文本入口继续映射到稳定恢复动作分组；注意它不是“每个文本入口只返回一条动作”，而是允许同一个 `textEntryPoint` 对应多条 `recommendedHandling`。
+- `successTextEntries[]`：把稳定 success 字段映射到非 JSON 文本入口，回答“如果不是 JSON 模式，优先该看哪段已有摘要或细节”。对 `single-platform-write` 这条产品面，`summary.platformStats` 当前优先对应 `platform-summary`，`summary.referenceStats` 当前优先对应 `reference-stats-summary`，`summary.executabilityStats` 当前优先对应 `executability-stats-summary`。例如 `referenceReadiness` 在非 JSON 文本模式下优先对应 `reference-stats-summary`；`use` 成功态里的 `platformSummary` 当前优先对应 `platform-summary`，`use` 的 `scopeAvailability` 当前优先对应 `scope-availability`，`use` 的 `preview` 当前优先对应 `preview-detail`；`rollback` 成功态里的 `platformSummary` 当前优先对应 `platform-summary`，`rollback` 的 `scopeAvailability` 当前优先对应 `scope-availability`；`import apply` 成功态里的 `platformSummary` 当前优先对应 `platform-summary`，`import apply` 的 `scopeAvailability` 当前优先对应 `scope-availability`，`import apply` 的 `preview` 当前优先对应 `preview-detail`；`add` 成功态里的 `preview` 当前优先对应 `preview-detail`。
 - `recommendedActions`：公开全局稳定动作词表，让 `nextStep`、`recommendedNextStep` 和 `recommendedHandling` 都能落到同一套短码目录。
 
 对只读命令本身，运行时 `summary.triageStats` 会把这些分流桶实例化成当前批次的真实计数；`consumerProfiles[].triageBuckets[]` 则是 schema catalog 里的稳定目录层，回答“有哪些桶、每个桶建议读哪些字段、下一步通常走什么动作”。
 
-如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以额外读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段；如果需要更偏自动化的接入，再读取 `triageBuckets[]`，直接按稳定桶做分流；如果想直接拿一层已经拼好的动作目录，则直接读取 `consumerActions[]`。最小接入流程建议固定为：
+如果外部调用方想避免按 action 名字硬编码，可以先消费 `consumerProfiles[]`，用 `bestEntryAction` 找参考样例，再用 `sharedSummaryFields / sharedItemFields / sharedFailureFields` 构建稳定基础读取器，最后按 `optional*Fields` 做增量绑定。对于只读画像，还可以先读取 `defaultConsumerActionId / defaultCommandExample / defaultCommandPurpose`，直接拿默认第一跳；再读取 `summarySectionGuidance[]`，直接知道哪一段 summary 更适合 overview、哪一段适合 governance 或 gating；再读取 `followUpHints[]`，直接知道 summary 看完之后下一步该展开哪些 detail 字段；如果需要更偏自动化的接入，再读取 `triageBuckets[]`，直接按稳定桶做分流；如果想直接拿一层已经拼好的动作目录，则直接读取 `consumerActions[]`。最小接入流程建议固定为：
 
 1. 从 `data.commandCatalog.consumerProfiles[]` 里选中目标产品面，例如 `readonly-import-batch`。
 2. 读取 `bestEntryAction`，先用这条 action 的成功/失败样例校准解析器。
@@ -741,6 +779,9 @@ const profile = schema.data.commandCatalog.consumerProfiles.find(
 
 const readOrder = {
   entryAction: profile?.bestEntryAction,
+  defaultActionId: profile?.defaultConsumerActionId,
+  defaultCommand: profile?.defaultCommandExample,
+  defaultCommandPurpose: profile?.defaultCommandPurpose,
   summary: profile?.sharedSummaryFields ?? [],
   items: profile?.sharedItemFields ?? [],
   failure: profile?.sharedFailureFields ?? [],
@@ -795,6 +836,16 @@ const runtimeEntries = starterRecipes.map((recipe) => ({
 }))
 ```
 
+如果外部调用方只想先拿默认第一跳，而不扫描 flow / action 数组，可以直接消费这 3 个轻量字段：
+
+```ts
+const defaultEntry = {
+  actionId: profile?.defaultConsumerActionId,
+  command: profile?.defaultCommandExample,
+  purpose: profile?.defaultCommandPurpose,
+}
+```
+
 如果外部调用方不想自己把 section、bucket 和 next step 再拼装一次，可以直接消费 `consumerActions[]`：
 
 ```ts
@@ -809,7 +860,7 @@ const actionCards = (profile?.consumerActions ?? []).map((action) => ({
 }))
 ```
 
-如果外部调用方希望直接拿到“该先看什么，再走什么动作”的稳定映射，而不是自己把 section、bucket 和 action 目录再 join 一遍，可以直接消费 `consumerFlow[]`。只读画像的最轻量入口是 `defaultConsumerFlowId -> consumerFlow[] -> consumerActions[] -> recommendedActions[]`，这条链路复用现有字段即可得到默认读取字段、动作卡片和稳定下一步短码：
+如果外部调用方希望直接拿到“该先看什么，再走什么动作”的稳定映射，而不是自己把 section、bucket 和 action 目录再 join 一遍，可以直接消费 `consumerFlow[]`。只读画像的最轻量入口现在可以理解为 `defaultCommandExample -> defaultConsumerFlowId -> consumerFlow[] -> consumerActions[] -> recommendedActions[]`；如果调用方不关心命令模板，仍然可以直接从 `defaultConsumerFlowId` 开始，这条链路复用现有字段即可得到默认读取字段、动作卡片和稳定下一步短码：
 
 ```ts
 const defaultFlow = (profile?.consumerFlow ?? []).find(
@@ -851,7 +902,102 @@ const flowCards = (profile?.consumerFlow ?? []).map((step) => ({
 | `current` / `list` / `validate` / `export` | `platform -> reference -> executability` | 先看平台分布，再看 secret/reference 形态，最后看后续写入可执行性 |
 | `import preview` | `source-executability -> executability -> platform` | 先看导入源能不能继续进入 apply，再看目标侧写入可执行性，最后看 mixed-batch 平台分布 |
 
-`preview / use / rollback / import apply` 不在这条只读 `summarySections` contract 内；它们继续通过 `primaryFields` 与 `readOrderGroups` 暴露推荐消费顺序。换句话说，对 `current/list/validate/export`，`summary.referenceStats` 回答“这一批里有多少 reference / inline / write unsupported profile”，`summary.executabilityStats` 回答“这一批里有多少 inline-ready / reference-ready / reference-missing / write-unsupported / source-redacted profile”；对 `import preview`，`summary.sourceExecutability` 先回答“导入源本身还能不能继续进入 apply”，`summary.executabilityStats` 再回答“目标平台侧从 profile 形态看是否具备写入条件”，`summary.platformStats` 最后回答“这批结果分布到了哪些平台”。`referenceSummary` 回答“这一条为什么被归到该类，以及 resolver 目前看到的字段级状态”。失败态不要读取或等待 `summary.referenceStats`，治理类失败应先读取 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`。`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；`referenceGovernanceCodes` 只在 `use` / `import-apply` 这类可能产生 secret/reference 治理失败的写入 action 上出现，公开稳定 `reasonCodes` 的推荐处理顺序，例如 `REFERENCE_INPUT_CONFLICT`、`REFERENCE_MISSING`、`REFERENCE_WRITE_UNSUPPORTED`、`INLINE_SECRET_PRESENT`；`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。failure 侧推荐顺序是先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后按需展开 `risk/scope/validation` 细节。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED`、`WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
+`preview / use / rollback / import apply` 不在这条只读 `summarySections` contract 内；它们继续通过 `primaryFields` 与 `readOrderGroups` 暴露推荐消费顺序。换句话说，对 `current/list/validate/export`，`summary.referenceStats` 回答“这一批里有多少 reference / inline / write unsupported profile”，`summary.executabilityStats` 回答“这一批里有多少 inline-ready / reference-ready / reference-missing / write-unsupported / source-redacted profile”；对 `import preview`，`summary.sourceExecutability` 先回答“导入源本身还能不能继续进入 apply”，`summary.executabilityStats` 再回答“目标平台侧从 profile 形态看是否具备写入条件”，`summary.platformStats` 最后回答“这批结果分布到了哪些平台”。`referenceSummary` 回答“这一条为什么被归到该类，以及 resolver 目前看到的字段级状态”。失败态不要读取或等待 `summary.referenceStats`，治理类失败应先读取 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`。`failureCodes` 进一步公开该 action 已稳定承诺的 `error.code` 列表，并给出推荐处理顺序 `priority`、失败类别 `category` 和建议动作 `recommendedHandling`；现在还会补一层 `textEntryPoint`，把稳定 failure contract 映射到非 JSON 文本入口，例如 `reference-summary` 表示优先看“reference 摘要”，`risk-summary` 表示优先看“风险摘要”，`scope-availability` 表示优先看“作用域可用性”，`preview-decision` 表示优先看 `import apply` not-ready 失败里的 “Preview 决策”，`redacted-fields` 表示优先看 redacted source 的字段列表。`failureTextActions[]` 则继续回答“看完某段非 JSON 文本后，下一步优先走哪些恢复动作”，并按 `textEntryPoint + recommendedHandling` 双键稳定分组；如果同一段文本同时承载了多种恢复语义，调用方应逐条消费这些分组，而不是只取第一条。`successTextEntries[]` 则继续回答“某个 success 字段在非 JSON 文本模式下优先该落到哪段已有摘要或细节”，并允许 `note` 明确说明“这是复用已有文本段，不代表存在一段独立同名区块”。例如当前 `preview` 成功态里的 `referenceReadiness` 会映射到 `reference-stats-summary`，因为文本输出没有单独的 `referenceReadiness` 区块，调用方应先看“referenceStats 摘要”，再进入 preview 细节与限制说明。`referenceGovernanceCodes` 只在 `use` / `import-apply` 这类可能产生 secret/reference 治理失败的写入 action 上出现，公开稳定 `reasonCodes` 的推荐处理顺序，例如 `REFERENCE_INPUT_CONFLICT`、`REFERENCE_MISSING`、`REFERENCE_WRITE_UNSUPPORTED`、`INLINE_SECRET_PRESENT`；对 `import-apply` 的批量部分失败，`schema --json` 现在还会额外公开 `error.details.results[].failureCategory` 与 `error.details.results[].reasonCodes` 的 discoverability，便于调用方先按 item 级轻量分流，再决定是否继续深入读取单条 `error.details`。`fieldPresence` 进一步回答这些字段是 `always` 还是 `conditional` 出现，并通过 `conditionCode` 暴露稳定条件短码；`fieldSources` 进一步回答字段主要由谁产出，当前固定来源桶包括 `command-service`、`platform-adapter`、`schema-service`、`write-pipeline`、`import-analysis`、`error-envelope`；`fieldStability` 进一步回答字段适合被外部绑定到什么强度，`stable` 表示适合长期强绑定，`bounded` 表示语义稳定但依赖上下文或条件，`expandable` 表示可展示但不建议被锁死为长期强 contract，通常应与 `fieldPresence`、`fieldSources` 联合读取。success 侧固定沿 `summary` -> `selection` -> `items` -> `detail` -> `artifacts` 这条语义轴按需裁剪，failure 侧固定沿 `error-core` -> `error-details` -> `error-recovery` 这条语义轴按需裁剪。failure 侧推荐顺序是先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后按需展开 `risk/scope/validation` 细节。`fieldPresence` 当前使用 `always` / `conditional` 两档，典型条件短码包括 `WHEN_SCOPE_AVAILABILITY_IS_RESOLVED`、`WHEN_SCOPE_FAILURE_PROVIDES_AVAILABILITY_DETAILS`、`WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED`、`WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT`、`WHEN_SCHEMA_DOCUMENT_IS_REQUESTED`、`WHEN_BATCH_PARTIAL_FAILURE_RESULTS_ARE_EMITTED`。当前稳定建议动作包括 `fix-input-and-retry`、`select-existing-resource`、`resolve-scope-before-retry`、`confirm-before-write`、`check-platform-support`、`inspect-runtime-details`、`check-import-source`。`primaryFieldSemantics` / `primaryErrorFieldSemantics` 则把这些点路径再映射到稳定语义标签，方便调用方做分类消费。
+
+如果你想把这层 contract 直接收口成“失败恢复消费模板”，推荐固定读取顺序如下：
+
+1. 先读 `primaryErrorFields`，确认该 action 承诺的稳定失败入口。
+2. 再按 `readOrderGroups.failure` 分阶段消费，通常就是 `error-core -> error-details -> error-recovery`。
+3. 用 `failureCodes[]` 建 `error.code -> recommendedHandling / textEntryPoint / category` 索引。
+4. 用 `failureTextActions[]` 建 `textEntryPoint -> recommendedHandling[]` 索引。
+5. 最后用 `recommendedActions[]` 把动作短码映射成统一动作说明、CTA 或自动化后续步骤。
+
+```ts
+const action = schema.data.commandCatalog.actions.find(
+  (item) => item.action === 'use',
+)
+
+const failureTemplate = {
+  entry: action?.primaryErrorFields ?? [],
+  stages: action?.readOrderGroups.failure ?? [],
+  byCode: new Map(
+    (action?.failureCodes ?? []).map((item) => [
+      item.code,
+      {
+        recommendedHandling: item.recommendedHandling,
+        textEntryPoint: item.textEntryPoint,
+        category: item.category,
+        triggerFields: item.triggerFields,
+      },
+    ]),
+  ),
+  byTextEntryPoint: new Map<string, string[]>(),
+  actionCards: new Map(
+    (schema.data.commandCatalog.recommendedActions ?? []).map((item) => [
+      item.code,
+      item,
+    ]),
+  ),
+}
+
+for (const item of action?.failureTextActions ?? []) {
+  const existing = failureTemplate.byTextEntryPoint.get(item.textEntryPoint) ?? []
+  failureTemplate.byTextEntryPoint.set(item.textEntryPoint, [
+    ...existing,
+    item.recommendedHandling,
+  ])
+}
+```
+
+对非 JSON 文本模式，可以把这条模板再压成一句话：先用 `failureCodes[].textEntryPoint` 找“该看哪段文本”，再用 `failureTextActions[]` 找“这段文本后面可能接哪些恢复动作”，最后再从 `recommendedActions[]` 取统一动作说明。
+
+如果你想看一条真实 action 的最小失败恢复拼装方式，`use` 是最完整的参考面。它同时覆盖 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability` 这几类稳定失败上下文，可以直接按下面这条 contract 拼出 UI/自动化恢复路径：
+
+```ts
+const useAction = schema.data.commandCatalog.actions.find(
+  (item) => item.action === 'use',
+)
+
+const recommendedActions = new Map(
+  (schema.data.commandCatalog.recommendedActions ?? []).map((item) => [
+    item.code,
+    item,
+  ]),
+)
+
+const useFailureByCode = new Map(
+  (useAction?.failureCodes ?? []).map((item) => [item.code, item]),
+)
+
+const useFailureByTextEntryPoint = new Map<string, string[]>()
+for (const item of useAction?.failureTextActions ?? []) {
+  const existing = useFailureByTextEntryPoint.get(item.textEntryPoint) ?? []
+  useFailureByTextEntryPoint.set(item.textEntryPoint, [
+    ...existing,
+    item.recommendedHandling,
+  ])
+}
+
+const confirmationContract = {
+  code: useFailureByCode.get('CONFIRMATION_REQUIRED'),
+  actionsFromRiskSummary: (useFailureByTextEntryPoint.get('risk-summary') ?? []).map(
+    (code) => recommendedActions.get(code),
+  ),
+  actionsFromReferenceSummary: (
+    useFailureByTextEntryPoint.get('reference-summary') ?? []
+  ).map((code) => recommendedActions.get(code)),
+  actionsFromErrorMessage: (useFailureByTextEntryPoint.get('error-message') ?? []).map(
+    (code) => recommendedActions.get(code),
+  ),
+}
+```
+
+这条真实 action 示例的推荐消费顺序可以固定为：
+
+1. 先读 `CONFIRMATION_REQUIRED` 对应的 `failureCodes[]` 条目，确认 `textEntryPoint = risk-summary`、`recommendedHandling = confirm-before-write`。
+2. 再读 `failureTextActions[]` 里同属 `risk-summary` 的动作分组，把这段文本入口映射成恢复动作。
+3. 如果需要补充 secret/reference 治理提示，再读 `reference-summary` 对应动作分组。
+4. 最后再用 `recommendedActions[]` 取统一按钮文案、CTA 或自动化下一步。
 
 `schema --schema-version --json` 是轻量版本探测，只返回版本字段：
 
@@ -873,7 +1019,7 @@ type SchemaVersionCommandOutput = {
 | [`validate --json`](#validate---json) | UI 接入方、自动化脚本 | item 级 `platformSummary`、`scopeCapabilities`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`items[].referenceSummary`。推荐消费顺序：先读 `summary.platformStats[]` 和 `summary.referenceStats` 看平台级通过/限制聚合与 reference 聚合，再补读 `summary.executabilityStats` 看写入可执行性聚合，再看 `validation.ok/errors/warnings`，最后按需展示 `items[].referenceSummary` 与 `scopeCapabilities`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`export --json`](#export---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`summary.secretExportPolicy`、`profiles[].referenceSummary`、`profiles[].secretExportSummary`、`defaultWriteScope`、`observedAt`、Gemini `scopeAvailability`。推荐消费顺序：先读 `summary.platformStats[]`、`summary.referenceStats` 和 `summary.secretExportPolicy` 看平台级聚合与本次 secret 导出策略，再补读 `summary.executabilityStats` 看后续写入可执行性聚合，最后结合 `profiles[].referenceSummary`、`profiles[].secretExportSummary`、`observedAt` 理解 item 级状态与 `scopeAvailability`。 | 通常无 action-specific 失败样例，优先读取统一 envelope / `error.code` |
 | [`import preview --json`](#import-preview---json) | UI 接入方、导入迁移工具 | `summary.sourceExecutability`、`summary.executabilityStats`、item 级 `platformSummary`、`exportedObservation`、`localObservation`、`previewDecision`、`summary` | 重点先看 `summary.sourceExecutability` 与 `summary.executabilityStats`，再看 `previewDecision`、`fidelity`、`sourceCompatibility`；命令本身通常不以 item 阻塞作为顶层失败 |
-| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`preview`、`dryRun`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `platformSummary/preview`。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation` |
+| [`import apply --json`](#import-apply---json) | 自动化脚本、导入迁移工具 | `platformSummary`、`summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`scopePolicy`、`preview`、`dryRun`、`backupId`、`changedFiles`。推荐消费顺序：先读 `summary.platformStats[0]` 看平台级 apply 聚合，再读 `summary.referenceStats` 与 `summary.executabilityStats` 做 secret 形态和写入可执行性判断，最后展开 `platformSummary/preview`。另外，如果命中第一阶段 reference resolver，成功态还会额外返回 `referenceDecision`，推荐在 summary 聚合之后再读取。 | `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities`、`scopeAvailability`、`CONFIRMATION_REQUIRED` / scope unavailable 类失败。推荐顺序：`error.code` -> `error.details.referenceGovernance.primaryReason/reasonCodes` -> `error.details.referenceGovernance.referenceDetails[]` -> `risk/scope/validation`。如果失败命中 reference resolver 主线，还会额外带出 `error.details.referenceDecision`；`IMPORT_APPLY_FAILED` 也可能用于 blocking reference 的早期阻断。 |
 
 ### current --json
 
@@ -1741,19 +1887,23 @@ type ImportPreviewItem = {
 
 ```bash
 api-switcher import apply <file> --profile <id> [--scope <scope>] [--force] [--dry-run] [--json]
+api-switcher import apply <file> --profiles <id1,id2,...> [--scope <scope>] [--force] [--dry-run] [--json]
 ```
 
 当前契约边界：
 
 - 当前支持 Gemini / Codex / Claude profile。
-- 一次只应用单个 profile（必须显式传 `--profile`）。
+- `--profile` 用于单条 apply，`--profiles` 用于同平台批量 apply。
+- 第一版批量 apply 只支持同平台 profile，且按传入顺序逐条执行。
+- 批量模式成功时返回 `data.results[]` 与 `data.summary`；如果部分成功、部分失败，顶层返回 `IMPORT_APPLY_BATCH_PARTIAL_FAILURE`，详情仍收敛在 `error.details.results[]` 与 `error.details.summary`。
+- 如果 `--profiles` 里混入多个平台，返回 `IMPORT_APPLY_BATCH_PLATFORM_MISMATCH`，调用方应先按平台拆分后再重试。
 - apply 相关决策遵循 local-first：真正进入 apply 的判定以后者 `localObservation` 为准，`exportedObservation` 只用于 fidelity 对比与解释。
 - gate 顺序固定为 availability-before-confirmation：Gemini `project` 先判定目标 scope 当前是否可用，再评估确认门槛（`CONFIRMATION_REQUIRED`）。
 - Gemini 支持 `--scope user|project`；Claude 支持 `--scope user|project|local`，其中 `local` 未 `--force` 时会进入更严格的确认门槛；Codex 不支持 `--scope`，会直接按平台真实双文件目标写入。
 - 对 Gemini 显式 `--scope project` 的失败态，如果当前 project root 无法解析，应该把它视为 availability failure；此时即使顶层 `error.code` 仍是 `USE_FAILED`，也应继续读取 `error.details.scopeAvailability.project.status = "unresolved"` 与 `reasonCode = "PROJECT_ROOT_UNRESOLVED"`。
 - apply 成功后的 rollback 依赖快照 provenance；当前 provenance 会绑定 `origin=import-apply`、`sourceFile` 与 `importedProfileId`。
 - `--dry-run` 会执行同一套 apply 前检查，但不会写入文件、不会创建快照；成功态返回 `dryRun=true`、`changedFiles=[]`、`noChanges=true`，计划差异仍保留在 `preview.diffSummary[]`。
-- machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 要求 `data` 匹配 `ImportApplyCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
+- machine-readable schema 已接通 action-specific envelope：`action='import-apply'` 时，`ok=true` 允许 `data` 匹配 `ImportApplyCommandOutput` 或 `ImportApplyBatchCommandOutput`；`ok=false` 要求 `error.details` 匹配稳定 failure detail 联合。
 
 成功态稳定字段：
 
@@ -1787,6 +1937,31 @@ type ImportApplyCommandOutput = {
   changedFiles: string[]
   noChanges: boolean
   summary: ImportApplySummary
+}
+
+type ImportApplyBatchItemResult = {
+  profileId: string
+  platform?: string
+  appliedScope?: string
+  ok: boolean
+  noChanges?: boolean
+  failureCategory?: string
+  reasonCodes?: string[]
+  backupId?: string
+  changedFiles?: string[]
+  error?: CommandError
+}
+
+type ImportApplyBatchSummary = {
+  totalProfiles: number
+  appliedCount: number
+  failedCount: number
+}
+
+type ImportApplyBatchCommandOutput = {
+  sourceFile: string
+  results: ImportApplyBatchItemResult[]
+  summary: ImportApplyBatchSummary
 }
 ```
 
@@ -1838,7 +2013,10 @@ type ImportScopeUnavailableDetails = {
 样例阅读方式：
 
 - 成功样例重点看 success payload 中的 `platformSummary`、`scopePolicy`、`preview`、`backupId` 与 `changedFiles`。
-- 失败样例重点看 `CONFIRMATION_REQUIRED` 或 scope unavailable 类失败下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后再展开 `risk/scope/validation` 细节。
+- 成功样例如果命中第一阶段 reference resolver，还会额外包含 `data.referenceDecision`；推荐顺序是先看 `summary.platformStats[0]`，再看 `summary.referenceStats` / `summary.executabilityStats`，再读 `referenceDecision` 判断是 native reference、inline fallback 还是 blocking reference，最后再展开 `platformSummary`、`preview` 与写入产物字段。
+- 批量成功样例重点看 `data.summary.totalProfiles / appliedCount / failedCount` 与 `data.results[]`；当前第一版批量 contract 不承诺把每条单 profile success payload 继续内嵌到批量结果里。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 或 scope unavailable 类失败下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后再展开 `risk/scope/validation` 细节。对应的非 JSON 文本输出现在也对齐为“先看 `reference 摘要`，再看 `reference 解析摘要`”。
+- 如果失败命中了 reference resolver 主线，还会额外出现 `error.details.referenceDecision`；对于 blocking reference，`IMPORT_APPLY_FAILED` 也可能作为早期阻断出口。
 
 成功样例：
 
@@ -2045,6 +2223,53 @@ api-switcher import apply E:/tmp/exported-gemini.json --profile gemini-prod --sc
 ```
 
 这个样例对应的是 Gemini `project scope` 的标准成功路径。它和 `user scope` 的差异有两点：一是 `appliedScope` 会显式返回 `project`；二是 `scopePolicy.rollbackScopeMatchRequired = true`，后续回滚时必须带同一 scope，不能按 `user` 去恢复 `project` 快照。
+
+Codex `import apply --profiles --json` 批量成功样例：
+
+```bash
+api-switcher import apply E:/tmp/exported-codex.json --profiles codex-prod-a,codex-prod-b --force --json
+```
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": true,
+  "action": "import-apply",
+  "data": {
+    "sourceFile": "E:/tmp/exported-codex.json",
+    "results": [
+      {
+        "profileId": "codex-prod-a",
+        "platform": "codex",
+        "ok": true,
+        "noChanges": false,
+        "backupId": "snapshot-codex-a-20260419121500-abcd01",
+        "changedFiles": [
+          "C:/Users/test/.codex/config.toml",
+          "C:/Users/test/.codex/auth.json"
+        ]
+      },
+      {
+        "profileId": "gemini-prod-b",
+        "platform": "gemini",
+        "ok": true,
+        "appliedScope": "project",
+        "noChanges": true,
+        "changedFiles": []
+      }
+    ],
+    "summary": {
+      "totalProfiles": 2,
+      "appliedCount": 2,
+      "failedCount": 0
+    }
+  },
+  "warnings": [],
+  "limitations": []
+}
+```
+
+这个批量成功样例刻意只展示第一版稳定聚合层：`results[]` 和 `summary`。`results[]` 仅补批量分流所需的轻量 item 字段，例如 `platform`、`appliedScope`、`noChanges`、`backupId`、`changedFiles`。如果外部调用方需要单条 profile 的完整 `platformSummary / preview / scopePolicy` 明细，不应假设批量结果会内嵌这层 payload，而应继续按 profile 单独执行 `import apply --json` 或先读取 `import preview --json`。
 
 Codex `import apply --json` 成功样例：
 
@@ -2591,6 +2816,24 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 
 这个样例对应“显式指定 `--scope local` 且带 `--force`”的成功路径。如果去掉 `--force`，Claude 会先返回 `CONFIRMATION_REQUIRED`，并把更高确认门槛的解释放进 `error.details.risk.reasons` 与 `limitations`。
 
+如果成功态命中了第一阶段 reference resolver，还会额外返回 `data.referenceDecision`。例如：
+
+```json
+{
+  "referenceDecision": {
+    "writeDecision": "inline-fallback-write",
+    "writeStrategy": "inline-fallback-only",
+    "requiresForce": true,
+    "blocking": false,
+    "reasonCodes": [
+      "REFERENCE_INLINE_FALLBACK_REQUIRED"
+    ]
+  }
+}
+```
+
+这表示导入源里的 `env://VAR_NAME` 已在本地解析，但目标平台当前不会原样持久化 reference，而是会先解析成明文值，再进入真实 apply 链路。因此未带 `--force` 时会先返回 `CONFIRMATION_REQUIRED`，并稳定附带 `error.details.referenceDecision`；风险文案固定为 `如继续执行，将以明文写入目标配置文件。`
+
 失败样例：
 
 对应的高风险失败样例如下：
@@ -2688,6 +2931,52 @@ api-switcher import apply E:/tmp/exported-claude.json --profile claude-prod --sc
 }
 ```
 
+如果失败原因不是高风险 scope，而是 reference 本身不可执行，`import apply` 会更早失败，不再继续进入 validate/preview/apply。例如：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "import-apply",
+  "error": {
+    "code": "IMPORT_APPLY_FAILED",
+    "message": "当前 secret reference 无法进入 import apply 写入流程。",
+    "details": {
+      "referenceDecision": {
+        "writeDecision": "reference-blocked",
+        "writeStrategy": "blocked",
+        "requiresForce": false,
+        "blocking": true,
+        "reasonCodes": [
+          "REFERENCE_ENV_UNRESOLVED"
+        ]
+      },
+      "referenceGovernance": {
+        "hasReferenceProfiles": true,
+        "hasInlineProfiles": false,
+        "hasWriteUnsupportedProfiles": true,
+        "primaryReason": "REFERENCE_MISSING",
+        "reasonCodes": [
+          "REFERENCE_MISSING"
+        ],
+        "referenceDetails": [
+          {
+            "code": "REFERENCE_ENV_UNRESOLVED",
+            "field": "apply.auth_reference",
+            "status": "unresolved",
+            "reference": "env://GEMINI_API_KEY",
+            "scheme": "env",
+            "message": "profile.apply.auth_reference 的 env 引用当前不可解析。"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+这类失败的推荐处理顺序是：先看 `error.code`，再看 `error.details.referenceDecision` 判断是不是 blocking reference，最后再展开 `referenceGovernance.referenceDetails[]` 看是 env 未解析还是 scheme 不支持。
+
 如果导入源来自默认 `export --json`，其中 inline secret 会被写成 `"<redacted:inline-secret>"`。这种导出可以继续用于 `import preview`，因为 preview 只需要保留字段位置、做 fidelity / drift / scope 分析；但它不能直接进入 `import apply`，因为 apply 需要可执行 secret 明文，而当前 contract 明确禁止从 redacted placeholder 反推真实值。
 
 对应的 redacted-source 失败样例如下：
@@ -2725,11 +3014,73 @@ api-switcher import apply E:/tmp/exported-redacted.json --profile gemini-prod --
 2. 再读 `warnings[]`，向用户解释“为什么 preview 还能继续看，但 apply 不允许继续执行”。
 3. 最后读 `error.details.redactedInlineSecretFields[]`，把需要重新补 secret 明文的字段位置明确展示出来。
 
+批量部分失败样例：
+
+```json
+{
+  "schemaVersion": "2026-04-15.public-json.v1",
+  "ok": false,
+  "action": "import-apply",
+  "error": {
+    "code": "IMPORT_APPLY_BATCH_PARTIAL_FAILURE",
+    "message": "批量 import apply 未全部成功。",
+    "details": {
+      "sourceFile": "E:/tmp/exported-codex.json",
+      "results": [
+        {
+          "profileId": "codex-prod-a",
+          "platform": "codex",
+          "ok": true,
+          "noChanges": false,
+          "backupId": "snapshot-codex-a-20260419123000-abcd02",
+          "changedFiles": [
+            "C:/Users/test/.codex/config.toml",
+            "C:/Users/test/.codex/auth.json"
+          ]
+        },
+        {
+          "profileId": "codex-prod-b",
+          "platform": "codex",
+          "ok": false,
+          "failureCategory": "runtime",
+          "reasonCodes": [
+            "SECRET_REFERENCE_MISSING"
+          ],
+          "error": {
+            "code": "VALIDATION_FAILED",
+            "message": "配置校验失败",
+            "details": {
+              "ok": false,
+              "errors": [
+                {
+                  "code": "SECRET_REFERENCE_MISSING",
+                  "level": "error",
+                  "message": "profile.source.secret_ref 缺少可用的 secret 引用。"
+                }
+              ],
+              "warnings": [],
+              "limitations": []
+            }
+          }
+        }
+      ],
+      "summary": {
+        "totalProfiles": 2,
+        "appliedCount": 1,
+        "failedCount": 1
+      }
+    }
+  }
+}
+```
+
+这类批量部分失败的推荐消费顺序是：先读 `error.code` 判断是否为 `IMPORT_APPLY_BATCH_PARTIAL_FAILURE`，再读 `error.details.summary.totalProfiles / appliedCount / failedCount` 做整体告警或重试决策，最后遍历 `error.details.results[]` 拆分成功项与失败项。失败项可以先消费轻量字段 `failureCategory` 与 `reasonCodes[]` 做批量分流，再按需进入各自单条 `error.code` 的恢复流程。
+
 ### add --json
 
-`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。`data.summary.referenceStats` 会补出当前新增 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `risk`、`preview` 与 `scopeCapabilities`。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节。
+`add` 成功返回的摘要也会带出当前平台的 scope 能力矩阵，便于 UI 在“新增 profile 后”的确认页继续展示后续可写 scope 与确认门槛。`data.summary.platformStats[]` 是 add 成功态的单平台聚合入口，适合先读取 warning/limitation 计数、变更文件计数、是否计划备份与平台 explainable 摘要。`data.summary.referenceStats` 会补出当前新增 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `risk`、`preview` 与 `scopeCapabilities`。对 reference-only 输入，这两层 summary 只表达“录入了什么 secret/reference 形态”，不代表 `add` 阶段已经完成本地 resolver 解析或写入 readiness 校验。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 add 细节。
 
-`add` 的 secret 输入面支持两类互斥模式：明文 `--key`，或 reference-only 的 `--secret-ref` / `--auth-reference`。reference-only 成功时，`profile.source.secret_ref` 与 `profile.apply.auth_reference` 会保留原始引用字符串，便于外部系统继续消费；同时 `summary.limitations` 会提示 `preview/use/import apply` 暂未消费该引用。若既没有 key 也没有 reference，失败码为 `ADD_INPUT_REQUIRED`；若同时传入明文 key 与 reference，失败码为 `ADD_INPUT_CONFLICT`。
+`add` 的 secret 输入面支持两类互斥模式：明文 `--key`，或 reference-only 的 `--secret-ref` / `--auth-reference`。reference-only 成功时，`profile.source.secret_ref` 与 `profile.apply.auth_reference` 会保留原始引用字符串，便于外部系统继续消费；`add` 只负责录入 reference 输入，不在该阶段解析当前环境能否执行；真正的本地解析、治理判断和写入可执行性检查留在 `preview/use/import apply`。同时 `summary.limitations` 会提示 `preview/use/import apply` 暂未消费该引用。若既没有 key 也没有 reference，失败码为 `ADD_INPUT_REQUIRED`；若同时传入明文 key 与 reference，失败码为 `ADD_INPUT_CONFLICT`。
 
 ```ts
 type AddCommandOutput = {
@@ -2751,7 +3102,13 @@ type AddCommandOutput = {
 ### preview --json
 
 `data.scopePolicy` 描述本次预览请求的目标 scope 语义；`data.scopeCapabilities` 描述当前平台的 scope 操作能力。
-`data.summary.platformStats[]` 是单平台命令的稳定平台级聚合入口；对 `preview`，它包含目标 scope、warning/limitation 计数、变更文件计数、是否计划备份和 `noChanges`。`data.summary.referenceStats` 会补出当前写入 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `preview`、`risk`、`scopePolicy` 与 scope 相关细节。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。
+`data.referenceDecision` 是 `preview` 第一阶段 reference resolver contract 的稳定入口。当前仅消费 `env://VAR_NAME`：
+
+- `native-reference-write`：平台会原样保留引用写入原生字段
+- `inline-fallback-write`：平台会把解析后的 secret 明文 fallback 写入目标配置文件
+- `reference-blocked`：unresolved / unsupported-scheme，会在成功态 preview 中作为 blocking decision 返回
+
+`inline-fallback-write` 时，顶层 `limitations` 会稳定追加“如继续执行，将以明文写入目标配置文件。”。`reference-blocked` 时，`preview` 不再走顶层失败，而是返回成功态只读观测结果：`risk.allowed=false`，同时带上 `referenceDecision`、`referenceGovernance` 和稳定 limitation，明确表示当前不能继续进入 `use/import apply`。`data.summary.platformStats[]` 是单平台命令的稳定平台级聚合入口；对 `preview`，它包含目标 scope、warning/limitation 计数、变更文件计数、是否计划备份和 `noChanges`。`data.summary.referenceStats` 会补出当前写入 profile 的 secret/reference 形态聚合，`data.summary.executabilityStats` 会补出同一条 profile 的写入可执行性聚合。如果命中了第一阶段 resolver，`data.referenceReadiness` 还会给出一层轻量汇总，直接回答当前是 `native-ready`、`fallback-ready` 还是 `blocked`，以及下一步推荐 `proceed`、`confirm-before-write` 还是 `fix-reference-before-write`。`referenceReadiness` 只是 `preview` 成功态的轻量汇总入口，不替代 `referenceDecision` / `referenceGovernance`。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，再读 `referenceReadiness`，最后按需展开 `referenceDecision` / `referenceGovernance`、`preview`、`risk`、`scopePolicy` 与 scope 相关细节。文本输出也按这条顺序组织：先看“按平台汇总”，再看“referenceStats 摘要”和“executabilityStats 摘要”，最后进入 preview 细节。
 
 语义补充：
 
@@ -2761,7 +3118,7 @@ type AddCommandOutput = {
 样例阅读方式：
 
 - 成功样例重点看 success payload 中的 `summary.platformStats`、`summary.referenceStats`、`summary.executabilityStats`、`preview`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`。
-- 失败样例重点看 action 级失败 envelope，以及 `error.details.scopePolicy`、`scopeAvailability` 里的稳定 failure details。
+- 失败样例重点看 action 级失败 envelope，以及 `error.details.scopePolicy`、`scopeAvailability` 里的稳定 failure details；如果是 blocked reference，请优先在成功样例里读取 `data.referenceDecision` 与 `data.referenceGovernance`。
 
 成功样例：
 
@@ -2772,38 +3129,80 @@ type AddCommandOutput = {
   "action": "preview",
   "data": {
     "profile": {
-      "id": "gemini-prod",
-      "platform": "gemini",
-      "name": "Gemini 生产"
+      "id": "codex-ref",
+      "platform": "codex",
+      "name": "Codex 引用观测"
     },
     "preview": {
-      "requiresConfirmation": true,
+      "requiresConfirmation": false,
       "backupPlanned": true,
       "noChanges": false,
       "targetFiles": [
         {
-          "path": "C:/Users/test/.gemini/settings.json",
-          "scope": "project"
+          "path": "C:/Users/test/.codex/auth.json"
         }
       ]
     },
     "risk": {
       "allowed": false,
-      "riskLevel": "high",
+      "riskLevel": "low",
       "reasons": [
-        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
+        "当前 reference 已被治理策略阻断，preview 仅提供只读观测结果。"
       ],
       "limitations": [
-        "GEMINI_API_KEY 仍需通过环境变量生效。"
+        "当前 secret reference 仍不能进入 use/import apply 写入流程。"
+      ]
+    },
+    "referenceDecision": {
+      "writeDecision": "reference-blocked",
+      "writeStrategy": "blocked",
+      "requiresForce": false,
+      "blocking": true,
+      "reasonCodes": [
+        "REFERENCE_SCHEME_UNSUPPORTED"
+      ]
+    },
+    "referenceReadiness": {
+      "level": "blocked",
+      "primaryReason": "REFERENCE_SCHEME_UNSUPPORTED",
+      "canProceedToUse": false,
+      "requiresForce": false,
+      "nextAction": "fix-reference-before-write",
+      "summary": "当前 reference 暂不受支持，进入 use 前需要先修复引用。"
+    },
+    "referenceGovernance": {
+      "hasReferenceProfiles": true,
+      "hasInlineProfiles": false,
+      "hasWriteUnsupportedProfiles": true,
+      "primaryReason": "REFERENCE_MISSING",
+      "reasonCodes": [
+        "REFERENCE_MISSING"
+      ],
+      "referenceDetails": [
+        {
+          "code": "REFERENCE_SCHEME_UNSUPPORTED",
+          "field": "source.secret_ref",
+          "status": "unsupported-scheme",
+          "reference": "vault://codex/prod",
+          "scheme": "vault",
+          "message": "profile.source.secret_ref 使用的引用 scheme 当前不受支持。"
+        },
+        {
+          "code": "REFERENCE_SCHEME_UNSUPPORTED",
+          "field": "apply.auth_reference",
+          "status": "unsupported-scheme",
+          "reference": "vault://codex/prod",
+          "scheme": "vault",
+          "message": "profile.apply.auth_reference 使用的引用 scheme 当前不受支持。"
+        }
       ]
     },
     "summary": {
       "platformStats": [
         {
-          "platform": "gemini",
+          "platform": "codex",
           "profileCount": 1,
-          "profileId": "gemini-prod",
-          "targetScope": "project",
+          "profileId": "codex-ref",
           "warningCount": 1,
           "limitationCount": 1,
           "changedFileCount": 1,
@@ -2812,61 +3211,10 @@ type AddCommandOutput = {
         }
       ],
       "warnings": [
-        "高风险操作需要确认"
+        "当前 reference 已被治理策略阻断，preview 仅提供只读观测结果。"
       ],
       "limitations": [
-        "Gemini 最终认证结果仍受环境变量影响。"
-      ]
-    },
-    "scopePolicy": {
-      "requestedScope": "project",
-      "resolvedScope": "project",
-      "defaultScope": "user",
-      "explicitScope": true,
-      "highRisk": true,
-      "riskWarning": "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。",
-      "rollbackScopeMatchRequired": true
-    },
-    "scopeAvailability": [
-      {
-        "scope": "project",
-        "status": "available",
-        "detected": true,
-        "writable": true,
-        "path": "C:/work/.gemini/settings.json"
-      }
-    ],
-    "scopeCapabilities": [
-      {
-        "scope": "project",
-        "detect": true,
-        "preview": true,
-        "use": true,
-        "rollback": true,
-        "writable": true,
-        "risk": "high",
-        "confirmationRequired": true
-      }
-    ],
-    "summary": {
-      "platformStats": [
-        {
-          "platform": "gemini",
-          "profileCount": 1,
-          "profileId": "gemini-prod",
-          "targetScope": "project",
-          "warningCount": 1,
-          "limitationCount": 1,
-          "changedFileCount": 1,
-          "backupCreated": true,
-          "noChanges": false
-        }
-      ],
-      "warnings": [
-        "Gemini 写入目标从默认 user scope 切换到 project scope；project 会覆盖 user，同名字段将影响当前项目。"
-      ],
-      "limitations": [
-        "GEMINI_API_KEY 仍需通过环境变量生效。"
+        "当前 secret reference 仍不能进入 use/import apply 写入流程。"
       ]
     }
   }
@@ -2938,6 +3286,7 @@ type PreviewCommandOutput = {
   validation: ValidationResult
   preview: PreviewResult
   risk: PreviewRiskSummary
+  referenceReadiness?: ReferenceReadiness
   summary: PreviewSummary
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: ScopeCapability[]
@@ -2949,7 +3298,13 @@ type PreviewCommandOutput = {
 
 成功时，`data.platformSummary` 会把平台 precedence 或多文件组合语义一起返回。
 `data.scopeCapabilities` 描述本次平台能力矩阵。
-`data.summary.platformStats[]` 是成功态的单平台聚合入口，包含目标 scope、warning/limitation 计数、变更文件计数、是否创建备份和 `noChanges`。`data.summary.referenceStats` 会补出当前写入 profile 的 secret 形态聚合，`data.summary.executabilityStats` 会补出当前写入 profile 的可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，最后再展开 `platformSummary`、`preview` 与写入产物字段。
+`data.referenceDecision` 是 `use` 第一阶段 reference resolver contract 的稳定入口。当前仅消费 `env://VAR_NAME`：
+
+- `native-reference-write`：平台会原样保留引用写入原生字段
+- `inline-fallback-write`：平台会把解析后的 secret 明文 fallback 写入目标配置文件；没有 `--force` 时返回 `CONFIRMATION_REQUIRED`
+- `reference-blocked`：unresolved / unsupported-scheme，不进入 snapshot/apply
+
+`data.summary.platformStats[]` 是成功态的单平台聚合入口，包含目标 scope、warning/limitation 计数、变更文件计数、是否创建备份和 `noChanges`。`data.summary.referenceStats` 会补出当前写入 profile 的 secret 形态聚合，`data.summary.executabilityStats` 会补出当前写入 profile 的可执行性聚合。推荐顺序是先读 `summary.platformStats[0]`，再读 `summary.referenceStats` 与 `summary.executabilityStats`，再读 `referenceDecision`，最后再展开 `platformSummary`、`preview` 与写入产物字段。
 
 语义补充：
 
@@ -2960,7 +3315,7 @@ type PreviewCommandOutput = {
 样例阅读方式：
 
 - 成功样例重点看 success payload 中的 `summary.platformStats`、`platformSummary`、`scopeCapabilities`、`scopeAvailability` 与写入结果字段。
-- 失败样例重点看 `CONFIRMATION_REQUIRED` 下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后再展开 `risk/scope/validation` 细节。
+- 失败样例重点看 `CONFIRMATION_REQUIRED` 下的 `referenceGovernance`、`risk`、`scopePolicy`、`scopeCapabilities` 与 `scopeAvailability`；推荐先读 `error.code`，再读 `error.details.referenceGovernance.primaryReason/reasonCodes`，再按需展开 `error.details.referenceGovernance.referenceDetails[]`，最后再展开 `risk/scope/validation` 细节。对应的非 JSON 文本输出现在也对齐为“先看 `reference 摘要`，再看 `reference 解析摘要`”。
 
 成功样例：
 
@@ -3063,7 +3418,7 @@ type PreviewCommandOutput = {
           {
             "code": "REFERENCE_ENV_UNRESOLVED",
             "field": "apiKey",
-            "status": "missing",
+            "status": "unresolved",
             "reference": "env://GEMINI_API_KEY",
             "scheme": "env",
             "message": "引用 env://GEMINI_API_KEY 当前未解析，写入前仍需要人工确认。"

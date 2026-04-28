@@ -20,6 +20,7 @@ import {
   type SchemaReadOrderGroups,
   type SchemaRecommendedAction,
   type SchemaReferenceGovernanceCode,
+  type SchemaSuccessTextEntry,
 } from '../types/command'
 
 export type SchemaConsumerProfileFilter = SchemaConsumerProfile['id']
@@ -33,6 +34,9 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     appliesToActions: ['current', 'list', 'validate', 'export'],
     exampleActions: ['current', 'export'],
     bestEntryAction: 'current',
+    defaultConsumerActionId: 'inspect-overview',
+    defaultCommandExample: 'api-switcher current --json',
+    defaultCommandPurpose: '先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。',
     sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'],
     sharedItemFields: ['platformSummary'],
     sharedFailureFields: ['error.code', 'error.message'],
@@ -233,6 +237,9 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     appliesToActions: ['import'],
     exampleActions: ['import'],
     bestEntryAction: 'import',
+    defaultConsumerActionId: 'repair-source-blockers',
+    defaultCommandExample: 'api-switcher import <file> --json',
+    defaultCommandPurpose: '先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。',
     sharedSummaryFields: ['summary.sourceExecutability', 'summary.executabilityStats', 'summary.platformStats', 'summary.triageStats'],
     sharedItemFields: ['platformSummary', 'previewDecision'],
     sharedFailureFields: ['error.code', 'error.message'],
@@ -474,6 +481,8 @@ const SCHEMA_ACTION_CAPABILITIES: SchemaActionCapability[] = COMMAND_ACTIONS.map
   summarySections: getSummarySections(action),
   primaryFieldSemantics: getPrimaryFieldSemantics(action),
   primaryErrorFieldSemantics: getPrimaryErrorFieldSemantics(action),
+  failureTextActions: getFailureTextActions(action),
+  successTextEntries: getSuccessTextEntries(action),
   ...getReferenceGovernanceCodeCatalog(action),
 }))
 
@@ -514,7 +523,7 @@ function getPrimaryFields(action: typeof COMMAND_ACTIONS[number]): string[] {
     case 'list':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'profiles', 'profiles.referenceSummary']
     case 'preview':
-      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
+      return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'risk', 'referenceReadiness', 'referenceDecision', 'referenceGovernance', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability']
     case 'rollback':
       return ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'platformSummary', 'rollback', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'restoredFiles', 'backupId']
     case 'schema':
@@ -556,17 +565,17 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'DUPLICATE_PROFILE_ID', priority: 5, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 6, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'ADD_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'current':
       return withFailureGuidance([
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'CURRENT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'export':
       return withFailureGuidance([
         { code: 'ADAPTER_NOT_REGISTERED', priority: 1, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'EXPORT_FAILED', priority: 2, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'import':
       return withFailureGuidance([
         { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
@@ -574,36 +583,38 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 4, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'IMPORT_PREVIEW_FAILED', priority: 5, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'import-apply':
       return withFailureGuidance([
         { code: 'IMPORT_SOURCE_NOT_FOUND', priority: 1, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_SOURCE_INVALID', priority: 2, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_UNSUPPORTED_SCHEMA', priority: 3, category: 'source', recommendedHandling: 'check-import-source' },
         { code: 'IMPORT_PROFILE_NOT_FOUND', priority: 4, category: 'source', recommendedHandling: 'check-import-source' },
-        { code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS', priority: 5, category: 'source', recommendedHandling: 'check-import-source' },
-        { code: 'INVALID_SCOPE', priority: 6, category: 'input', recommendedHandling: 'fix-input-and-retry' },
-        { code: 'IMPORT_SCOPE_UNAVAILABLE', priority: 7, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
-        { code: 'IMPORT_APPLY_NOT_READY', priority: 8, category: 'state', recommendedHandling: 'resolve-scope-before-retry' },
-        { code: 'VALIDATION_FAILED', priority: 9, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-        { code: 'CONFIRMATION_REQUIRED', priority: 10, category: 'confirmation', recommendedHandling: 'confirm-before-write' },
-        { code: 'IMPORT_PLATFORM_NOT_SUPPORTED', priority: 11, category: 'platform', recommendedHandling: 'check-platform-support' },
-        { code: 'ADAPTER_NOT_REGISTERED', priority: 12, category: 'platform', recommendedHandling: 'check-platform-support' },
-        { code: 'IMPORT_APPLY_FAILED', priority: 13, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+        { code: 'IMPORT_APPLY_BATCH_PLATFORM_MISMATCH', priority: 5, category: 'platform', recommendedHandling: 'group-by-platform' },
+        { code: 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS', priority: 6, category: 'source', recommendedHandling: 'check-import-source' },
+        { code: 'INVALID_SCOPE', priority: 7, category: 'input', recommendedHandling: 'fix-input-and-retry' },
+        { code: 'IMPORT_SCOPE_UNAVAILABLE', priority: 8, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
+        { code: 'IMPORT_APPLY_NOT_READY', priority: 9, category: 'state', recommendedHandling: 'resolve-scope-before-retry' },
+        { code: 'VALIDATION_FAILED', priority: 10, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'CONFIRMATION_REQUIRED', priority: 11, category: 'confirmation', recommendedHandling: 'confirm-before-write' },
+        { code: 'IMPORT_PLATFORM_NOT_SUPPORTED', priority: 12, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'ADAPTER_NOT_REGISTERED', priority: 13, category: 'platform', recommendedHandling: 'check-platform-support' },
+        { code: 'IMPORT_APPLY_BATCH_PARTIAL_FAILURE', priority: 14, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+        { code: 'IMPORT_APPLY_FAILED', priority: 15, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
+      ], action)
     case 'list':
       return withFailureGuidance([
         { code: 'UNSUPPORTED_PLATFORM', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'LIST_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'preview':
       return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'INVALID_SCOPE', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 3, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'PREVIEW_FAILED', priority: 4, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'rollback':
       return withFailureGuidance([
         { code: 'BACKUP_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -612,13 +623,13 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'ROLLBACK_SCOPE_MISMATCH', priority: 4, category: 'scope', recommendedHandling: 'resolve-scope-before-retry' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'ROLLBACK_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'schema':
       return withFailureGuidance([
         { code: 'SCHEMA_ACTION_NOT_FOUND', priority: 1, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'SCHEMA_CONSUMER_PROFILE_NOT_FOUND', priority: 2, category: 'input', recommendedHandling: 'fix-input-and-retry' },
         { code: 'SCHEMA_RECOMMENDED_ACTION_NOT_FOUND', priority: 3, category: 'input', recommendedHandling: 'fix-input-and-retry' },
-      ])
+      ], action)
     case 'use':
       return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
@@ -628,13 +639,13 @@ function getFailureCodes(action: typeof COMMAND_ACTIONS[number]): SchemaActionFa
         { code: 'ADAPTER_NOT_REGISTERED', priority: 5, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'APPLY_FAILED', priority: 6, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
         { code: 'USE_FAILED', priority: 7, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     case 'validate':
       return withFailureGuidance([
         { code: 'PROFILE_NOT_FOUND', priority: 1, category: 'state', recommendedHandling: 'select-existing-resource' },
         { code: 'ADAPTER_NOT_REGISTERED', priority: 2, category: 'platform', recommendedHandling: 'check-platform-support' },
         { code: 'VALIDATE_FAILED', priority: 3, category: 'runtime', recommendedHandling: 'inspect-runtime-details' },
-      ])
+      ], action)
     default:
       return []
   }
@@ -680,11 +691,191 @@ function describeFailureCategory(category: SchemaActionFailureCode['category']):
   }
 }
 
-function withFailureGuidance(codes: Array<Omit<SchemaActionFailureCode, 'appliesWhen' | 'triggerFields'>>): SchemaActionFailureCode[] {
+function describeFailureTextEntryPoint(action: typeof COMMAND_ACTIONS[number], code: string): SchemaActionFailureCode['textEntryPoint'] {
+  if (code === 'IMPORT_SOURCE_REDACTED_INLINE_SECRETS') {
+    return 'redacted-fields'
+  }
+
+  if (code === 'IMPORT_APPLY_NOT_READY') {
+    return 'preview-decision'
+  }
+
+  if (code === 'IMPORT_SCOPE_UNAVAILABLE' || code === 'ROLLBACK_SCOPE_MISMATCH') {
+    return 'scope-availability'
+  }
+
+  if (code === 'CONFIRMATION_REQUIRED') {
+    return 'risk-summary'
+  }
+
+  if ((action === 'use' && code === 'USE_FAILED') || (action === 'import-apply' && code === 'IMPORT_APPLY_FAILED')) {
+    return 'reference-summary'
+  }
+
+  return 'error-message'
+}
+
+function withFailureGuidance(codes: Array<Omit<SchemaActionFailureCode, 'appliesWhen' | 'triggerFields' | 'textEntryPoint'>>, action: typeof COMMAND_ACTIONS[number]): SchemaActionFailureCode[] {
   return codes.map((entry) => ({
     ...entry,
+    textEntryPoint: describeFailureTextEntryPoint(action, entry.code),
     ...describeFailureCategory(entry.category),
   }))
+}
+
+function getFailureTextActions(action: typeof COMMAND_ACTIONS[number]): SchemaActionCapability['failureTextActions'] {
+  const failureCodes = getFailureCodes(action)
+  if (failureCodes.length === 0) {
+    return []
+  }
+
+  const grouped = new Map<string, { textEntryPoint: SchemaActionFailureCode['textEntryPoint']; recommendedHandling: SchemaRecommendedAction['code']; appliesToCodes: string[] }>()
+
+  for (const item of failureCodes) {
+    const groupKey = `${item.textEntryPoint}::${item.recommendedHandling}`
+    const existing = grouped.get(groupKey)
+    if (existing) {
+      if (!existing.appliesToCodes.includes(item.code)) {
+        existing.appliesToCodes.push(item.code)
+      }
+      continue
+    }
+
+    grouped.set(groupKey, {
+      textEntryPoint: item.textEntryPoint,
+      recommendedHandling: item.recommendedHandling,
+      appliesToCodes: [item.code],
+    })
+  }
+
+  return Array.from(grouped.values()).map((value) => ({
+    textEntryPoint: value.textEntryPoint,
+    recommendedHandling: value.recommendedHandling,
+    appliesToCodes: value.appliesToCodes,
+  }))
+}
+
+function getSuccessTextEntries(action: typeof COMMAND_ACTIONS[number]): SchemaSuccessTextEntry[] | undefined {
+  switch (action) {
+    case 'add':
+      return [
+        {
+          path: 'summary.platformStats',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'summary.referenceStats',
+          textEntryPoint: 'reference-stats-summary',
+        },
+        {
+          path: 'summary.executabilityStats',
+          textEntryPoint: 'executability-stats-summary',
+        },
+        {
+          path: 'preview',
+          textEntryPoint: 'preview-detail',
+        },
+      ]
+    case 'import-apply':
+      return [
+        {
+          path: 'summary.platformStats',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'summary.referenceStats',
+          textEntryPoint: 'reference-stats-summary',
+        },
+        {
+          path: 'summary.executabilityStats',
+          textEntryPoint: 'executability-stats-summary',
+        },
+        {
+          path: 'platformSummary',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'scopeAvailability',
+          textEntryPoint: 'scope-availability',
+        },
+        {
+          path: 'preview',
+          textEntryPoint: 'preview-detail',
+        },
+      ]
+    case 'preview':
+      return [
+        {
+          path: 'summary.platformStats',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'summary.referenceStats',
+          textEntryPoint: 'reference-stats-summary',
+        },
+        {
+          path: 'summary.executabilityStats',
+          textEntryPoint: 'executability-stats-summary',
+        },
+        {
+          path: 'referenceReadiness',
+          textEntryPoint: 'reference-stats-summary',
+          note: 'preview 文本模式当前没有独立的 referenceReadiness 区块；先看“referenceStats 摘要”，再进入 preview 细节与限制说明。',
+        },
+      ]
+    case 'use':
+      return [
+        {
+          path: 'summary.platformStats',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'summary.referenceStats',
+          textEntryPoint: 'reference-stats-summary',
+        },
+        {
+          path: 'summary.executabilityStats',
+          textEntryPoint: 'executability-stats-summary',
+        },
+        {
+          path: 'platformSummary',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'scopeAvailability',
+          textEntryPoint: 'scope-availability',
+        },
+        {
+          path: 'preview',
+          textEntryPoint: 'preview-detail',
+        },
+      ]
+    case 'rollback':
+      return [
+        {
+          path: 'summary.platformStats',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'summary.referenceStats',
+          textEntryPoint: 'reference-stats-summary',
+        },
+        {
+          path: 'summary.executabilityStats',
+          textEntryPoint: 'executability-stats-summary',
+        },
+        {
+          path: 'platformSummary',
+          textEntryPoint: 'platform-summary',
+        },
+        {
+          path: 'scopeAvailability',
+          textEntryPoint: 'scope-availability',
+        },
+      ]
+    default:
+      return undefined
+  }
 }
 
 function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionFieldPresence[] {
@@ -746,6 +937,8 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'dryRun', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_DRY_RUN_IS_REQUESTED' },
         { path: 'backupId', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_BACKUP_IS_CREATED' },
         { path: 'error.details.referenceGovernance', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_FAILURE_IS_DETECTED' },
+        { path: 'error.details.results[].failureCategory', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_BATCH_PARTIAL_FAILURE_RESULTS_ARE_EMITTED' },
+        { path: 'error.details.results[].reasonCodes', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_BATCH_PARTIAL_FAILURE_RESULTS_ARE_EMITTED' },
         { path: 'error.details.previewDecision', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_IMPORT_APPLY_FAILURE_PROVIDES_PREVIEW_DECISION' },
         { path: 'error.details.scopePolicy', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_POLICY_DETAILS' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', presence: 'conditional', conditionCode: 'WHEN_SCOPE_FAILURE_PROVIDES_CAPABILITY_DETAILS' },
@@ -766,6 +959,9 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'risk', channel: 'success', presence: 'always' },
+        { path: 'referenceReadiness', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_DECISION_IS_DETECTED' },
+        { path: 'referenceDecision', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_DECISION_IS_DETECTED' },
+        { path: 'referenceGovernance', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_GOVERNANCE_IS_EMITTED_IN_SUCCESS_PAYLOAD' },
         { path: 'preview', channel: 'success', presence: 'always' },
         { path: 'scopePolicy', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_COMMAND_RESOLVES_SCOPE_POLICY' },
         { path: 'scopeCapabilities', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_PLATFORM_EXPOSES_SCOPE_CAPABILITIES' },
@@ -888,6 +1084,8 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'changedFiles', channel: 'success', source: 'write-pipeline' },
         { path: 'backupId', channel: 'success', source: 'write-pipeline' },
         { path: 'error.details.referenceGovernance', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.results[].failureCategory', channel: 'failure', source: 'command-service' },
+        { path: 'error.details.results[].reasonCodes', channel: 'failure', source: 'command-service' },
         { path: 'error.details.previewDecision', channel: 'failure', source: 'import-analysis' },
         { path: 'error.details.scopePolicy', channel: 'failure', source: 'command-service' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', source: 'platform-adapter' },
@@ -908,6 +1106,9 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'risk', channel: 'success', source: 'command-service' },
+        { path: 'referenceReadiness', channel: 'success', source: 'command-service' },
+        { path: 'referenceDecision', channel: 'success', source: 'command-service' },
+        { path: 'referenceGovernance', channel: 'success', source: 'command-service' },
         { path: 'preview', channel: 'success', source: 'platform-adapter' },
         { path: 'scopePolicy', channel: 'success', source: 'command-service' },
         { path: 'scopeCapabilities', channel: 'success', source: 'platform-adapter' },
@@ -1029,6 +1230,8 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'changedFiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'backupId', channel: 'success', stabilityTier: 'stable' },
         { path: 'error.details.referenceGovernance', channel: 'failure', stabilityTier: 'stable' },
+        { path: 'error.details.results[].failureCategory', channel: 'failure', stabilityTier: 'stable' },
+        { path: 'error.details.results[].reasonCodes', channel: 'failure', stabilityTier: 'stable' },
         { path: 'error.details.previewDecision', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopePolicy', channel: 'failure', stabilityTier: 'bounded' },
         { path: 'error.details.scopeCapabilities', channel: 'failure', stabilityTier: 'bounded' },
@@ -1049,6 +1252,9 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'risk', channel: 'success', stabilityTier: 'stable' },
+        { path: 'referenceReadiness', channel: 'success', stabilityTier: 'stable' },
+        { path: 'referenceDecision', channel: 'success', stabilityTier: 'stable' },
+        { path: 'referenceGovernance', channel: 'success', stabilityTier: 'stable' },
         { path: 'preview', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopePolicy', channel: 'success', stabilityTier: 'stable' },
         { path: 'scopeCapabilities', channel: 'success', stabilityTier: 'stable' },
@@ -1116,8 +1322,8 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'add':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看单平台聚合、reference 聚合和写入可执行性聚合。' },
-          { stage: 'detail', fields: ['risk', 'preview', 'scopeCapabilities'], purpose: '再展开新增结果、风险和 scope 能力。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看单平台聚合、reference 聚合和写入可执行性聚合；reference-only 在 add 阶段只代表录入形态，不代表当前环境已完成解析或可执行性检查。' },
+          { stage: 'detail', fields: ['risk', 'preview', 'scopeCapabilities'], purpose: '再展开新增结果、风险和 scope 能力；真正的本地解析、治理判断和写入可执行性检查留在 preview/use/import apply。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定失败类型。' },
@@ -1161,7 +1367,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
       return {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看 apply 的平台级聚合、reference 聚合和写入可执行性聚合。' },
-          { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再理解平台语义和 scope 决策。' },
+          { stage: 'detail', fields: ['platformSummary', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability', 'results'], purpose: '单条 apply 再理解平台语义和 scope 决策；批量 apply 则在这一层展开 results[]。' },
           { stage: 'artifacts', fields: ['dryRun', 'changedFiles', 'backupId'], purpose: '最后消费执行模式和落盘产物。' },
         ],
         failure: [
@@ -1184,7 +1390,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
       return {
         success: [
           { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看目标 scope 的平台聚合、reference 聚合和写入可执行性聚合。' },
-          { stage: 'detail', fields: ['risk', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再展开预览、风险和 scope 元信息。' },
+          { stage: 'detail', fields: ['risk', 'referenceReadiness', 'referenceDecision', 'referenceGovernance', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再先看轻量 reference readiness，再按需展开 reference 治理分支、预览、风险和 scope 元信息。' },
         ],
         failure: [
           { stage: 'error-core', fields: ['error.code', 'error.message'], purpose: '先确定阻塞类型。' },
@@ -1307,6 +1513,7 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
+        { path: 'results', semantic: 'item-collection' },
         { path: 'platformSummary', semantic: 'platform-explainable' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },
@@ -1331,6 +1538,9 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'risk', semantic: 'risk' },
+        { path: 'referenceReadiness', semantic: 'reference-governance' },
+        { path: 'referenceDecision', semantic: 'reference-governance' },
+        { path: 'referenceGovernance', semantic: 'reference-governance' },
         { path: 'preview', semantic: 'result-core' },
         { path: 'scopePolicy', semantic: 'scope-resolution' },
         { path: 'scopeCapabilities', semantic: 'scope-resolution' },
@@ -1415,6 +1625,8 @@ function getPrimaryErrorFieldSemantics(action: typeof COMMAND_ACTIONS[number]): 
         { path: 'error.code', semantic: 'error-core' },
         { path: 'error.message', semantic: 'error-core' },
         { path: 'error.details.referenceGovernance', semantic: 'reference-governance' },
+        { path: 'error.details.results[].failureCategory', semantic: 'error-details' },
+        { path: 'error.details.results[].reasonCodes', semantic: 'error-details' },
         { path: 'error.details.previewDecision', semantic: 'error-details' },
         { path: 'error.details.scopePolicy', semantic: 'error-details' },
         { path: 'error.details.scopeCapabilities', semantic: 'error-details' },
@@ -1464,6 +1676,21 @@ function buildCatalogSummary(commandCatalog: SchemaCommandCatalog): SchemaCatalo
     consumerProfiles: consumerProfiles.map((profile) => ({
       id: profile.id,
       bestEntryAction: profile.bestEntryAction,
+      ...(profile.defaultConsumerActionId
+        ? {
+            defaultConsumerActionId: profile.defaultConsumerActionId,
+          }
+        : {}),
+      ...(profile.defaultCommandExample
+        ? {
+            defaultCommandExample: profile.defaultCommandExample,
+          }
+        : {}),
+      ...(profile.defaultCommandPurpose
+        ? {
+            defaultCommandPurpose: profile.defaultCommandPurpose,
+          }
+        : {}),
       recommendedEntryMode: profile.starterTemplate ? 'starter-template' : 'full-consumer-profile',
       ...(profile.starterTemplate
         ? {

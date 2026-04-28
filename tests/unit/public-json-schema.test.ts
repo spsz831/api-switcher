@@ -8,6 +8,7 @@ import type {
   CurrentCommandOutput,
   CurrentSummary,
   ExportCommandOutput,
+  ImportApplyBatchCommandOutput,
   ImportApplyCommandOutput,
   ImportApplyNotReadyDetails,
   ImportApplyRedactedSecretDetails,
@@ -19,6 +20,7 @@ import type {
   ListCommandOutput,
   ListSummary,
   PreviewCommandOutput,
+  ReferenceReadiness,
   ReferenceGovernanceFailureDetails,
   RollbackCommandOutput,
   SchemaCommandOutput,
@@ -84,6 +86,37 @@ describe('public JSON contract types', () => {
       'sourceFile' | 'importedProfile',
       RequiredKeys<ImportApplyCommandOutput>
     >>().toEqualTypeOf<'sourceFile' | 'importedProfile'>()
+  })
+
+  it('用类型断言定义 ImportApplyBatchCommandOutput 的最小公共 contract', () => {
+    expectTypeOf<ImportApplyBatchCommandOutput>().toMatchTypeOf<{
+      sourceFile: string
+      results: Array<{
+        profileId: string
+        platform?: string
+        appliedScope?: string
+        ok: boolean
+        noChanges?: boolean
+        failureCategory?: string
+        reasonCodes?: string[]
+        result?: ImportApplyCommandOutput
+        error?: {
+          code: string
+          message: string
+          details?: unknown
+        }
+      }>
+      summary: {
+        totalProfiles: number
+        appliedCount: number
+        failedCount: number
+      }
+    }>()
+
+    expectTypeOf<Extract<
+      'sourceFile' | 'results' | 'summary',
+      RequiredKeys<ImportApplyBatchCommandOutput>
+    >>().toEqualTypeOf<'sourceFile' | 'results' | 'summary'>()
   })
 
   it('用类型断言定义 import apply 成功态共享字段矩阵', () => {
@@ -220,6 +253,27 @@ describe('public JSON contract types', () => {
         fidelity?: ImportFidelityReport
         previewDecision: ImportPreviewDecision
       }>
+    }>()
+  })
+
+  it('用类型断言定义 preview referenceReadiness 的最小公共 contract', () => {
+    expectTypeOf<ReferenceReadiness>().toMatchTypeOf<{
+      level: 'native-ready' | 'fallback-ready' | 'blocked'
+      primaryReason:
+        | 'REFERENCE_NATIVE_WRITE_SUPPORTED'
+        | 'REFERENCE_INLINE_FALLBACK_REQUIRED'
+        | 'REFERENCE_ENV_UNRESOLVED'
+        | 'REFERENCE_SCHEME_UNSUPPORTED'
+        | 'NO_REFERENCE_INPUT'
+      canProceedToUse: boolean
+      requiresForce: boolean
+      nextAction: 'proceed' | 'confirm-before-write' | 'fix-reference-before-write' | 'inspect-reference-details'
+      summary: string
+    }>()
+
+    expectTypeOf<PreviewCommandOutput>().toMatchTypeOf<{
+      scopePolicy?: SnapshotScopePolicy
+      referenceReadiness?: ReferenceReadiness
     }>()
   })
 
@@ -360,6 +414,9 @@ describe('public JSON contract types', () => {
       consumerProfiles: Array<{
         id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
         bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+        defaultConsumerActionId?: string
+        defaultCommandExample?: string
+        defaultCommandPurpose?: string
         hasStarterTemplate?: boolean
         starterTemplateId?: string
         recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
@@ -429,6 +486,31 @@ describe('public JSON contract types', () => {
       type: 'array',
       items: { $ref: '#/$defs/ScopeAvailability' },
     })
+
+    expect(publicJsonSchema.$defs?.ImportApplyBatchCommandOutput).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportApplyBatchCommandOutput?.required).toEqual(expect.arrayContaining([
+      'sourceFile',
+      'results',
+      'summary',
+    ]))
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult).toBeDefined()
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult?.properties?.platform).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult?.properties?.appliedScope).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult?.properties?.noChanges).toEqual({
+      type: 'boolean',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult?.properties?.failureCategory).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyBatchItemResult?.properties?.reasonCodes).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.ImportApplyBatchSummary).toBeDefined()
   })
 
   it('machine-readable schema 覆盖 import preview / observation 稳定 defs', () => {
@@ -547,6 +629,38 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.ImportScopeUnavailableDetails?.properties?.scopeAvailability).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/ScopeAvailability' },
+    })
+  })
+
+  it('machine-readable schema 覆盖 preview referenceReadiness 稳定 defs', () => {
+    expect(publicJsonSchema.$defs?.ReferenceReadiness).toBeDefined()
+    expect(publicJsonSchema.$defs?.ReferenceReadiness?.required).toEqual(expect.arrayContaining([
+      'level',
+      'primaryReason',
+      'canProceedToUse',
+      'requiresForce',
+      'nextAction',
+      'summary',
+    ]))
+    expect(publicJsonSchema.$defs?.ReferenceReadiness?.properties?.level).toEqual({
+      type: 'string',
+      enum: ['native-ready', 'fallback-ready', 'blocked'],
+    })
+    expect(publicJsonSchema.$defs?.ReferenceReadiness?.properties?.primaryReason).toEqual({
+      type: 'string',
+      enum: [
+        'REFERENCE_NATIVE_WRITE_SUPPORTED',
+        'REFERENCE_INLINE_FALLBACK_REQUIRED',
+        'REFERENCE_ENV_UNRESOLVED',
+        'REFERENCE_SCHEME_UNSUPPORTED',
+        'NO_REFERENCE_INPUT',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.PreviewCommandOutput?.properties?.referenceReadiness).toEqual({
+      $ref: '#/$defs/ReferenceReadiness',
+    })
+    expect(publicJsonSchema.$defs?.ConfirmationRequiredDetails?.properties?.referenceReadiness).toEqual({
+      $ref: '#/$defs/ReferenceReadiness',
     })
   })
 
@@ -778,8 +892,21 @@ describe('public JSON contract types', () => {
         expect.objectContaining({
           id: 'readonly-state-audit',
           bestEntryAction: 'current',
+          defaultConsumerActionId: 'inspect-overview',
+          defaultCommandExample: 'api-switcher current --json',
+          defaultCommandPurpose: '先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。',
           hasStarterTemplate: true,
           starterTemplateId: 'readonly-state-audit-minimal-reader',
+          recommendedEntryMode: 'starter-template',
+        }),
+        expect.objectContaining({
+          id: 'readonly-import-batch',
+          bestEntryAction: 'import',
+          defaultConsumerActionId: 'repair-source-blockers',
+          defaultCommandExample: 'api-switcher import <file> --json',
+          defaultCommandPurpose: '先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。',
+          hasStarterTemplate: true,
+          starterTemplateId: 'readonly-import-batch-minimal-reader',
           recommendedEntryMode: 'starter-template',
         }),
       ]),
@@ -812,6 +939,15 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.hasStarterTemplate).toEqual({
       type: 'boolean',
     })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.defaultConsumerActionId).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.defaultCommandExample).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.defaultCommandPurpose).toEqual({
+      type: 'string',
+    })
     expect(publicJsonSchema.$defs?.SchemaCatalogSummaryConsumerProfile?.properties?.starterTemplateId).toEqual({
       type: 'string',
     })
@@ -837,6 +973,8 @@ describe('public JSON contract types', () => {
       'primaryFields',
       'primaryErrorFields',
       'failureCodes',
+      'failureTextActions',
+      'successTextEntries',
       'fieldPresence',
       'fieldSources',
       'fieldStability',
@@ -859,6 +997,16 @@ describe('public JSON contract types', () => {
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.failureCodes).toEqual({
       type: 'array',
       items: { $ref: '#/$defs/SchemaActionFailureCode' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.failureTextActions).toEqual({
+      type: 'array',
+      description: 'Failure text-to-action index. Group by both textEntryPoint and recommendedHandling; the same textEntryPoint may appear multiple times when one non-JSON text entry maps to multiple stable recovery actions.',
+      items: { $ref: '#/$defs/SchemaFailureTextAction' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.successTextEntries).toEqual({
+      type: 'array',
+      description: 'Success field to non-JSON text-entry mapping. Use when a stable success field should be located via an existing text summary or detail section.',
+      items: { $ref: '#/$defs/SchemaSuccessTextEntry' },
     })
     expect(publicJsonSchema.$defs?.SchemaActionCapability?.properties?.fieldPresence).toEqual({
       type: 'array',
@@ -1112,6 +1260,7 @@ describe('public JSON contract types', () => {
       'priority',
       'category',
       'recommendedHandling',
+      'textEntryPoint',
       'appliesWhen',
       'triggerFields',
     ]))
@@ -1146,12 +1295,86 @@ describe('public JSON contract types', () => {
         'migrate-inline-secret',
       ],
     })
+    expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.textEntryPoint).toEqual({
+      type: 'string',
+      enum: [
+        'error-message',
+        'reference-summary',
+        'risk-summary',
+        'scope-availability',
+        'preview-decision',
+        'redacted-fields',
+      ],
+    })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.appliesWhen).toEqual({
       type: 'string',
     })
     expect(publicJsonSchema.$defs?.SchemaActionFailureCode?.properties?.triggerFields).toEqual({
       type: 'array',
       items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaFailureTextAction?.required).toEqual(expect.arrayContaining([
+      'textEntryPoint',
+      'recommendedHandling',
+      'appliesToCodes',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaFailureTextAction?.properties?.textEntryPoint).toEqual({
+      type: 'string',
+      enum: [
+        'error-message',
+        'reference-summary',
+        'risk-summary',
+        'scope-availability',
+        'preview-decision',
+        'redacted-fields',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaFailureTextAction?.properties?.recommendedHandling).toEqual({
+      type: 'string',
+      enum: [
+        'inspect-items',
+        'review-reference-details',
+        'repair-source-input',
+        'group-by-platform',
+        'continue-to-write',
+        'fix-input-and-retry',
+        'select-existing-resource',
+        'resolve-scope-before-retry',
+        'confirm-before-write',
+        'check-platform-support',
+        'inspect-runtime-details',
+        'check-import-source',
+        'fix-reference-input',
+        'resolve-reference-support',
+        'migrate-inline-secret',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaFailureTextAction?.properties?.appliesToCodes).toEqual({
+      type: 'array',
+      description: 'Stable error.code values routed to this textEntryPoint + recommendedHandling pair.',
+      items: { type: 'string' },
+    })
+    expect(publicJsonSchema.$defs?.SchemaSuccessTextEntry?.required).toEqual(expect.arrayContaining([
+      'path',
+      'textEntryPoint',
+    ]))
+    expect(publicJsonSchema.$defs?.SchemaSuccessTextEntry?.properties?.path).toEqual({
+      type: 'string',
+    })
+    expect(publicJsonSchema.$defs?.SchemaSuccessTextEntry?.properties?.textEntryPoint).toEqual({
+      type: 'string',
+      enum: [
+        'platform-summary',
+        'reference-stats-summary',
+        'executability-stats-summary',
+        'scope-availability',
+        'reference-summary',
+        'reference-details',
+        'preview-detail',
+      ],
+    })
+    expect(publicJsonSchema.$defs?.SchemaSuccessTextEntry?.properties?.note).toEqual({
+      type: 'string',
     })
     expect(publicJsonSchema.$defs?.SchemaReferenceGovernanceCode?.required).toEqual(expect.arrayContaining([
       'code',
@@ -1762,7 +1985,7 @@ describe('public JSON contract types', () => {
       referenceDetails?: Array<{
         code: 'REFERENCE_VALUE_MISSING' | 'REFERENCE_ENV_RESOLVED' | 'REFERENCE_ENV_UNRESOLVED' | 'REFERENCE_SCHEME_UNSUPPORTED'
         field: string
-        status: 'resolved' | 'missing' | 'unsupported-scheme'
+        status: 'resolved' | 'missing' | 'unresolved' | 'unsupported-scheme'
         reference?: string
         scheme?: string
         message: string
@@ -1819,7 +2042,7 @@ describe('public JSON contract types', () => {
     })
     expect(publicJsonSchema.$defs?.ReferenceGovernanceDetail?.properties?.status).toEqual({
       type: 'string',
-      enum: ['resolved', 'missing', 'unsupported-scheme'],
+      enum: ['resolved', 'missing', 'unresolved', 'unsupported-scheme'],
     })
     expect(publicJsonSchema.$defs?.ValidationFailureDetails?.properties?.referenceGovernance).toEqual({
       $ref: '#/$defs/ReferenceGovernanceFailureDetails',
@@ -2373,6 +2596,132 @@ describe('public JSON contract types', () => {
     }
 
     expect(validatePublicSchema(claudeSuccessResult)).toBe(true)
+  })
+
+  it('action=import-apply batch success 样例能通过 machine-readable schema 校验', () => {
+    const batchSuccessResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: true,
+      action: 'import-apply',
+      data: {
+        sourceFile: 'E:/tmp/export.json',
+        results: [
+          {
+            profileId: 'codex-prod-a',
+            platform: 'codex',
+            ok: true,
+            noChanges: false,
+            backupId: 'snapshot-codex-a',
+            changedFiles: ['C:/Users/test/.codex/config.toml'],
+          },
+          {
+            profileId: 'gemini-prod-b',
+            platform: 'gemini',
+            ok: true,
+            appliedScope: 'project',
+            noChanges: true,
+            changedFiles: [],
+          },
+        ],
+        summary: {
+          totalProfiles: 2,
+          appliedCount: 2,
+          failedCount: 0,
+        },
+      },
+      warnings: [],
+      limitations: [],
+    }
+
+    expect(validatePublicSchema(batchSuccessResult)).toBe(true)
+  })
+
+  it('action=import-apply batch partial failure 样例能通过 machine-readable schema 校验', () => {
+    const batchFailureResult = {
+      schemaVersion: '2026-04-15.public-json.v1',
+      ok: false,
+      action: 'import-apply',
+      error: {
+        code: 'IMPORT_APPLY_BATCH_PARTIAL_FAILURE',
+        message: '批量 import apply 未全部成功。',
+        details: {
+          sourceFile: 'E:/tmp/export.json',
+          results: [
+            {
+              profileId: 'codex-prod-a',
+              platform: 'codex',
+              noChanges: false,
+              ok: true,
+              result: {
+                sourceFile: 'E:/tmp/export.json',
+                importedProfile: {
+                  id: 'codex-prod-a',
+                  name: 'Codex A',
+                  platform: 'codex',
+                  source: {},
+                  apply: {},
+                },
+                scopeCapabilities: [],
+                validation: {
+                  ok: true,
+                  errors: [],
+                  warnings: [],
+                  limitations: [],
+                },
+                preview: {
+                  requiresConfirmation: false,
+                  backupPlanned: true,
+                  noChanges: false,
+                  targetFiles: [],
+                },
+                risk: {
+                  allowed: true,
+                  riskLevel: 'low',
+                  reasons: [],
+                  limitations: [],
+                },
+                changedFiles: ['C:/Users/test/.codex/config.toml'],
+                noChanges: false,
+                summary: {
+                  warnings: [],
+                  limitations: [],
+                },
+              },
+            },
+            {
+              profileId: 'codex-prod-b',
+              platform: 'codex',
+              ok: false,
+              failureCategory: 'runtime',
+              reasonCodes: ['REFERENCE_MISSING'],
+              error: {
+                code: 'VALIDATION_FAILED',
+                message: '配置校验失败',
+                details: {
+                  ok: false,
+                  errors: [
+                    {
+                      code: 'SECRET_REFERENCE_MISSING',
+                      level: 'error',
+                      message: 'profile.source.secret_ref 缺少可用的 secret 引用。',
+                    },
+                  ],
+                  warnings: [],
+                  limitations: [],
+                },
+              },
+            },
+          ],
+          summary: {
+            totalProfiles: 2,
+            appliedCount: 1,
+            failedCount: 1,
+          },
+        },
+      },
+    }
+
+    expect(validatePublicSchema(batchFailureResult)).toBe(true)
   })
 
   it('action=import-apply not-ready 失败样例能通过 machine-readable schema 校验', () => {

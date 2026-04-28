@@ -32,6 +32,7 @@
 
 ### Behavior
 
+- `preview / use` 第一阶段已消费 `env://VAR_NAME` secret reference：Claude 保留原始引用写入，Codex / Gemini 以解析后的明文 fallback 写入，unresolved / unsupported 会直接阻断。
 - `validate` 现在按真实目标 scope 执行，不再只按平台默认 scope 生成 validation 结果。
 - `preview / use / import apply` 在显式 `--scope` 下已对齐同一个目标 scope，避免“预览目标”和“真实写入目标”漂移。
 - Gemini `project scope` 的 gate 顺序固定为 availability-before-confirmation：先判定 `scopeAvailability`，再进入高风险确认门槛。

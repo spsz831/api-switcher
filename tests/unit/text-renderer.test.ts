@@ -3229,6 +3229,62 @@ describe('text renderer', () => {
     expectOrderedSections(outputCurrent, ['按平台汇总:', 'referenceStats 摘要:', 'executabilityStats 摘要:'])
   })
 
+  it('add 的 reference-only 文本输出明确只录入不解析', () => {
+    const referenceOnlyAddPayload: AddCommandOutput = {
+      ...addPayload,
+      profile: {
+        ...addPayload.profile,
+        id: 'codex-ref-profile',
+        platform: 'codex',
+        source: {
+          secret_ref: 'vault://codex/prod',
+          baseURL: 'https://gateway.example.com/openai/v1',
+        },
+        apply: {
+          auth_reference: 'vault://codex/prod',
+          base_url: 'https://gateway.example.com/openai/v1',
+        },
+      },
+      summary: {
+        ...addPayload.summary,
+        referenceStats: {
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          resolvedReferenceProfileCount: 0,
+          missingReferenceProfileCount: 0,
+          unsupportedReferenceProfileCount: 0,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+          hasResolvedReferenceProfiles: false,
+          hasMissingReferenceProfiles: false,
+          hasUnsupportedReferenceProfiles: false,
+        },
+        executabilityStats: {
+          profileCount: 1,
+          inlineReadyProfileCount: 0,
+          referenceReadyProfileCount: 0,
+          referenceMissingProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          sourceRedactedProfileCount: 0,
+          hasInlineReadyProfiles: false,
+          hasReferenceReadyProfiles: false,
+          hasReferenceMissingProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+          hasSourceRedactedProfiles: false,
+        },
+      },
+    }
+
+    const outputReferenceOnlyAdd = renderText(createAddResult(referenceOnlyAddPayload))
+
+    expect(outputReferenceOnlyAdd).toContain('referenceStats 摘要:')
+    expect(outputReferenceOnlyAdd).toContain('executabilityStats 摘要:')
+    expect(outputReferenceOnlyAdd).toContain('  说明: add 只记录 reference 输入；真正的本地解析、治理判断和写入可执行性检查在 preview/use/import apply 阶段完成。')
+  })
+
   it('渲染 preview 结果时输出校验、风险、文件、提示与限制说明', () => {
     expect(outputPreview).toContain('[preview] 成功')
     expect(outputPreview).toContain('按平台汇总:')
@@ -3238,6 +3294,7 @@ describe('text renderer', () => {
     expect(outputPreview).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputPreview).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputPreview).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputPreview).toContain('  - 下一步: 当前存在 inline-ready profile，可继续执行 preview/use/import apply。')
     expect(outputPreview).toContain('executabilityStats 摘要:')
     expect(outputPreview).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputPreview).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
@@ -3480,6 +3537,7 @@ describe('text renderer', () => {
     expect(outputValidate).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputValidate).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputValidate).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputValidate).toContain('  - 下一步: 当前存在 inline-ready profile，可继续执行 preview/use/import apply。')
     expect(outputValidate).toContain('executabilityStats 摘要:')
     expect(outputValidate).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputValidate).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
@@ -3536,6 +3594,7 @@ describe('text renderer', () => {
     expect(outputExport).toContain('  - profiles=1, reference=0, inline=1, writeUnsupported=0')
     expect(outputExport).toContain('  - hasReferenceProfiles=no, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=no')
     expect(outputExport).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
+    expect(outputExport).toContain('  - 下一步: 当前存在 inline-ready profile，可继续执行 preview/use/import apply。')
     expect(outputExport).toContain('executabilityStats 摘要:')
     expect(outputExport).toContain('  - profiles=1, inlineReady=1, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputExport).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
@@ -3585,6 +3644,7 @@ describe('text renderer', () => {
     expect(outputImportPreview).toContain('导入源可执行性:')
     expect(outputImportPreview).toContain('  - total=1, apply-ready=1, preview-only=0, blocked=0')
     expect(outputImportPreview).toContain('  - REDACTED_INLINE_SECRET: total=0')
+    expect(outputImportPreview).toContain('  - 下一步: 当前导入源已具备 apply-ready 项，可继续进入 import apply。')
     expect(outputImportPreview).toContain('executabilityStats 摘要:')
     expect(outputImportPreview).toContain('  - profiles=1, inlineReady=0, referenceReady=0, referenceMissing=0, writeUnsupported=0, sourceRedacted=0')
     expect(outputImportPreview).toContain('  - hasInlineReadyProfiles=no, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=no, hasWriteUnsupportedProfiles=no, hasSourceRedactedProfiles=no')
@@ -3735,6 +3795,7 @@ describe('text renderer', () => {
     expect(outputAdd).toContain('  - C:/Users/test/.claude/settings.json: ANTHROPIC_AUTH_TOKEN')
     expect(outputAdd).toContain('附加提示:')
     expect(outputAdd).toContain('  - 建议先执行 preview 或 validate 再确认')
+    expect(outputAdd).toContain('  - 下一步: 当前存在 inline-ready profile，可继续执行 preview/use/import apply。')
     expect(outputAdd).toContain('限制说明:')
     expect(outputAdd).toContain('  - 新增配置后仍建议执行 preview 校验 effective config。')
   })
@@ -3766,6 +3827,7 @@ describe('text renderer', () => {
     expect(outputList).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=yes, hasWriteUnsupportedProfiles=yes')
     expect(outputList).toContain('  - 提示: 当前仍有 inline profiles，可优先迁移到 secret reference。')
     expect(outputList).toContain('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
+    expect(outputList).toContain('  - 下一步: 先修复缺失或不受支持的引用，再决定是否继续进入 preview/use/import apply。')
     expect(outputList).toContain('executabilityStats 摘要:')
     expect(outputList).toContain('  - profiles=3, inlineReady=2, referenceReady=0, referenceMissing=1, writeUnsupported=1, sourceRedacted=0')
     expect(outputList).toContain('  - hasInlineReadyProfiles=yes, hasReferenceReadyProfiles=no, hasReferenceMissingProfiles=yes, hasWriteUnsupportedProfiles=yes, hasSourceRedactedProfiles=no')
@@ -3833,6 +3895,10 @@ describe('text renderer', () => {
   it('确认门槛失败会输出结构化作用域策略', () => {
     expect(outputConfirmationFailure).toContain('[use] 失败')
     expect(outputConfirmationFailure).toContain('当前切换需要确认或 --force。')
+    expect(outputConfirmationFailure).toContain('reference 摘要:')
+    expect(outputConfirmationFailure).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=no, hasWriteUnsupportedProfiles=yes')
+    expect(outputConfirmationFailure).toContain('  - missing=1, resolved-but-not-writable=1, unsupported=1')
+    expect(outputConfirmationFailure).toContain('  - reasonCodes:')
     expect(outputConfirmationFailure).toContain('reference 解析摘要:')
     expect(outputConfirmationFailure).toContain('  - 未解析 env 引用:')
     expect(outputConfirmationFailure).toContain('    - source.secret_ref -> env://GEMINI_API_KEY')
@@ -3955,6 +4021,10 @@ describe('text renderer', () => {
     expect(outputImportApplyConfirmationFailure).toContain('风险摘要:')
     expect(outputImportApplyConfirmationFailure).toContain('  - 风险等级: high')
     expect(outputImportApplyConfirmationFailure).toContain('  - 原因: 导入结果采用当前本地 observation，project scope 会覆盖 user 同名字段。')
+    expect(outputImportApplyConfirmationFailure).toContain('reference 摘要:')
+    expect(outputImportApplyConfirmationFailure).toContain('  - hasReferenceProfiles=yes, hasInlineProfiles=no, hasWriteUnsupportedProfiles=yes')
+    expect(outputImportApplyConfirmationFailure).toContain('  - missing=1, resolved-but-not-writable=0, unsupported=1')
+    expect(outputImportApplyConfirmationFailure).toContain('  - reasonCodes:')
     expect(outputImportApplyConfirmationFailure).toContain('reference 解析摘要:')
     expect(outputImportApplyConfirmationFailure).toContain('  - 未解析 env 引用:')
     expect(outputImportApplyConfirmationFailure).toContain('    - source.secret_ref -> env://GEMINI_API_KEY')

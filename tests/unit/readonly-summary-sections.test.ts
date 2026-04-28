@@ -367,6 +367,52 @@ describe('readonly summary sections', () => {
     expect(singlePlatformWriteProfile?.consumerFlow).toBeUndefined()
   })
 
+  it('schema consumerProfiles 锁定默认动作入口与现有 action/flow 的一致性', () => {
+    const result = new SchemaService().getPublicJsonSchema()
+    expect(result.ok).toBe(true)
+    if (!result.ok || !result.data || !result.data.commandCatalog?.consumerProfiles) {
+      throw new Error('schema consumerProfiles are unavailable')
+    }
+
+    const profiles = result.data.commandCatalog.consumerProfiles
+    const readonlyProfiles = profiles.filter((item) =>
+      item.id === 'readonly-state-audit' || item.id === 'readonly-import-batch',
+    )
+
+    const expectedDefaults: Record<'readonly-state-audit' | 'readonly-import-batch', {
+      defaultConsumerActionId: string
+      defaultCommandExample: string
+      bestEntryAction: string
+    }> = {
+      'readonly-state-audit': {
+        defaultConsumerActionId: 'inspect-overview',
+        defaultCommandExample: 'api-switcher current --json',
+        bestEntryAction: 'current',
+      },
+      'readonly-import-batch': {
+        defaultConsumerActionId: 'repair-source-blockers',
+        defaultCommandExample: 'api-switcher import <file> --json',
+        bestEntryAction: 'import',
+      },
+    }
+
+    for (const profile of readonlyProfiles) {
+      const expected = expectedDefaults[profile.id as keyof typeof expectedDefaults]
+      expect(profile.defaultConsumerFlowId).toBeDefined()
+      expect(profile.defaultConsumerActionId).toBe(expected.defaultConsumerActionId)
+      expect(profile.defaultCommandExample).toBe(expected.defaultCommandExample)
+      expect(profile.bestEntryAction).toBe(expected.bestEntryAction)
+      expect(profile.consumerActions?.some((action) => action.id === profile.defaultConsumerActionId)).toBe(true)
+      expect(profile.defaultCommandPurpose).toBeTruthy()
+      expect(profile.defaultCommandExample?.includes(profile.bestEntryAction)).toBe(true)
+    }
+
+    const singlePlatformWriteProfile = profiles.find((item) => item.id === 'single-platform-write')
+    expect(singlePlatformWriteProfile?.defaultConsumerActionId).toBeUndefined()
+    expect(singlePlatformWriteProfile?.defaultCommandExample).toBeUndefined()
+    expect(singlePlatformWriteProfile?.defaultCommandPurpose).toBeUndefined()
+  })
+
   it('public schema 为 commandCatalog.summarySections 提供稳定定义', () => {
     const schema = loadPublicJsonSchema()
     const capability = schema.$defs?.SchemaActionCapability
@@ -412,6 +458,15 @@ describe('readonly summary sections', () => {
       items: { $ref: '#/$defs/SchemaConsumerProfileAction' },
     })
     expect(consumerProfile?.properties?.defaultConsumerFlowId).toEqual({
+      type: 'string',
+    })
+    expect(consumerProfile?.properties?.defaultConsumerActionId).toEqual({
+      type: 'string',
+    })
+    expect(consumerProfile?.properties?.defaultCommandExample).toEqual({
+      type: 'string',
+    })
+    expect(consumerProfile?.properties?.defaultCommandPurpose).toEqual({
       type: 'string',
     })
     expect(consumerProfile?.properties?.consumerFlow).toEqual({
