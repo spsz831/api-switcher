@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Commander, Vitest, JSON/text renderers
 
+> **Status note (2026-04-29):** The import preview surface has landed, and later work expanded it beyond the original Gemini-first framing. The checklist below is backfilled from the implemented mainline behavior.
+
 ---
 
 ### Task 1: Define Import Preview Types And Public Contract
@@ -18,7 +20,7 @@
 - Modify: `docs/public-json-schema.md`
 - Test: `tests/unit/public-json-schema.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add schema assertions for:
 
@@ -27,12 +29,12 @@ Add schema assertions for:
 - `ImportFidelityReport`
 - command-level `items`, `exportedObservation`, `localObservation`, `previewDecision`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: FAIL because import preview contract is not declared yet.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add TypeScript types for:
 
@@ -43,12 +45,12 @@ Add TypeScript types for:
 
 Then extend the machine-readable schema and human docs with additive optional definitions.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/types/command.ts docs/public-json-output.schema.json docs/public-json-schema.md tests/unit/public-json-schema.test.ts
@@ -61,7 +63,7 @@ git commit -m "feat: define import preview public contract"
 - Create: `src/services/import-source.service.ts`
 - Test: `tests/unit/import-source.service.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add tests for:
 
@@ -69,12 +71,12 @@ Add tests for:
 - invalid JSON -> `IMPORT_SOURCE_INVALID`
 - valid export envelope -> normalized source data
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/import-source.service.test.ts`
 Expected: FAIL because the loader service does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement a read-only loader that:
 
@@ -85,12 +87,12 @@ Implement a read-only loader that:
 
 Do not over-validate adapter-specific internal fields in v1.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/import-source.service.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/import-source.service.ts tests/unit/import-source.service.test.ts
@@ -103,7 +105,7 @@ git commit -m "feat: add import source loader"
 - Create: `src/services/import-fidelity.service.ts`
 - Test: `tests/unit/import-fidelity.service.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add fidelity tests covering:
 
@@ -112,12 +114,12 @@ Add fidelity tests covering:
 - missing exported scopeAvailability -> `partial`
 - missing Gemini observation entirely -> `insufficient-data`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/import-fidelity.service.test.ts`
 Expected: FAIL because evaluator does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement a focused evaluator that:
 
@@ -131,12 +133,12 @@ Implement a focused evaluator that:
 
 Keep exported and local observations separate; never merge them.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/import-fidelity.service.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/import-fidelity.service.ts tests/unit/import-fidelity.service.test.ts
@@ -150,7 +152,7 @@ git commit -m "feat: add gemini import fidelity evaluator"
 - Modify: `src/services/current-state.service.ts` (only if a reusable observation helper is needed)
 - Test: `tests/unit/import-preview.service.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add service-level tests for:
 
@@ -158,12 +160,12 @@ Add service-level tests for:
 - local project unresolved -> mismatch and `requiresLocalResolution = true`
 - non-Gemini profiles still return sane read-only preview items
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/import-preview.service.test.ts`
 Expected: FAIL because the service does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement a read-only orchestrator that:
 
@@ -174,12 +176,12 @@ Implement a read-only orchestrator that:
 
 Do not write any files or mutate state.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/import-preview.service.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/import-preview.service.ts tests/unit/import-preview.service.test.ts
@@ -195,7 +197,7 @@ git commit -m "feat: add import preview service"
 - Test: `tests/unit/text-renderer.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add CLI coverage for:
 
@@ -210,12 +212,12 @@ Add text-renderer expectations for:
 - fidelity 结论
 - 建议
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/text-renderer.test.ts tests/integration/cli-commands.test.ts -t "import"`
 Expected: FAIL because import command and renderer support do not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add a read-only CLI command:
 
@@ -233,12 +235,12 @@ Text output should clearly separate:
 - fidelity 结果
 - 下一步建议
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/text-renderer.test.ts tests/integration/cli-commands.test.ts -t "import"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/commands/import.command.ts src/cli/index.ts src/renderers/text-renderer.ts tests/unit/text-renderer.test.ts tests/integration/cli-commands.test.ts
@@ -252,7 +254,7 @@ git commit -m "feat: add import preview command"
 - Modify: `docs/superpowers/specs/2026-04-16-gemini-project-scope-stage-2-product-surface-design.md`
 - Test: none
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Document:
 
@@ -261,11 +263,11 @@ Document:
 - exported observation vs local reality
 - why project availability must be re-resolved locally
 
-- [ ] **Step 2: Manual review**
+- [x] **Step 2: Manual review**
 
 Confirm docs do not imply `import apply` exists.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md docs/superpowers/specs/2026-04-16-gemini-project-scope-stage-2-product-surface-design.md
@@ -277,17 +279,17 @@ git commit -m "docs: document import preview boundary"
 **Files:**
 - Modify: none
 
-- [ ] **Step 1: Run targeted suites**
+- [x] **Step 1: Run targeted suites**
 
 Run: `corepack pnpm vitest run tests/unit/import-source.service.test.ts tests/unit/import-fidelity.service.test.ts tests/unit/import-preview.service.test.ts tests/unit/text-renderer.test.ts tests/unit/public-json-schema.test.ts tests/integration/cli-commands.test.ts -t "import"`
 Expected: PASS
 
-- [ ] **Step 2: Run full suite**
+- [x] **Step 2: Run full suite**
 
 Run: `corepack pnpm test`
 Expected: PASS
 
-- [ ] **Step 3: Run typecheck and build**
+- [x] **Step 3: Run typecheck and build**
 
 Run: `corepack pnpm typecheck`
 Expected: PASS
@@ -295,7 +297,7 @@ Expected: PASS
 Run: `corepack pnpm build`
 Expected: PASS
 
-- [ ] **Step 4: Commit final integrated change**
+- [x] **Step 4: Commit final integrated change**
 
 ```bash
 git add .

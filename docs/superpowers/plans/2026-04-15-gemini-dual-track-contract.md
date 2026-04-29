@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Commander, Vitest
 
+> **Status note (2026-04-29):** This plan was implemented and later absorbed into a broader mainline contract surface. The checked steps below are backfilled from the landed code, tests, and docs rather than preserved as a commit-by-commit execution log.
+
 ---
 
 ### Task 1: Define Gemini dual-track data helpers
@@ -17,16 +19,16 @@
 - Modify: `src/adapters/gemini/gemini.mapper.ts`
 - Test: `tests/unit/gemini.adapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add unit expectations that a Gemini profile with legacy `apply.GEMINI_BASE_URL` is normalized into experimental config instead of being treated as a stable managed setting.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: FAIL because the contract helper does not exist yet.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create helpers that:
 - pick stable Gemini managed fields
@@ -34,12 +36,12 @@ Create helpers that:
 - extract experimental fields
 - normalize legacy `apply.GEMINI_BASE_URL` into an experimental structure
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: PASS for the new normalization case.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.contract.ts src/adapters/gemini/gemini.mapper.ts tests/unit/gemini.adapter.test.ts
@@ -52,19 +54,19 @@ git commit -m "feat: define gemini dual-track contract helpers"
 - Modify: `src/adapters/gemini/gemini.adapter.ts`
 - Test: `tests/unit/gemini.adapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add test cases that assert:
 - `GEMINI_API_KEY` is rendered as runtime/env-based
 - experimental base URL is labeled as experimental
 - preview does not imply file-managed writes for unsupported experimental config
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: FAIL because the adapter still flattens stable/runtime/experimental semantics.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update `GeminiAdapter` so that:
 - validation distinguishes stable, runtime, and experimental concerns
@@ -72,12 +74,12 @@ Update `GeminiAdapter` so that:
 - `backupPlanned` reflects only actual file writes
 - unsupported experimental apply intent is explainable and not silently accepted
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts tests/unit/gemini.adapter.test.ts
@@ -90,19 +92,19 @@ git commit -m "feat: tighten gemini validation and preview contract"
 - Modify: `src/adapters/gemini/gemini.adapter.ts`
 - Test: `tests/integration/gemini-preview-use-rollback.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add integration coverage for:
 - stable settings write still succeeds
 - experimental base URL without write target is not reported as applied
 - rollback only restores actual file-managed changes
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts`
 Expected: FAIL because apply/rollback still use the old partial model.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update apply/current/rollback so that:
 - stable and experimental results are reported separately
@@ -110,12 +112,12 @@ Update apply/current/rollback so that:
 - rollback explicitly states env auth is not restored
 - experimental writes are refused or downgraded explicitly when no reliable target exists
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts tests/integration/gemini-preview-use-rollback.test.ts
@@ -130,28 +132,28 @@ git commit -m "fix: align gemini apply and rollback with dual-track contract"
 - Modify: `src/services/export.service.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add CLI-level assertions that:
 - export shows Gemini experimental data explicitly
 - legacy Gemini base URL input is described as experimental
 - add remains strict for Gemini URL input until an explicit experimental authoring mode exists
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/integration/cli-commands.test.ts`
 Expected: FAIL because command-facing structures do not yet reflect the new contract.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add optional structured metadata for Gemini experimental config in profile metadata, and ensure services/export preserve it without pretending it is stable managed config.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/integration/cli-commands.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/types/profile.ts src/services/add.service.ts src/services/export.service.ts tests/integration/cli-commands.test.ts
@@ -165,30 +167,30 @@ git commit -m "feat: expose gemini experimental contract in command outputs"
 - Modify: `README.md`
 - Test: `tests/unit/text-renderer.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add renderer assertions that Gemini output distinguishes:
 - stable managed settings
 - runtime auth
 - experimental proxy config
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/text-renderer.test.ts`
 Expected: FAIL because the current renderer does not print the new contract clearly.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update text rendering and README examples so Gemini support is documented as:
 - stable official support by default
 - experimental proxy support when explicitly configured
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/text-renderer.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderers/text-renderer.ts README.md tests/unit/text-renderer.test.ts
@@ -201,17 +203,17 @@ git commit -m "docs: clarify gemini stable and experimental support"
 - Modify: none
 - Test: full project
 
-- [ ] **Step 1: Run targeted Gemini and CLI tests**
+- [x] **Step 1: Run targeted Gemini and CLI tests**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts tests/unit/text-renderer.test.ts`
 Expected: PASS
 
-- [ ] **Step 2: Run full test suite**
+- [x] **Step 2: Run full test suite**
 
 Run: `corepack pnpm test`
 Expected: PASS
 
-- [ ] **Step 3: Run typecheck and build**
+- [x] **Step 3: Run typecheck and build**
 
 Run: `corepack pnpm typecheck`
 Expected: PASS
@@ -219,7 +221,7 @@ Expected: PASS
 Run: `corepack pnpm build`
 Expected: PASS
 
-- [ ] **Step 4: Commit final integrated change**
+- [x] **Step 4: Commit final integrated change**
 
 ```bash
 git add .

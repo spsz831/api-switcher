@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Vitest, Commander CLI, existing adapter registry/services, JSON schema/docs, README, changelog.
 
+> Status note (2026-04-29): 该计划对应的 Claude import-apply 能力与验证已并入主线；以下勾选项为合并后的执行回填。
+
 ---
 
 ## File Structure
@@ -39,7 +41,7 @@
 - Modify: `tests/unit/import-apply.service.test.ts`
 - Modify: `src/services/import-apply.service.ts`
 
-- [ ] **Step 1: Write the failing unit test for Claude platform support**
+- [x] **Step 1: Write the failing unit test for Claude platform support**
 
 Add a unit test asserting a Claude imported profile no longer returns `IMPORT_PLATFORM_NOT_SUPPORTED`.
 
@@ -51,7 +53,7 @@ expect(result.data?.importedProfile.platform).toBe('claude')
 expect(result.data?.appliedScope).toBe('project')
 ```
 
-- [ ] **Step 2: Write the failing unit test for Claude sparse observation still proceeding**
+- [x] **Step 2: Write the failing unit test for Claude sparse observation still proceeding**
 
 Add a test where the Claude import source has no `exportedObservation`, but local detect/validate/preview are sufficient. Assert the service does not return `IMPORT_APPLY_NOT_READY`.
 
@@ -61,7 +63,7 @@ Example expectation:
 expect(result.error?.code).not.toBe('IMPORT_APPLY_NOT_READY')
 ```
 
-- [ ] **Step 3: Write the failing unit test for Claude local requiring confirmation**
+- [x] **Step 3: Write the failing unit test for Claude local requiring confirmation**
 
 Add a test for `scope=local` without `force`, and assert the service returns `CONFIRMATION_REQUIRED`.
 
@@ -72,7 +74,7 @@ expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
 expect(result.error?.message).toBe('当前导入应用需要确认或 --force。')
 ```
 
-- [ ] **Step 4: Write the failing unit test for Claude local with `--force` succeeding**
+- [x] **Step 4: Write the failing unit test for Claude local with `--force` succeeding**
 
 Assert success payload includes:
 
@@ -81,7 +83,7 @@ Assert success payload includes:
 - real `changedFiles`
 - `backupId`
 
-- [ ] **Step 5: Run the import-apply unit tests to verify red**
+- [x] **Step 5: Run the import-apply unit tests to verify red**
 
 Run:
 
@@ -91,7 +93,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts
 
 Expected: FAIL because Claude is still unsupported and the current previewDecision path is too strict for sparse Claude observation.
 
-- [ ] **Step 6: Implement the minimal Claude service changes**
+- [x] **Step 6: Implement the minimal Claude service changes**
 
 Implement only the minimum needed:
 
@@ -101,7 +103,7 @@ Implement only the minimum needed:
 - overlay a Claude-specific `local` confirmation requirement
 - keep Codex behavior unchanged
 
-- [ ] **Step 7: Re-run the import-apply unit tests**
+- [x] **Step 7: Re-run the import-apply unit tests**
 
 Run:
 
@@ -111,7 +113,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts
 
 Expected: PASS for the new Claude cases and no regression in Gemini/Codex behavior.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add tests/unit/import-apply.service.test.ts src/services/import-apply.service.ts
@@ -124,7 +126,7 @@ git commit -m "feat: support claude import apply service flow"
 - Modify: `tests/unit/public-json-schema.test.ts`
 - Modify: `src/types/command.ts`
 
-- [ ] **Step 1: Write the failing schema sample for Claude local success**
+- [x] **Step 1: Write the failing schema sample for Claude local success**
 
 Add a machine-readable sample with:
 
@@ -135,11 +137,11 @@ Add a machine-readable sample with:
 
 Assert it validates.
 
-- [ ] **Step 2: Write the failing type assertion if needed**
+- [x] **Step 2: Write the failing type assertion if needed**
 
 If current tests do not already imply Claude compatibility, add a type-level assertion showing `appliedScope?: string` can carry scoped-platform values such as `local`.
 
-- [ ] **Step 3: Run the schema contract tests to verify red or confirm green**
+- [x] **Step 3: Run the schema contract tests to verify red or confirm green**
 
 Run:
 
@@ -152,11 +154,11 @@ Expected:
 - either FAIL because the schema sample is not yet accepted
 - or PASS immediately, in which case no code change is required and only the new coverage is kept
 
-- [ ] **Step 4: Make the smallest contract adjustment only if the test actually fails**
+- [x] **Step 4: Make the smallest contract adjustment only if the test actually fails**
 
 Only patch type/schema code if the new Claude sample reveals a real contract gap.
 
-- [ ] **Step 5: Re-run the schema contract tests**
+- [x] **Step 5: Re-run the schema contract tests**
 
 Run:
 
@@ -166,7 +168,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/unit/public-json-schema.test.ts src/types/command.ts
@@ -179,7 +181,7 @@ git commit -m "test: freeze claude import apply public contract"
 - Modify: `tests/integration/cli-commands.test.ts`
 - Modify: `src/services/import-apply.service.ts`
 
-- [ ] **Step 1: Write the failing CLI integration test for Claude default/project success**
+- [x] **Step 1: Write the failing CLI integration test for Claude default/project success**
 
 Add an import source file for `claude-prod` and run:
 
@@ -195,7 +197,7 @@ Assert:
 - `appliedScope='project'` under the current integration env default
 - `changedFiles` targets the Claude project settings path
 
-- [ ] **Step 2: Write the failing CLI integration test for Claude local without `--force`**
+- [x] **Step 2: Write the failing CLI integration test for Claude local without `--force`**
 
 Run:
 
@@ -209,7 +211,7 @@ Assert:
 - `error.code='CONFIRMATION_REQUIRED'`
 - `error.details.scopePolicy.resolvedScope='local'`
 
-- [ ] **Step 3: Write the failing CLI integration test for Claude local with `--force`**
+- [x] **Step 3: Write the failing CLI integration test for Claude local with `--force`**
 
 Run:
 
@@ -224,11 +226,11 @@ Assert:
 - `changedFiles` contains the local Claude settings path
 - resulting file contents reflect managed Claude fields
 
-- [ ] **Step 4: Write the failing CLI integration test for Claude project/local rollback compatibility if needed**
+- [x] **Step 4: Write the failing CLI integration test for Claude project/local rollback compatibility if needed**
 
 Only if current rollback coverage does not already implicitly cover the expected post-import snapshot behavior, add one focused import-apply-driven rollback case.
 
-- [ ] **Step 5: Run the CLI integration tests to verify red**
+- [x] **Step 5: Run the CLI integration tests to verify red**
 
 Run:
 
@@ -238,7 +240,7 @@ corepack pnpm vitest run tests/integration/cli-commands.test.ts
 
 Expected: FAIL because Claude import apply is not yet wired through the real CLI path.
 
-- [ ] **Step 6: Make the smallest implementation adjustments needed for CLI green**
+- [x] **Step 6: Make the smallest implementation adjustments needed for CLI green**
 
 Only patch what the integration tests expose, such as:
 
@@ -246,7 +248,7 @@ Only patch what the integration tests expose, such as:
 - Claude `local` confirmation rule
 - any output/doc details coupled to the CLI path
 
-- [ ] **Step 7: Re-run the CLI integration tests**
+- [x] **Step 7: Re-run the CLI integration tests**
 
 Run:
 
@@ -256,7 +258,7 @@ corepack pnpm vitest run tests/integration/cli-commands.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add tests/integration/cli-commands.test.ts src/services/import-apply.service.ts
@@ -271,7 +273,7 @@ git commit -m "test: cover claude import apply cli integration"
 - Modify: `CHANGELOG.md`
 - Modify: `tests/unit/docs-consistency.test.ts`
 
-- [ ] **Step 1: Update README product boundary wording**
+- [x] **Step 1: Update README product boundary wording**
 
 Change wording to reflect:
 
@@ -280,7 +282,7 @@ Change wording to reflect:
 - Claude `local` requires explicit confirmation
 - Claude does not use Gemini’s availability-first failure path
 
-- [ ] **Step 2: Update public schema doc wording**
+- [x] **Step 2: Update public schema doc wording**
 
 Document:
 
@@ -289,15 +291,15 @@ Document:
 - `scopeAvailability` remaining optional for Claude
 - Claude `local` confirmation semantics
 
-- [ ] **Step 3: Update changelog**
+- [x] **Step 3: Update changelog**
 
 Add one concise entry recording Claude import-apply support and first-phase `local` confirmation behavior.
 
-- [ ] **Step 4: Update docs consistency assertions**
+- [x] **Step 4: Update docs consistency assertions**
 
 Replace the current platform-boundary assertions so they expect Gemini / Codex / Claude support and mention Claude `local` confirmation.
 
-- [ ] **Step 5: Run doc-adjacent validation**
+- [x] **Step 5: Run doc-adjacent validation**
 
 Run:
 
@@ -307,7 +309,7 @@ corepack pnpm vitest run tests/unit/docs-consistency.test.ts tests/unit/public-j
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md docs/public-json-schema.md CHANGELOG.md tests/unit/docs-consistency.test.ts
@@ -319,7 +321,7 @@ git commit -m "docs: document claude import apply support"
 **Files:**
 - Verify only, unless a discovered regression requires a tiny fixup.
 
-- [ ] **Step 1: Run the focused test suite**
+- [x] **Step 1: Run the focused test suite**
 
 Run:
 
@@ -329,7 +331,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts tests/unit/publ
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the full project test suite**
+- [x] **Step 2: Run the full project test suite**
 
 Run:
 
@@ -339,7 +341,7 @@ corepack pnpm test
 
 Expected: PASS.
 
-- [ ] **Step 3: Run a build**
+- [x] **Step 3: Run a build**
 
 Run:
 
@@ -349,7 +351,7 @@ corepack pnpm build
 
 Expected: PASS.
 
-- [ ] **Step 4: Review git diff for scope creep**
+- [x] **Step 4: Review git diff for scope creep**
 
 Run:
 
@@ -360,7 +362,7 @@ git log --oneline -6
 
 Expected: only the planned service, tests, and docs are touched.
 
-- [ ] **Step 5: Commit any final fixups only if verification exposed a real issue**
+- [x] **Step 5: Commit any final fixups only if verification exposed a real issue**
 
 If needed:
 

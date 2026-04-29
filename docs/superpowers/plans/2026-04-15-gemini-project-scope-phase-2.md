@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Commander, Vitest, JSON Schema docs
 
+> **Status note (2026-04-29):** This phase has been implemented in mainline. The checklist below is backfilled from landed code and verification artifacts; later import work builds on this contract rather than replacing it.
+
 ---
 
 ### Task 1: Add Shared Scope Availability Types
@@ -18,16 +20,16 @@
 - Modify: `src/types/command.ts`
 - Test: `tests/unit/public-json-schema.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add schema assertions that the public JSON schema exposes a reusable `ScopeAvailability` definition and that command outputs/details intended to carry the new field actually declare it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: FAIL because no `ScopeAvailability` definition or command-level properties exist yet.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add shared TypeScript types for:
 
@@ -57,12 +59,12 @@ Then thread optional `scopeAvailability` fields into the command/adapter result 
 - `ListCommandItem`
 - `ExportedProfileItem`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/types/capabilities.ts src/types/adapter.ts src/types/command.ts tests/unit/public-json-schema.test.ts
@@ -76,7 +78,7 @@ git commit -m "feat: add shared scope availability contract"
 - Modify: `src/adapters/gemini/gemini.scope-loader.ts`
 - Test: `tests/unit/gemini.adapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add resolver-focused unit coverage for Gemini scope targets that asserts:
 
@@ -85,12 +87,12 @@ Add resolver-focused unit coverage for Gemini scope targets that asserts:
 - `project` returns `PROJECT_ROOT_UNRESOLVED` with remediation
 - resolved project scope includes `path` and `writable = true`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/gemini.adapter.test.ts -t "scope availability"`
 Expected: FAIL because the resolver currently returns only `path/exists/writable/role`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update the Gemini scope resolver so each scope target carries availability state. Keep the existing target list behavior, but add:
 
@@ -101,12 +103,12 @@ Update the Gemini scope resolver so each scope target carries availability state
 
 Ensure `loadGeminiScopeState()` preserves enough scope metadata for downstream command rendering without duplicating root-resolution logic.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/gemini.adapter.test.ts -t "scope availability"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.scope-resolver.ts src/adapters/gemini/gemini.scope-loader.ts tests/unit/gemini.adapter.test.ts
@@ -123,7 +125,7 @@ git commit -m "feat: add gemini scope availability resolver"
 - Test: `tests/unit/export.service.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add coverage that Gemini `current`, `list`, and `export` now include:
 
@@ -131,12 +133,12 @@ Add coverage that Gemini `current`, `list`, and `export` now include:
 - `project` status as `available` or `unresolved`
 - `defaultWriteScope = "user"` in export
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/current-state.service.test.ts tests/unit/export.service.test.ts tests/integration/cli-commands.test.ts -t "scopeAvailability|export --json"`
 Expected: FAIL because those outputs currently expose only `scopeCapabilities`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update Gemini-backed output assembly so:
 
@@ -148,12 +150,12 @@ Update Gemini-backed output assembly so:
 
 Do not add misleading availability data for non-Gemini platforms unless the command/service can provide something meaningful without guessing.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/current-state.service.test.ts tests/unit/export.service.test.ts tests/integration/cli-commands.test.ts -t "scopeAvailability|export --json"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/current-state.service.ts src/services/export.service.ts src/adapters/gemini/gemini.adapter.ts tests/unit/current-state.service.test.ts tests/unit/export.service.test.ts tests/integration/cli-commands.test.ts
@@ -170,7 +172,7 @@ git commit -m "feat: expose gemini scope availability in current list and export
 - Test: `tests/unit/switch.service.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add tests for two distinct Gemini project-scope failure paths:
 
@@ -178,12 +180,12 @@ Add tests for two distinct Gemini project-scope failure paths:
 - `use --scope project` fails structurally on availability before `CONFIRMATION_REQUIRED`
 - `use --scope project` still returns `CONFIRMATION_REQUIRED` when project scope is available but `--force` is missing
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/integration/gemini-preview-use-rollback.test.ts tests/unit/switch.service.test.ts tests/integration/cli-commands.test.ts -t "preview --scope project|CONFIRMATION_REQUIRED|availability"`
 Expected: FAIL because availability and confirmation are not yet separated.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement the two-stage gate:
 
@@ -199,12 +201,12 @@ Include `scopeAvailability` in:
 
 Do not change default Gemini target scope from `user`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/integration/gemini-preview-use-rollback.test.ts tests/unit/switch.service.test.ts tests/integration/cli-commands.test.ts -t "preview --scope project|CONFIRMATION_REQUIRED|availability"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts src/services/preview.service.ts src/services/switch.service.ts tests/integration/gemini-preview-use-rollback.test.ts tests/unit/switch.service.test.ts tests/integration/cli-commands.test.ts
@@ -220,7 +222,7 @@ git commit -m "feat: gate gemini project scope by availability before confirmati
 - Test: `tests/integration/gemini-preview-use-rollback.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add rollback coverage for:
 
@@ -228,12 +230,12 @@ Add rollback coverage for:
 - `ROLLBACK_SCOPE_MISMATCH` still occurs when project scope is available but manifest scope differs
 - error details include both `scopePolicy` and `scopeAvailability`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/rollback.service.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts -t "ROLLBACK_SCOPE_MISMATCH|scopeAvailability|project"`
 Expected: FAIL because rollback only carries `scopePolicy` and current mismatch handling.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update Gemini rollback so:
 
@@ -241,12 +243,12 @@ Update Gemini rollback so:
 - mismatch handling remains intact after availability passes
 - success and failure results both expose `scopeAvailability`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/rollback.service.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts -t "ROLLBACK_SCOPE_MISMATCH|scopeAvailability|project"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts src/services/rollback.service.ts tests/unit/rollback.service.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts
@@ -261,7 +263,7 @@ git commit -m "feat: add gemini project scope availability checks to rollback"
 - Modify: `README.md`
 - Test: `tests/unit/public-json-schema.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add schema assertions that:
 
@@ -269,12 +271,12 @@ Add schema assertions that:
 - all intended command output shapes include `scopeAvailability`
 - export item includes `defaultWriteScope`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: FAIL because the schema/docs do not yet describe the new contract.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update the machine-readable schema and human-readable docs so they explain:
 
@@ -283,12 +285,12 @@ Update the machine-readable schema and human-readable docs so they explain:
 - success/failure examples for unresolved project scope
 - export’s environment-observation boundary
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/public-json-schema.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/public-json-output.schema.json docs/public-json-schema.md README.md tests/unit/public-json-schema.test.ts
@@ -301,7 +303,7 @@ git commit -m "docs: document gemini scope availability contract"
 - Modify: `src/renderers/text-renderer.ts`
 - Test: `tests/unit/text-renderer.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add renderer expectations for:
 
@@ -309,12 +311,12 @@ Add renderer expectations for:
 - unresolved Gemini project scope reason/remediation
 - separation between availability failure and confirmation-required failure
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm vitest run tests/unit/text-renderer.test.ts`
 Expected: FAIL because text output currently renders only `作用域能力`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Render `scopeAvailability` alongside `scopeCapabilities` using clear labels:
 
@@ -324,12 +326,12 @@ Render `scopeAvailability` alongside `scopeCapabilities` using clear labels:
 
 Make sure availability failures do not imply `--force` would help.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm vitest run tests/unit/text-renderer.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderers/text-renderer.ts tests/unit/text-renderer.test.ts
@@ -342,17 +344,17 @@ git commit -m "feat: render gemini scope availability in text output"
 - Modify: none
 - Test: full project
 
-- [ ] **Step 1: Run targeted phase-2 suites**
+- [x] **Step 1: Run targeted phase-2 suites**
 
 Run: `corepack pnpm vitest run tests/unit/gemini.adapter.test.ts tests/unit/current-state.service.test.ts tests/unit/export.service.test.ts tests/unit/public-json-schema.test.ts tests/unit/switch.service.test.ts tests/unit/rollback.service.test.ts tests/unit/text-renderer.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts`
 Expected: PASS
 
-- [ ] **Step 2: Run full test suite**
+- [x] **Step 2: Run full test suite**
 
 Run: `corepack pnpm test`
 Expected: PASS
 
-- [ ] **Step 3: Run typecheck and build**
+- [x] **Step 3: Run typecheck and build**
 
 Run: `corepack pnpm typecheck`
 Expected: PASS
@@ -360,7 +362,7 @@ Expected: PASS
 Run: `corepack pnpm build`
 Expected: PASS
 
-- [ ] **Step 4: Commit final integrated change**
+- [x] **Step 4: Commit final integrated change**
 
 ```bash
 git add .

@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Vitest, Commander CLI, existing adapter registry/services, JSON schema docs, README.
 
+> Status note (2026-04-29): 该计划对应的 Codex import-apply 能力、文档与验证已进入主线；以下勾选项为合并后的执行回填。
+
 ---
 
 ## File Structure
@@ -40,7 +42,7 @@
 - Modify: `src/services/import-apply.service.ts`
 - Modify: `src/services/scope-options.ts`
 
-- [ ] **Step 1: Write the failing unit test for Codex platform support**
+- [x] **Step 1: Write the failing unit test for Codex platform support**
 
 Add a unit test that loads a Codex imported profile and asserts the service no longer returns `IMPORT_PLATFORM_NOT_SUPPORTED`.
 
@@ -52,7 +54,7 @@ expect(result.action).toBe('import-apply')
 expect(result.data?.importedProfile.platform).toBe('codex')
 ```
 
-- [ ] **Step 2: Write the failing unit test proving Codex skips Gemini project availability gate**
+- [x] **Step 2: Write the failing unit test proving Codex skips Gemini project availability gate**
 
 Add a test where Codex detection has no `scopeAvailability`, and assert the service does not fail with `IMPORT_SCOPE_UNAVAILABLE`.
 
@@ -62,7 +64,7 @@ Example expectation:
 expect(result.error?.code).not.toBe('IMPORT_SCOPE_UNAVAILABLE')
 ```
 
-- [ ] **Step 3: Write the failing unit test for unsupported Claude**
+- [x] **Step 3: Write the failing unit test for unsupported Claude**
 
 Tighten the current unsupported-platform test so it explicitly covers Claude remaining unsupported after Codex is enabled.
 
@@ -75,7 +77,7 @@ expect(result.error).toEqual({
 })
 ```
 
-- [ ] **Step 4: Run the import-apply unit tests to verify red**
+- [x] **Step 4: Run the import-apply unit tests to verify red**
 
 Run:
 
@@ -85,7 +87,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts
 
 Expected: FAIL because the service still hardcodes Gemini-only behavior and `appliedScope` assumptions.
 
-- [ ] **Step 5: Implement the minimal platform-aware service changes**
+- [x] **Step 5: Implement the minimal platform-aware service changes**
 
 Implement only the minimum needed:
 
@@ -95,7 +97,7 @@ Implement only the minimum needed:
 - gate `scopeAvailability` only when the platform/scope actually requires it
 - keep Gemini `project` semantics unchanged
 
-- [ ] **Step 6: Re-run the import-apply unit tests**
+- [x] **Step 6: Re-run the import-apply unit tests**
 
 Run:
 
@@ -105,7 +107,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts
 
 Expected: PASS for the newly added platform-support and gate-order cases.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/unit/import-apply.service.test.ts src/services/import-apply.service.ts src/services/scope-options.ts
@@ -119,7 +121,7 @@ git commit -m "feat: support codex import apply service flow"
 - Modify: `src/types/command.ts`
 - Modify: `docs/public-json-output.schema.json`
 
-- [ ] **Step 1: Write the failing type/schema test for widened `appliedScope`**
+- [x] **Step 1: Write the failing type/schema test for widened `appliedScope`**
 
 Update the public contract test so `ImportApplyCommandOutput.appliedScope` is no longer asserted as `'user' | 'project'`.
 
@@ -134,7 +136,7 @@ expectTypeOf<ImportApplyCommandOutput>().toMatchTypeOf<{
 }>()
 ```
 
-- [ ] **Step 2: Write the failing schema sample for a Codex success result**
+- [x] **Step 2: Write the failing schema sample for a Codex success result**
 
 Add a sample with:
 
@@ -144,7 +146,7 @@ Add a sample with:
 
 Assert it passes public schema validation once the schema is updated.
 
-- [ ] **Step 3: Run the schema contract tests to verify red**
+- [x] **Step 3: Run the schema contract tests to verify red**
 
 Run:
 
@@ -154,7 +156,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts
 
 Expected: FAIL because the current type/schema still encodes Gemini-only scope assumptions.
 
-- [ ] **Step 4: Implement the minimal type/schema widening**
+- [x] **Step 4: Implement the minimal type/schema widening**
 
 Update:
 
@@ -164,7 +166,7 @@ Update:
 
 Do not widen unrelated command contracts.
 
-- [ ] **Step 5: Re-run the schema contract tests**
+- [x] **Step 5: Re-run the schema contract tests**
 
 Run:
 
@@ -174,7 +176,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts
 
 Expected: PASS with both Gemini and Codex-compatible success contract coverage.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/unit/public-json-schema.test.ts src/types/command.ts docs/public-json-output.schema.json
@@ -188,7 +190,7 @@ git commit -m "feat: widen import apply public contract for codex"
 - Modify: `src/services/import-apply.service.ts`
 - Modify: `src/types/command.ts`
 
-- [ ] **Step 1: Write the failing CLI integration test for Codex import apply success**
+- [x] **Step 1: Write the failing CLI integration test for Codex import apply success**
 
 Add an integration case that:
 
@@ -200,7 +202,7 @@ Add an integration case that:
    - `changedFiles` includes `config.toml` and `auth.json`
    - output `backupId` exists
 
-- [ ] **Step 2: Write the failing CLI integration test for invalid Codex scope**
+- [x] **Step 2: Write the failing CLI integration test for invalid Codex scope**
 
 Add a case like:
 
@@ -210,14 +212,14 @@ api-switcher import apply <file> --profile codex-prod --scope project --json
 
 Assert it fails through the existing invalid-scope path instead of pretending Codex supports project scope.
 
-- [ ] **Step 3: Update the old non-Gemini-not-supported integration assertion**
+- [x] **Step 3: Update the old non-Gemini-not-supported integration assertion**
 
 Replace the old broad failure assumption with a narrower one:
 
 - Claude import apply is still unsupported
 - Codex import apply is supported
 
-- [ ] **Step 4: Run the CLI integration tests to verify red**
+- [x] **Step 4: Run the CLI integration tests to verify red**
 
 Run:
 
@@ -227,7 +229,7 @@ corepack pnpm vitest run tests/integration/cli-commands.test.ts
 
 Expected: FAIL because CLI integration does not yet support Codex success.
 
-- [ ] **Step 5: Make the smallest implementation adjustments needed for CLI green**
+- [x] **Step 5: Make the smallest implementation adjustments needed for CLI green**
 
 Only patch whatever still blocks the real CLI path after Task 1 and Task 2, such as:
 
@@ -235,7 +237,7 @@ Only patch whatever still blocks the real CLI path after Task 1 and Task 2, such
 - invalid scope handling
 - any command-layer assumptions still phrased as Gemini-only
 
-- [ ] **Step 6: Re-run the CLI integration tests**
+- [x] **Step 6: Re-run the CLI integration tests**
 
 Run:
 
@@ -245,7 +247,7 @@ corepack pnpm vitest run tests/integration/cli-commands.test.ts
 
 Expected: PASS for the new Codex success path and unsupported-Claude path.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/integration/cli-commands.test.ts src/services/import-apply.service.ts src/types/command.ts
@@ -259,7 +261,7 @@ git commit -m "test: cover codex import apply cli integration"
 - Modify: `docs/public-json-schema.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Write the failing doc assertions mentally against the current wording**
+- [x] **Step 1: Write the failing doc assertions mentally against the current wording**
 
 Confirm the current docs are now wrong in these places:
 
@@ -269,7 +271,7 @@ Confirm the current docs are now wrong in these places:
 
 This step is a doc red check, not a code test.
 
-- [ ] **Step 2: Update README command surface and platform boundary wording**
+- [x] **Step 2: Update README command surface and platform boundary wording**
 
 Change wording to:
 
@@ -278,7 +280,7 @@ Change wording to:
 - Codex writes its two real target files and does not use `--scope`
 - Claude remains unsupported
 
-- [ ] **Step 3: Update public schema doc wording**
+- [x] **Step 3: Update public schema doc wording**
 
 Adjust `docs/public-json-schema.md` so machine consumers are told clearly:
 
@@ -286,11 +288,11 @@ Adjust `docs/public-json-schema.md` so machine consumers are told clearly:
 - Codex import apply success does not imply scoped target support
 - `appliedScope` may be absent for non-scoped platforms
 
-- [ ] **Step 4: Update changelog**
+- [x] **Step 4: Update changelog**
 
 Add one concise entry recording Codex support for `import apply`.
 
-- [ ] **Step 5: Run minimal verification for docs-adjacent regressions**
+- [x] **Step 5: Run minimal verification for docs-adjacent regressions**
 
 Run:
 
@@ -300,7 +302,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts tests/integration
 
 Expected: PASS, confirming doc-backed schema/CLI contract remains correct.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md docs/public-json-schema.md CHANGELOG.md
@@ -312,7 +314,7 @@ git commit -m "docs: document codex import apply support"
 **Files:**
 - Verify only, no new source files unless a discovered regression requires it.
 
-- [ ] **Step 1: Run the focused test suite**
+- [x] **Step 1: Run the focused test suite**
 
 Run:
 
@@ -322,7 +324,7 @@ corepack pnpm vitest run tests/unit/import-apply.service.test.ts tests/unit/publ
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the full project test suite**
+- [x] **Step 2: Run the full project test suite**
 
 Run:
 
@@ -332,7 +334,7 @@ corepack pnpm test
 
 Expected: PASS.
 
-- [ ] **Step 3: Run a build**
+- [x] **Step 3: Run a build**
 
 Run:
 
@@ -342,7 +344,7 @@ corepack pnpm build
 
 Expected: PASS.
 
-- [ ] **Step 4: Review git diff for scope creep**
+- [x] **Step 4: Review git diff for scope creep**
 
 Run:
 
@@ -353,7 +355,7 @@ git status --short
 
 Expected: only the planned service, test, schema, and doc files changed.
 
-- [ ] **Step 5: Commit any final fixups if verification exposed a real issue**
+- [x] **Step 5: Commit any final fixups if verification exposed a real issue**
 
 Only if needed:
 

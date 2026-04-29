@@ -6,6 +6,8 @@
 
 **Tech Stack:** TypeScript, Vitest, Markdown docs
 
+> **Status note (2026-04-29):** This document is kept as a Stage-2 historical gate record. Its intended boundary was later exceeded by explicit Phase-3 work that shipped `import preview` and `import apply`. The completed Stage-2 decisions remain checked; the old gate-only constraints below are preserved as historical notes instead of current unchecked work.
+
 ---
 
 ### Task 1: Unify Gemini Project Root Failure Messaging
@@ -43,23 +45,21 @@
 - Test: `tests/unit/export.service.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] Evaluate whether to add `observedAt` to `export`.
-- [ ] If adopted, keep it observational only and document that import must re-resolve local availability.
 - [x] Evaluate whether to add `observedAt` to `export`.
 - [x] If adopted, keep it observational only and document that import must re-resolve local availability.
-- [ ] Do not add `import` execution logic in this stage.
+
+Historical note: Stage-2 itself did not ship import execution logic; later Phase-3 work intentionally added `import preview` and `import apply` on top of this contract.
 
 ### Task 4: Phase-3 Gate
 
 **Files:**
 - Add later: dedicated import spec/plan
 
-- [ ] Only start Phase 3 when the user explicitly wants `import preview/import apply`.
-- [ ] Before Phase 3, create a separate spec covering:
-  - import preview
-  - fidelity mismatch presentation
-  - local re-resolution before write-back
-  - project/user conflict policy
+Historical note: This gate was crossed later as intended. Separate follow-on plans/specs were created for:
+- `import preview`
+- fidelity mismatch presentation
+- local re-resolution before write-back
+- project/user conflict policy
 
 ### Verification
 

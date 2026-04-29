@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Commander, Vitest
 
+> **Status note (2026-04-29):** This plan has been implemented in mainline. The checked steps below are backfilled from the landed resolver, scope loader, adapter behavior, renderer output, docs, and tests.
+
 ---
 
 ### Task 1: Add Gemini scope resolver
@@ -17,16 +19,16 @@
 - Modify: `src/adapters/gemini/gemini.target-resolver.ts`
 - Test: `tests/unit/gemini.adapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add unit assertions that Gemini target resolution returns all four official scopes with stable scope names and preserves compatibility with `API_SWITCHER_GEMINI_SETTINGS_PATH` as the user-scope path.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: FAIL because the resolver still returns only one path.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement a Gemini scope resolver that returns:
 - `system-defaults`
@@ -36,12 +38,12 @@ Implement a Gemini scope resolver that returns:
 
 with env override support and compatibility fallback.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.scope-resolver.ts src/adapters/gemini/gemini.target-resolver.ts tests/unit/gemini.adapter.test.ts
@@ -55,16 +57,16 @@ git commit -m "feat: add gemini multi-scope target resolver"
 - Modify: `src/adapters/gemini/gemini.adapter.ts`
 - Test: `tests/unit/gemini.adapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add tests that build multiple Gemini scope files and assert the effective merged config uses official precedence.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: FAIL because the adapter only reads one settings file.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement a scope loader that:
 - reads each scope file when present
@@ -73,12 +75,12 @@ Implement a scope loader that:
 - computes merged effective config
 - preserves per-scope provenance for override explanations
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.scope-loader.ts src/adapters/gemini/gemini.adapter.ts tests/unit/gemini.adapter.test.ts
@@ -92,19 +94,19 @@ git commit -m "feat: add gemini scope-aware effective config merge"
 - Test: `tests/integration/gemini-preview-use-rollback.test.ts`
 - Test: `tests/integration/cli-commands.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add integration coverage for:
 - preview using merged effective config from higher-precedence scope files
 - current-state matching based on merged Gemini config
 - target lists exposing multiple scopes
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts`
 Expected: FAIL because current preview/current output assumes one file only.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update Gemini adapter so that:
 - `listTargets()` returns all scope targets
@@ -112,12 +114,12 @@ Update Gemini adapter so that:
 - `detectCurrent()` uses merged config rather than a single user file
 - scope-aware managed boundaries and overrides are included
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts
@@ -130,28 +132,28 @@ git commit -m "feat: make gemini preview and current state scope-aware"
 - Modify: `src/adapters/gemini/gemini.adapter.ts`
 - Test: `tests/integration/gemini-preview-use-rollback.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add integration assertions that:
 - apply still writes only the user scope
 - output warns when higher-precedence scopes can override the final result
 - rollback restores only the user-scope file that was written
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts`
 Expected: FAIL because current apply/rollback do not explain multi-scope precedence.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Keep Gemini writes limited to the user scope and add explicit warnings/limitations about higher-precedence scope overrides when relevant.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/integration/gemini-preview-use-rollback.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/adapters/gemini/gemini.adapter.ts tests/integration/gemini-preview-use-rollback.test.ts
@@ -165,28 +167,28 @@ git commit -m "fix: explain gemini single-scope writes under multi-scope detecti
 - Modify: `src/renderers/text-renderer.ts`
 - Test: `tests/unit/text-renderer.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add renderer expectations for Gemini scope-aware target and precedence output.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `corepack pnpm test -- tests/unit/text-renderer.test.ts`
 Expected: FAIL because the renderer does not yet present multi-scope Gemini context clearly.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update README and text rendering so Gemini output explains:
 - four-scope detection
 - single-scope writes
 - precedence-aware effective config
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `corepack pnpm test -- tests/unit/text-renderer.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md src/renderers/text-renderer.ts tests/unit/text-renderer.test.ts
@@ -199,17 +201,17 @@ git commit -m "docs: clarify gemini multi-scope detection behavior"
 - Modify: none
 - Test: full project
 
-- [ ] **Step 1: Run targeted Gemini suites**
+- [x] **Step 1: Run targeted Gemini suites**
 
 Run: `corepack pnpm test -- tests/unit/gemini.adapter.test.ts tests/integration/gemini-preview-use-rollback.test.ts tests/integration/cli-commands.test.ts tests/unit/text-renderer.test.ts`
 Expected: PASS
 
-- [ ] **Step 2: Run full test suite**
+- [x] **Step 2: Run full test suite**
 
 Run: `corepack pnpm test`
 Expected: PASS
 
-- [ ] **Step 3: Run typecheck and build**
+- [x] **Step 3: Run typecheck and build**
 
 Run: `corepack pnpm typecheck`
 Expected: PASS
@@ -217,7 +219,7 @@ Expected: PASS
 Run: `corepack pnpm build`
 Expected: PASS
 
-- [ ] **Step 4: Commit final integrated change**
+- [x] **Step 4: Commit final integrated change**
 
 ```bash
 git add .
