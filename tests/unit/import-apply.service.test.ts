@@ -1789,6 +1789,116 @@ describe('import apply service', () => {
     }))
   })
 
+  it('命中真实用户目录但已显式 --force 时允许继续 apply', async () => {
+    const importedProfile = createCodexProfile()
+    let snapshotCalled = false
+    let applyCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: undefined,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'codex',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'codex',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                format: 'toml',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'config',
+                managedKeys: ['base_url'],
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                changedKeys: ['base_url'],
+                hasChanges: true,
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-codex-real-user-target-force',
+            manifestPath: 'backups/codex/manifest.json',
+            targetFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, force: true })
+
+    expect(snapshotCalled).toBe(true)
+    expect(applyCalled).toBe(true)
+    expect(result.ok).toBe(true)
+  })
+
   it('命中开发态沙箱目录时不会触发真实用户目录确认门槛', async () => {
     const importedProfile = createCodexProfile()
     let snapshotCalled = false

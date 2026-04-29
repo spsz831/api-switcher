@@ -407,9 +407,10 @@ export class ImportApplyService {
           ]
         : []
       const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
+      const requiresRealUserTargetConfirmation = Boolean(realUserTargetGuard.warning) && !options.force
       const confirmationAllowed = decision.allowed
         && localConfirmationReasons.length === 0
-        && !realUserTargetGuard.warning
+        && !requiresRealUserTargetConfirmation
         && !requiresReferenceForce
 
       if (!confirmationAllowed) {

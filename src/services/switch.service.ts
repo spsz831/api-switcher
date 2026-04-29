@@ -154,7 +154,7 @@ export class SwitchService {
       const decision = evaluateRisk(preview, validation, { force: options.force })
       const realUserTargetGuard = getRealUserTargetGuardMessages(preview)
       const risk = {
-        allowed: decision.allowed && !realUserTargetGuard.warning,
+        allowed: decision.allowed,
         riskLevel: decision.riskLevel,
         reasons: Array.from(new Set([
           ...decision.reasons,
@@ -187,10 +187,14 @@ export class SwitchService {
         limitations: risk.limitations,
       })
       const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
-      if (!risk.allowed || requiresReferenceForce) {
+      const requiresRealUserTargetConfirmation = Boolean(realUserTargetGuard.warning) && !options.force
+      if (!risk.allowed || requiresReferenceForce || requiresRealUserTargetConfirmation) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
         const details: ConfirmationRequiredDetails = {
-          risk,
+          risk: {
+            ...risk,
+            allowed: false,
+          },
           scopePolicy: buildSnapshotScopePolicy(profile.platform, {
             requestedScope: options.scope,
             resolvedScope,

@@ -672,6 +672,106 @@ describe('switch service', () => {
     }))
   })
 
+  it('命中真实用户目录但已显式 --force 时允许继续执行', async () => {
+    const profile = {
+      id: 'codex-real-user-target-force',
+      name: 'codex-real-user-target-force',
+      platform: 'codex' as const,
+      source: { apiKey: 'sk-codex-live-123456' },
+      apply: {
+        OPENAI_API_KEY: 'sk-codex-live-123456',
+      },
+    }
+    let snapshotCalled = false
+    let applyCalled = false
+
+    const result = await new SwitchService(
+      {
+        resolve: async () => profile,
+      } as any,
+      {
+        get: () => ({
+          validate: async () => ({
+            ok: true,
+            errors: [],
+            warnings: [],
+            limitations: [],
+          }),
+          preview: async () => ({
+            platform: 'codex',
+            profileId: profile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                format: 'toml',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'config',
+                managedKeys: ['base_url'],
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            effectiveFields: [],
+            storedOnlyFields: [],
+            diffSummary: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                changedKeys: ['base_url'],
+                hasChanges: true,
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-codex-real-user-target-force',
+            manifestPath: 'backups/codex/manifest.json',
+            targetFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+      {
+        markCurrent: async () => undefined,
+      } as any,
+    ).use(profile.id, { force: true })
+
+    expect(snapshotCalled).toBe(true)
+    expect(applyCalled).toBe(true)
+    expect(result.ok).toBe(true)
+  })
+
   it('unresolved reference 会在 snapshot/apply 前直接失败', async () => {
     const profile = {
       id: 'claude-unresolved-reference-gated',
