@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.2
+
+### Security
+
+- 开发态在设置 `API_SWITCHER_RUNTIME_DIR` 时，默认把 Claude / Codex / Gemini 的目标文件重定向到运行时沙箱，避免源码 CLI、联调脚本或手工开发流程误写真实用户目录。
+- `use` / `import apply` 在命中真实用户目录时增加二次保护：即使平台风险级别较低，也会先进入明确确认门槛，而不是直接写入真实配置。
+
+### Behavior
+
+- 修复真实用户目录二次确认 guard 的阻断缺陷：显式放行并带 `--force` 时，真实目标写入现在可以继续执行；未确认时仍保持 `CONFIRMATION_REQUIRED`。
+- 继续收口主线实现记录，把已落地的 Codex / Claude / Gemini / reference / import 计划文档回填为已完成状态，并把 Gemini Stage-2 gate 文档保留为历史阶段记录，避免把过期 gate 误读成当前未完成工作。
+
+### Documentation
+
+- README、release checklist、public schema 文档与计划历史已重新对齐，当前主线不再保留误导性的“Gemini 计划未完成”勾选项。
+
 ## 0.1.1
 
 ### Behavior

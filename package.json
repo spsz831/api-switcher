@@ -1,6 +1,6 @@
 {
   "name": "api-switcher",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "多平台 API 配置切换 CLI 工具",
   "license": "MIT",
   "repository": {
