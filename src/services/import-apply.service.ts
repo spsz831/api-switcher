@@ -38,6 +38,7 @@ import {
 import { buildPlatformSummary } from './platform-summary'
 import { SnapshotService } from './snapshot.service'
 import type { ExecutabilityStats, ReferenceWriteDecision, SecretReferenceStats } from '../types/command'
+import { getRealUserTargetGuardMessages } from '../utils/real-user-target-guard'
 
 function findImportedProfile(
   items: ImportedProfileSource[],
@@ -394,6 +395,7 @@ export class ImportApplyService {
 
       const preview = await adapter.preview(materializedProfile, { targetScope: appliedScope })
       const decision = evaluateRisk(preview, validation, { force: options.force })
+      const realUserTargetGuard = getRealUserTargetGuardMessages(preview)
       const localConfirmationReasons = importedSource.profile.platform === 'claude' && appliedScope === 'local' && !options.force
         ? [
             'Claude local scope 高于 project 与 user；同名字段写入后会直接成为当前项目的最终生效值。',
@@ -405,7 +407,10 @@ export class ImportApplyService {
           ]
         : []
       const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
-      const confirmationAllowed = decision.allowed && localConfirmationReasons.length === 0 && !requiresReferenceForce
+      const confirmationAllowed = decision.allowed
+        && localConfirmationReasons.length === 0
+        && !realUserTargetGuard.warning
+        && !requiresReferenceForce
 
       if (!confirmationAllowed) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(importedSource.profile, validation)
@@ -416,6 +421,7 @@ export class ImportApplyService {
             reasons: mergeUniqueMessages(
               decision.reasons,
               localConfirmationReasons,
+              realUserTargetGuard.warning ? [realUserTargetGuard.warning] : [],
             ),
             limitations: mergeUniqueMessages(
               decision.limitations,
@@ -423,6 +429,7 @@ export class ImportApplyService {
                 ? ['如继续执行，将以明文写入目标配置文件。']
                 : [],
               localConfirmationLimitations,
+              realUserTargetGuard.limitation ? [realUserTargetGuard.limitation] : [],
             ),
           },
           scopePolicy: buildSnapshotScopePolicy(importedSource.profile.platform, {

@@ -1303,6 +1303,28 @@ describe('cli preview/use/rollback integration', () => {
     expect(result.stdout).toContain('当前切换需要确认或 --force。')
   })
 
+  it('use 命中真实用户目录时即使低风险也会强制要求二次确认', async () => {
+    const result = await runCli(['use', 'codex-prod', '--json'], {
+      API_SWITCHER_CODEX_CONFIG_PATH: 'C:/Users/spsz0/.codex/config.toml',
+      API_SWITCHER_CODEX_AUTH_PATH: 'C:/Users/spsz0/.codex/auth.json',
+    })
+    const payload = parseJsonResult<{
+      risk?: {
+        reasons: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('use')
+    expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
+    const details = payload.error?.details as { risk?: { reasons: string[]; limitations: string[] } } | undefined
+    expect(details?.risk?.reasons).toContain('当前写入目标命中真实用户目录；继续执行前请再次确认这不是开发态误写。')
+    expect(details?.risk?.limitations).toContain('目标文件位于真实用户目录（例如 C:/Users/...）；如需继续，请显式使用 --force 并确认影响范围。')
+  })
+
   it('use 输出 Codex 双文件 explainable 摘要并写入 state', async () => {
     const result = await runCli(['use', 'codex-prod', '--force'])
 

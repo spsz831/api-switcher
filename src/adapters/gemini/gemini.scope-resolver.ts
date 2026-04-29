@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { pathExists } from '../../utils/file-system'
+import { resolveDevelopmentSandboxPath, shouldUseDevelopmentSandbox } from '../../utils/development-sandbox'
 import { assertTargetScope, resolveTargetScope } from '../../services/scope-options'
 import type { ScopeAvailabilityStatus } from '../../types/capabilities'
 
@@ -48,11 +49,22 @@ function resolveGeminiProjectRootCandidate(): string | null {
 
 export function resolveGeminiScopePath(scope: GeminiScope): string {
   if (scope === 'system-defaults') {
+    if (shouldUseDevelopmentSandbox()) {
+      return process.env.API_SWITCHER_GEMINI_SYSTEM_DEFAULTS_SETTINGS_PATH
+        || resolveDevelopmentSandboxPath('gemini', 'system-defaults.json')
+    }
+
     return process.env.API_SWITCHER_GEMINI_SYSTEM_DEFAULTS_SETTINGS_PATH
       || path.join(os.homedir(), '.gemini', 'system-defaults.json')
   }
 
   if (scope === 'user') {
+    if (shouldUseDevelopmentSandbox()) {
+      return process.env.API_SWITCHER_GEMINI_USER_SETTINGS_PATH
+        || process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
+        || resolveDevelopmentSandboxPath('gemini', 'user', 'settings.json')
+    }
+
     return process.env.API_SWITCHER_GEMINI_USER_SETTINGS_PATH
       || process.env.API_SWITCHER_GEMINI_SETTINGS_PATH
       || path.join(os.homedir(), '.gemini', 'settings.json')
@@ -63,7 +75,9 @@ export function resolveGeminiScopePath(scope: GeminiScope): string {
   }
 
   return process.env.API_SWITCHER_GEMINI_SYSTEM_OVERRIDES_SETTINGS_PATH
-    || path.join(os.homedir(), '.gemini', 'system-overrides.json')
+    || (shouldUseDevelopmentSandbox()
+      ? resolveDevelopmentSandboxPath('gemini', 'system-overrides.json')
+      : path.join(os.homedir(), '.gemini', 'system-overrides.json'))
 }
 
 async function resolveGeminiProjectRootState(): Promise<string | null> {

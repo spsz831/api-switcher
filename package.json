@@ -25,7 +25,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/cli/index.ts",
+    "dev": "node ./scripts/dev-cli.mjs",
     "smoke:release": "powershell -ExecutionPolicy Bypass -File ./scripts/release-smoke.ps1",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -5,6 +5,7 @@ import {
   resolveClaudeSettingsPath,
   resolveClaudeTargetScope,
 } from '../../src/adapters/claude/claude.target-resolver'
+import { isInsideDevelopmentSandbox } from '../../src/utils/development-sandbox'
 
 describe('claude target resolver', () => {
   const originalEnv = {
@@ -14,6 +15,9 @@ describe('claude target resolver', () => {
     API_SWITCHER_CLAUDE_LOCAL_SETTINGS_PATH: process.env.API_SWITCHER_CLAUDE_LOCAL_SETTINGS_PATH,
     API_SWITCHER_CLAUDE_SETTINGS_PATH: process.env.API_SWITCHER_CLAUDE_SETTINGS_PATH,
     API_SWITCHER_CLAUDE_TARGET_SCOPE: process.env.API_SWITCHER_CLAUDE_TARGET_SCOPE,
+    API_SWITCHER_RUNTIME_DIR: process.env.API_SWITCHER_RUNTIME_DIR,
+    API_SWITCHER_ALLOW_REAL_USER_TARGETS: process.env.API_SWITCHER_ALLOW_REAL_USER_TARGETS,
+    API_SWITCHER_DISABLE_DEVELOPMENT_SANDBOX: process.env.API_SWITCHER_DISABLE_DEVELOPMENT_SANDBOX,
   }
 
   afterEach(() => {
@@ -61,5 +65,19 @@ describe('claude target resolver', () => {
 
     expect(resolveClaudeTargetScope()).toBe('local')
     expect(resolveClaudeSettingsPath()).toContain('settings.local.json')
+  })
+
+  it('开发态默认把 user scope 写到沙箱而不碰真实用户目录', () => {
+    process.env.API_SWITCHER_RUNTIME_DIR = '/tmp/api-switcher-runtime'
+    delete process.env.API_SWITCHER_CLAUDE_USER_SETTINGS_PATH
+    delete process.env.API_SWITCHER_CLAUDE_SETTINGS_PATH
+    delete process.env.API_SWITCHER_ALLOW_REAL_USER_TARGETS
+    delete process.env.API_SWITCHER_DISABLE_DEVELOPMENT_SANDBOX
+
+    const resolved = resolveClaudeSettingsPath('user')
+
+    expect(isInsideDevelopmentSandbox(resolved)).toBe(true)
+    expect(resolved).toContain('claude')
+    expect(resolved).toContain('settings.json')
   })
 })

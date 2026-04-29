@@ -1,6 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { resolveTargetScope } from '../../services/scope-options'
+import { resolveDevelopmentSandboxPath, shouldUseDevelopmentSandbox } from '../../utils/development-sandbox'
 
 export type ClaudeScope = 'user' | 'project' | 'local'
 
@@ -20,6 +21,12 @@ export function resolveClaudeTargetScope(input?: string): ClaudeScope {
 
 export function resolveClaudeSettingsPath(scope: ClaudeScope = resolveClaudeTargetScope()): string {
   if (scope === 'user') {
+    if (shouldUseDevelopmentSandbox()) {
+      return process.env.API_SWITCHER_CLAUDE_USER_SETTINGS_PATH
+        || process.env.API_SWITCHER_CLAUDE_SETTINGS_PATH
+        || resolveDevelopmentSandboxPath('claude', 'user', 'settings.json')
+    }
+
     return process.env.API_SWITCHER_CLAUDE_USER_SETTINGS_PATH
       || process.env.API_SWITCHER_CLAUDE_SETTINGS_PATH
       || path.join(os.homedir(), '.claude', 'settings.json')

@@ -1,9 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ImportSourceError } from '../../src/services/import-source.service'
 import { ImportApplyService } from '../../src/services/import-apply.service'
 import type { PreviewResult, ValidationResult } from '../../src/types/adapter'
 import type { ImportedProfileSource } from '../../src/services/import-source.service'
 import type { Profile } from '../../src/types/profile'
+
+const originalRuntimeDir = process.env.API_SWITCHER_RUNTIME_DIR
+
+beforeEach(() => {
+  process.env.API_SWITCHER_RUNTIME_DIR = 'E:/tmp/api-switcher-test-runtime'
+})
+
+afterEach(() => {
+  if (originalRuntimeDir === undefined) {
+    delete process.env.API_SWITCHER_RUNTIME_DIR
+    return
+  }
+
+  process.env.API_SWITCHER_RUNTIME_DIR = originalRuntimeDir
+})
 
 function createProfile(overrides: Partial<Profile> = {}): Profile {
   return {
@@ -1651,6 +1666,243 @@ describe('import apply service', () => {
         },
       },
     })
+  })
+
+  it('命中真实用户目录时即使低风险也会返回 CONFIRMATION_REQUIRED', async () => {
+    const importedProfile = createCodexProfile()
+    let snapshotCalled = false
+    let applyCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: undefined,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'codex',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'codex',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                format: 'toml',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'config',
+                managedKeys: ['base_url'],
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'C:/Users/spsz0/.codex/config.toml',
+                changedKeys: ['base_url'],
+                hasChanges: true,
+              },
+              {
+                path: 'C:/Users/spsz0/.codex/auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-codex-real-user-target',
+            manifestPath: 'backups/codex/manifest.json',
+            targetFiles: ['C:/Users/spsz0/.codex/config.toml', 'C:/Users/spsz0/.codex/auth.json'],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id })
+
+    expect(snapshotCalled).toBe(false)
+    expect(applyCalled).toBe(false)
+    expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(result.error?.details).toEqual(expect.objectContaining({
+      risk: expect.objectContaining({
+        allowed: false,
+        reasons: expect.arrayContaining([
+          '当前写入目标命中真实用户目录；继续执行前请再次确认这不是开发态误写。',
+        ]),
+        limitations: expect.arrayContaining([
+          '目标文件位于真实用户目录（例如 C:/Users/...）；如需继续，请显式使用 --force 并确认影响范围。',
+        ]),
+      }),
+    }))
+  })
+
+  it('命中开发态沙箱目录时不会触发真实用户目录确认门槛', async () => {
+    const importedProfile = createCodexProfile()
+    let snapshotCalled = false
+    let applyCalled = false
+    const service = new ImportApplyService(
+      {
+        load: async () => ({
+          sourceFile: 'E:/tmp/export.json',
+          sourceCompatibility: { mode: 'strict', schemaVersion: '2026-04-15.public-json.v1', warnings: [] },
+          profiles: [createImportedSource({ profile: importedProfile, exportedObservation: {} })],
+        }),
+      } as any,
+      {
+        evaluate: () => ({
+          fidelity: {
+            status: 'match',
+            mismatches: [],
+            driftSummary: { blocking: 0, warning: 0, info: 0 },
+            groupedMismatches: [],
+            highlights: [],
+          },
+          previewDecision: {
+            canProceedToApplyDesign: true,
+            recommendedScope: undefined,
+            requiresLocalResolution: false,
+            reasonCodes: ['READY_USING_LOCAL_OBSERVATION'],
+            reasons: [],
+          },
+        }),
+      } as any,
+      {
+        get: () => ({
+          detectCurrent: async () => ({
+            platform: 'codex',
+            managed: true,
+            targetFiles: [],
+          }),
+          validate: async () => createValidationResult(),
+          preview: async () => createPreviewResult({
+            platform: 'codex',
+            profileId: importedProfile.id,
+            targetFiles: [
+              {
+                path: 'E:/tmp/api-switcher-test-runtime/targets/codex/config.toml',
+                format: 'toml',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'config',
+                managedKeys: ['base_url'],
+              },
+              {
+                path: 'E:/tmp/api-switcher-test-runtime/targets/codex/auth.json',
+                format: 'json',
+                exists: true,
+                managedScope: 'multi-file',
+                role: 'auth',
+                managedKeys: ['OPENAI_API_KEY'],
+              },
+            ],
+            diffSummary: [
+              {
+                path: 'E:/tmp/api-switcher-test-runtime/targets/codex/config.toml',
+                changedKeys: ['base_url'],
+                hasChanges: true,
+              },
+              {
+                path: 'E:/tmp/api-switcher-test-runtime/targets/codex/auth.json',
+                changedKeys: ['OPENAI_API_KEY'],
+                hasChanges: true,
+              },
+            ],
+            warnings: [],
+            limitations: [],
+            riskLevel: 'low',
+            requiresConfirmation: false,
+            backupPlanned: true,
+            noChanges: false,
+          }),
+          apply: async () => {
+            applyCalled = true
+            return {
+              ok: true,
+              changedFiles: [
+                'E:/tmp/api-switcher-test-runtime/targets/codex/config.toml',
+                'E:/tmp/api-switcher-test-runtime/targets/codex/auth.json',
+              ],
+              noChanges: false,
+              diffSummary: [],
+            }
+          },
+        }),
+      } as any,
+      {
+        createBeforeApply: async () => {
+          snapshotCalled = true
+          return {
+            backupId: 'snapshot-codex-sandbox-target',
+            manifestPath: 'backups/codex/manifest.json',
+            targetFiles: [
+              'E:/tmp/api-switcher-test-runtime/targets/codex/config.toml',
+              'E:/tmp/api-switcher-test-runtime/targets/codex/auth.json',
+            ],
+            warnings: [],
+            limitations: [],
+          }
+        },
+      } as any,
+    )
+
+    const result = await service.apply('E:/tmp/export.json', { profile: importedProfile.id, force: true })
+
+    expect(snapshotCalled).toBe(true)
+    expect(applyCalled).toBe(true)
+    expect(result.ok).toBe(true)
   })
 
   it('导出默认 scope 漂移，但显式 --scope project 且 project 可用时，仍可继续进入后续 gate', async () => {

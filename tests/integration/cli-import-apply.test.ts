@@ -276,6 +276,44 @@ describe('cli import apply integration', () => {
     expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
   })
 
+  it('import apply 命中真实用户目录时即使低风险也会强制要求二次确认', async () => {
+    const importFile = path.join(context.runtimeDir, 'import-apply-real-user-target-confirmation.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'codex-prod',
+          name: 'codex-prod',
+          platform: 'codex',
+          source: { apiKey: 'sk-codex-live-123456', baseURL: 'https://gateway.example.com/openai/v1' },
+          apply: {
+            OPENAI_API_KEY: 'sk-codex-live-123456',
+            base_url: 'https://gateway.example.com/openai/v1',
+          },
+        },
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'codex-prod', '--json'], {
+      API_SWITCHER_CODEX_CONFIG_PATH: 'C:/Users/spsz0/.codex/config.toml',
+      API_SWITCHER_CODEX_AUTH_PATH: 'C:/Users/spsz0/.codex/auth.json',
+    })
+    const payload = parseJsonResult<{
+      risk?: {
+        reasons: string[]
+        limitations: string[]
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.error?.code).toBe('CONFIRMATION_REQUIRED')
+    const details = payload.error?.details as { risk?: { reasons: string[]; limitations: string[] } } | undefined
+    expect(details?.risk?.reasons).toContain('当前写入目标命中真实用户目录；继续执行前请再次确认这不是开发态误写。')
+    expect(details?.risk?.limitations).toContain('目标文件位于真实用户目录（例如 C:/Users/...）；如需继续，请显式使用 --force 并确认影响范围。')
+  })
+
   it('import apply --json 可以成功应用 Codex profile 并写入双文件目标', async () => {
     const importFile = path.join(context.runtimeDir, 'import-apply-codex-success.json')
     await writeImportSourceFile(importFile, [

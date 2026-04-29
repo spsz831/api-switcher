@@ -17,6 +17,7 @@ import { buildPlatformSummary } from './platform-summary'
 import { assertTargetScope, buildSnapshotScopePolicy, getScopeCapabilityMatrix, InvalidScopeError, resolveTargetScope } from './scope-options'
 import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 import { SnapshotService } from './snapshot.service'
+import { getRealUserTargetGuardMessages } from '../utils/real-user-target-guard'
 
 function collectValidationWarnings(validation: ValidationResult): string[] {
   return mergeUniqueMessages(
@@ -151,15 +152,20 @@ export class SwitchService {
       const preview = await adapter.preview(materializedProfile, { targetScope: resolvedScope })
 
       const decision = evaluateRisk(preview, validation, { force: options.force })
+      const realUserTargetGuard = getRealUserTargetGuardMessages(preview)
       const risk = {
-        allowed: decision.allowed,
+        allowed: decision.allowed && !realUserTargetGuard.warning,
         riskLevel: decision.riskLevel,
-        reasons: Array.from(new Set(decision.reasons)),
+        reasons: Array.from(new Set([
+          ...decision.reasons,
+          ...(realUserTargetGuard.warning ? [realUserTargetGuard.warning] : []),
+        ])),
         limitations: Array.from(new Set([
           ...decision.limitations,
           ...(referenceDecision?.decisionCode === 'inline-fallback-write'
             ? ['如继续执行，将以明文写入目标配置文件。']
             : []),
+          ...(realUserTargetGuard.limitation ? [realUserTargetGuard.limitation] : []),
         ])),
       }
       const summary = buildSingleProfileCommandSummary({
@@ -181,7 +187,7 @@ export class SwitchService {
         limitations: risk.limitations,
       })
       const requiresReferenceForce = referenceDecision?.decisionCode === 'inline-fallback-write' && !options.force
-      if (!decision.allowed || requiresReferenceForce) {
+      if (!risk.allowed || requiresReferenceForce) {
         const referenceGovernance = buildReferenceGovernanceFailureDetails(profile, validation)
         const details: ConfirmationRequiredDetails = {
           risk,
