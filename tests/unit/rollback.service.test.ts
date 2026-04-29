@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AdapterNotRegisteredError } from '../../src/registry/adapter-registry'
 import { RollbackService } from '../../src/services/rollback.service'
+import { ProfilesStore } from '../../src/stores/profiles.store'
 import { SnapshotStore } from '../../src/stores/snapshot.store'
 import { StateStore } from '../../src/stores/state.store'
 
@@ -201,6 +202,21 @@ describe('rollback service', () => {
     const backupId = 'snapshot-gemini-20260409120000-abcdef'
     const snapshotStore = new SnapshotStore()
     const stateStore = new StateStore()
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: {
+            GEMINI_API_KEY: 'gm-live-123456',
+            enforcedAuthType: 'gemini-api-key',
+          },
+        },
+      ],
+    })
 
     await snapshotStore.writeManifest('gemini', backupId, {
       backupId,
@@ -232,10 +248,24 @@ describe('rollback service', () => {
     expect(result.action).toBe('rollback')
     expect(result.data?.backupId).toBe(backupId)
     expect(result.data?.scopePolicy).toBeUndefined()
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+        referenceProfileCount: 0,
+        inlineProfileCount: 1,
+        writeUnsupportedProfileCount: 0,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+      }),
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
-    })
+    }))
     expect(nextState.lastSwitch?.status).toBe('rolled-back')
     expect(nextState.lastSwitch?.warnings).toEqual(result.data?.summary.warnings)
     expect(nextState.lastSwitch?.limitations).toEqual(result.data?.summary.limitations)
@@ -245,6 +275,21 @@ describe('rollback service', () => {
     const backupId = 'snapshot-gemini-20260409120100-fedcba'
     const snapshotStore = new SnapshotStore()
     const stateStore = new StateStore()
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'gemini-prod',
+          name: 'gemini-prod',
+          platform: 'gemini',
+          source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+          apply: {
+            GEMINI_API_KEY: 'gm-live-123456',
+            enforcedAuthType: 'gemini-api-key',
+          },
+        },
+      ],
+    })
 
     await snapshotStore.writeManifest('gemini', backupId, {
       backupId,
@@ -280,10 +325,16 @@ describe('rollback service', () => {
     expect(result.action).toBe('rollback')
     expect(result.data?.backupId).toBe(backupId)
     expect(result.data?.scopePolicy).toBeUndefined()
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
+      referenceStats: expect.objectContaining({
+        profileCount: 1,
+      }),
+      executabilityStats: expect.objectContaining({
+        profileCount: 1,
+      }),
       warnings: result.warnings ?? [],
       limitations: result.limitations ?? [],
-    })
+    }))
   })
 
   it('Gemini project scope 不可解析时先返回 availability 失败而不是继续回滚', async () => {

@@ -252,6 +252,77 @@ describe('output command result', () => {
     })
   })
 
+  it('json 模式不会把结构化 referenceSummary 布尔字段误脱敏', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'validate',
+      data: {
+        items: [
+          {
+            profileId: 'claude-ref',
+            platform: 'claude',
+            validation: {
+              ok: true,
+              errors: [],
+              warnings: [],
+              limitations: [],
+            },
+            referenceSummary: {
+              hasReferenceFields: true,
+              hasInlineSecrets: false,
+              writeUnsupported: true,
+              resolvedReferenceCount: 0,
+              missingReferenceCount: 0,
+              unsupportedReferenceCount: 2,
+              missingValueCount: 0,
+            },
+          },
+        ],
+        summary: {
+          warnings: [],
+          limitations: [],
+        },
+      },
+    }
+
+    outputCommandResult(result, true)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.items[0].referenceSummary).toEqual({
+      hasReferenceFields: true,
+      hasInlineSecrets: false,
+      writeUnsupported: true,
+      resolvedReferenceCount: 0,
+      missingReferenceCount: 0,
+      unsupportedReferenceCount: 2,
+      missingValueCount: 0,
+    })
+  })
+
+  it('json 模式保留 secret reference 字段原值，便于外部调用方消费引用契约', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const result: CommandResult = {
+      ok: true,
+      action: 'add',
+      data: {
+        profile: {
+          id: 'codex-ref',
+          name: 'ref',
+          platform: 'codex',
+          source: { secret_ref: 'vault://codex/prod' },
+          apply: { auth_reference: 'vault://codex/prod' },
+        },
+      },
+    }
+
+    outputCommandResult(result, true)
+
+    const rendered = JSON.parse(writeSpy.mock.calls[0][0] as string)
+    expect(rendered.data.profile.source.secret_ref).toBe('vault://codex/prod')
+    expect(rendered.data.profile.apply.auth_reference).toBe('vault://codex/prod')
+  })
+
   it('业务失败时设置业务失败退出码', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const result: CommandResult = {

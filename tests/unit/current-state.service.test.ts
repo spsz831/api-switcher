@@ -164,16 +164,104 @@ describe('current state service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
+    expect(result.data?.detections.find((item) => item.platform === 'claude')?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      currentScope: undefined,
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
     expect(result.data?.detections.find((item) => item.platform === 'gemini')?.scopeCapabilities).toEqual(expect.arrayContaining([
       expect.objectContaining({ scope: 'system-defaults', use: false, rollback: false, writable: false }),
       expect.objectContaining({ scope: 'user', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true }),
       expect.objectContaining({ scope: 'system-overrides', use: false, rollback: false, writable: false }),
     ]))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.detections.find((item) => item.platform === 'gemini')?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+      currentScope: undefined,
+      facts: [
+        { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+        { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+      ],
+    })
+    expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
+      referenceStats: {
+        profileCount: 2,
+        referenceProfileCount: 0,
+        inlineProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        hasReferenceProfiles: false,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+      },
+      executabilityStats: {
+        profileCount: 2,
+        inlineReadyProfileCount: 0,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: false,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
     })
+    expect(result.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        profileCount: 1,
+        currentProfileId: 'claude-prod',
+        detectedProfileId: 'claude-prod',
+        managed: true,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        profileCount: 1,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'codex',
+        profileCount: 0,
+        managed: false,
+        referenceStats: expect.objectContaining({
+          profileCount: 0,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+    ]))
     expect(result.warnings).toEqual(result.data?.summary.warnings)
     expect(result.limitations).toEqual(result.data?.summary.limitations)
   })
@@ -374,10 +462,104 @@ describe('current state service', () => {
       expect.objectContaining({ scope: 'project', use: true, rollback: true, writable: true }),
       expect.objectContaining({ scope: 'local', use: true, rollback: true, writable: true }),
     ]))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.profiles[1]?.platformSummary).toEqual({
+      kind: 'scope-precedence',
+      precedence: ['user', 'project', 'local'],
+      currentScope: undefined,
+      facts: [
+        { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+        { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+      ],
+    })
+    expect(result.data?.profiles[2]?.platformSummary).toEqual({
+      kind: 'multi-file-composition',
+      composedFiles: [],
+      facts: [
+        { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+        { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+      ],
+    })
+    expect(result.data?.summary).toMatchObject({
       warnings: ['Gemini warning'],
       limitations: ['Gemini limitation'],
+      referenceStats: {
+        profileCount: 3,
+        referenceProfileCount: 0,
+        inlineProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        hasReferenceProfiles: false,
+        hasInlineProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+      },
+      executabilityStats: {
+        profileCount: 3,
+        inlineReadyProfileCount: 0,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: false,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
     })
+    expect(result.data?.summary.platformStats).toMatchObject([
+      {
+        platform: 'claude',
+        profileCount: 1,
+        detectedProfileId: 'claude-prod',
+        managed: true,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      },
+      {
+        platform: 'codex',
+        profileCount: 1,
+        managed: false,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+        platformSummary: {
+          kind: 'multi-file-composition',
+          composedFiles: [],
+          facts: [
+            { code: 'CODEX_MULTI_FILE_CONFIGURATION', message: 'Codex 当前由 config.toml 与 auth.json 共同组成有效配置。' },
+            { code: 'CODEX_LIST_IS_PROFILE_LEVEL', message: 'list 仅展示 profile 级状态，不表示单文件可独立切换。' },
+          ],
+        },
+      },
+      {
+        platform: 'gemini',
+        profileCount: 1,
+        currentProfileId: 'gemini-prod',
+        detectedProfileId: 'gemini-prod',
+        managed: true,
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      },
+    ])
     expect(result.warnings).toEqual(result.data?.summary.warnings)
     expect(result.limitations).toEqual(result.data?.summary.limitations)
   })
@@ -393,5 +575,193 @@ describe('current state service', () => {
         message: '不支持的平台：openai',
       },
     })
+  })
+
+  it('current/list 会把 reference profile 聚合成稳定的 referenceStats', async () => {
+    const profiles = [
+      {
+        id: 'claude-ref',
+        name: 'Claude Ref',
+        platform: 'claude',
+        source: { secret_ref: 'vault://claude/prod' },
+        apply: { auth_reference: 'vault://claude/prod' },
+      },
+      {
+        id: 'gemini-inline',
+        name: 'Gemini Inline',
+        platform: 'gemini',
+        source: { apiKey: 'gm-live-123456', authType: 'gemini-api-key' },
+        apply: { GEMINI_API_KEY: 'gm-live-123456', enforcedAuthType: 'gemini-api-key' },
+      },
+    ]
+
+    const service = new CurrentStateService(
+      {
+        list: async () => profiles,
+      } as any,
+      {
+        read: async () => ({
+          current: {
+            claude: 'claude-ref',
+          },
+          snapshots: [],
+        }),
+      } as any,
+      {
+        get: (platform: string) => ({
+          detectCurrent: async () => ({
+            platform,
+            managed: platform === 'claude',
+            matchedProfileId: platform === 'claude' ? 'claude-ref' : undefined,
+            targetFiles: [],
+            warnings: [],
+            limitations: [],
+          }),
+        }),
+      } as any,
+    )
+
+    const currentResult = await service.getCurrent()
+    const listResult = await service.list()
+
+    expect(currentResult.ok).toBe(true)
+    expect(currentResult.data?.summary.referenceStats).toMatchObject({
+      profileCount: 2,
+      referenceProfileCount: 1,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(currentResult.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 2,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
+    expect(currentResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+    ]))
+    expect(currentResult.data?.detections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: true,
+          hasInlineSecrets: false,
+          writeUnsupported: true,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 2,
+          missingValueCount: 0,
+        }),
+      }),
+    ]))
+
+    expect(listResult.ok).toBe(true)
+    expect(listResult.data?.summary.referenceStats).toMatchObject({
+      profileCount: 2,
+      referenceProfileCount: 1,
+      inlineProfileCount: 1,
+      writeUnsupportedProfileCount: 1,
+      hasReferenceProfiles: true,
+      hasInlineProfiles: true,
+      hasWriteUnsupportedProfiles: true,
+    })
+    expect(listResult.data?.summary.executabilityStats).toMatchObject({
+      profileCount: 2,
+      inlineReadyProfileCount: 1,
+      referenceReadyProfileCount: 0,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 1,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: true,
+      hasReferenceReadyProfiles: false,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: true,
+      hasSourceRedactedProfiles: false,
+    })
+    expect(listResult.data?.summary.platformStats).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        platform: 'claude',
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 1,
+          inlineProfileCount: 0,
+          writeUnsupportedProfileCount: 1,
+          hasReferenceProfiles: true,
+          hasInlineProfiles: false,
+          hasWriteUnsupportedProfiles: true,
+        }),
+      }),
+      expect.objectContaining({
+        platform: 'gemini',
+        referenceStats: expect.objectContaining({
+          profileCount: 1,
+          referenceProfileCount: 0,
+          inlineProfileCount: 1,
+          writeUnsupportedProfileCount: 0,
+          hasReferenceProfiles: false,
+          hasInlineProfiles: true,
+          hasWriteUnsupportedProfiles: false,
+        }),
+      }),
+    ]))
+    expect(listResult.data?.profiles).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        profile: expect.objectContaining({ id: 'claude-ref' }),
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: true,
+          hasInlineSecrets: false,
+          writeUnsupported: true,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 2,
+          missingValueCount: 0,
+        }),
+      }),
+      expect.objectContaining({
+        profile: expect.objectContaining({ id: 'gemini-inline' }),
+        referenceSummary: expect.objectContaining({
+          hasReferenceFields: false,
+          hasInlineSecrets: true,
+          writeUnsupported: false,
+          resolvedReferenceCount: 0,
+          missingReferenceCount: 0,
+          unsupportedReferenceCount: 0,
+          missingValueCount: 0,
+        }),
+      }),
+    ]))
   })
 })

@@ -1,9 +1,18 @@
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { StateStore } from '../stores/state.store'
 import type { CurrentProfileResult, ValidationIssue } from '../types/adapter'
-import type { CommandResult, CurrentCommandOutput, ListCommandItem, ListCommandOutput } from '../types/command'
+import type {
+  CommandResult,
+  CurrentCommandOutput,
+  CurrentListPlatformStat,
+  ListCommandItem,
+  ListCommandOutput,
+} from '../types/command'
 import { PLATFORM_NAMES, type HealthStatus, type PlatformName, type RiskLevel } from '../types/platform'
 import type { Profile } from '../types/profile'
+import { buildExecutabilityStats, buildProfileReferenceSummary, buildSecretReferenceStats, collectProfileSecretReferenceContractLimitations } from '../domain/secret-inspection'
+import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
 import { ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -19,7 +28,7 @@ export class CurrentStateService {
   async getCurrent(): Promise<CommandResult<CurrentCommandOutput>> {
     try {
       const context = await this.collectStateContext()
-      const summary = this.buildCurrentSummary(context.detections)
+      const summary = this.buildCurrentSummary(context.profiles, context.state.current, context.detections)
 
       return {
         ok: true,
@@ -57,7 +66,7 @@ export class CurrentStateService {
         this.registry.get(profile.platform)
       }
       const profiles = this.buildListData(context.profiles, context.state.current, context.detectionsByPlatform, options)
-      const summary = this.buildCurrentSummary(context.detections)
+      const summary = this.buildListSummary(targetProfiles, context.state.current, context.detectionsByPlatform, context.detections)
 
       return {
         ok: true,
@@ -99,6 +108,17 @@ export class CurrentStateService {
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .map((item) => ({
         ...item,
+        ...(item.matchedProfileId
+          ? (() => {
+              const matchedProfile = profiles.find((profile) => profile.id === item.matchedProfileId && profile.platform === item.platform)
+              return matchedProfile ? { referenceSummary: buildProfileReferenceSummary(matchedProfile) } : {}
+            })()
+          : {}),
+        platformSummary: buildPlatformSummary(item.platform, {
+          currentScope: item.currentScope,
+          composedFiles: item.targetFiles.map((target) => target.path),
+          listMode: false,
+        }),
         scopeCapabilities: getScopeCapabilityMatrix(item.platform),
       }))
     const detectionsByPlatform = filteredDetections.reduce<DetectionMap>((acc, item) => {
@@ -114,11 +134,76 @@ export class CurrentStateService {
     }
   }
 
-  private buildCurrentSummary(detections: CurrentProfileResult[]): CurrentCommandOutput['summary'] {
+  private buildCurrentSummary(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detections: CurrentProfileResult[],
+  ): CurrentCommandOutput['summary'] {
+    const detectionsByPlatform = detections.reduce<DetectionMap>((acc, item) => {
+      acc[item.platform] = item
+      return acc
+    }, {})
+
     return {
+      platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, PLATFORM_NAMES, false),
+      referenceStats: buildSecretReferenceStats(profiles),
+      executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
-      limitations: this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+      limitations: Array.from(new Set([
+        ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+        ...profiles.flatMap((profile) => collectProfileSecretReferenceContractLimitations(profile)),
+      ])),
     }
+  }
+
+  private buildListSummary(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detectionsByPlatform: DetectionMap,
+    detections: CurrentProfileResult[],
+  ): ListCommandOutput['summary'] {
+    const targetPlatforms = Array.from(new Set(profiles.map((item) => item.platform))).sort()
+
+    return {
+      platformStats: this.buildPlatformStats(profiles, current, detectionsByPlatform, targetPlatforms, true),
+      referenceStats: buildSecretReferenceStats(profiles),
+      executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
+      warnings: this.collectIssueMessages(detections.flatMap((item) => item.warnings ?? [])),
+      limitations: Array.from(new Set([
+        ...this.collectIssueMessages(detections.flatMap((item) => item.limitations ?? [])),
+        ...profiles.flatMap((profile) => collectProfileSecretReferenceContractLimitations(profile)),
+      ])),
+    }
+  }
+
+  private buildPlatformStats(
+    profiles: Profile[],
+    current: Partial<Record<PlatformName, string>>,
+    detectionsByPlatform: DetectionMap,
+    platforms: readonly PlatformName[],
+    listMode: boolean,
+  ): CurrentListPlatformStat[] {
+    return platforms.map((platform) => {
+      const detection = detectionsByPlatform[platform]
+      const profileCount = profiles.filter((item) => item.platform === platform).length
+
+      return {
+        platform,
+        profileCount,
+        currentProfileId: current[platform],
+        detectedProfileId: detection?.matchedProfileId,
+        managed: detection?.managed ?? false,
+        currentScope: detection?.currentScope,
+        referenceStats: buildSecretReferenceStats(profiles.filter((item) => item.platform === platform)),
+        platformSummary: buildPlatformSummary(platform, {
+          currentScope: detection?.currentScope,
+          composedFiles: detection?.targetFiles.map((target) => target.path) ?? [],
+          listMode,
+        }),
+      }
+    })
   }
 
   private collectIssueMessages(issues: ValidationIssue[]): string[] {
@@ -176,8 +261,14 @@ export class CurrentStateService {
       current: isCurrent,
       riskLevel,
       healthStatus,
+      platformSummary: buildPlatformSummary(profile.platform, {
+        currentScope: detection?.currentScope,
+        composedFiles: detection?.targetFiles.map((target) => target.path) ?? [],
+        listMode: true,
+      }),
       scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
       scopeAvailability: detection?.scopeAvailability,
+      referenceSummary: buildProfileReferenceSummary(profile),
     }
   }
 

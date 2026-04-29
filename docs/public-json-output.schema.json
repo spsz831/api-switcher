@@ -189,6 +189,386 @@
       },
       "additionalProperties": false
     },
+    "AddSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SinglePlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "warningCount", "limitationCount"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "profileId": { "type": "string" },
+        "targetScope": { "type": "string" },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "limitationCount": { "type": "integer", "minimum": 0 },
+        "changedFileCount": { "type": "integer", "minimum": 0 },
+        "restoredFileCount": { "type": "integer", "minimum": 0 },
+        "backupCreated": { "type": "boolean" },
+        "noChanges": { "type": "boolean" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "PreviewSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "UseSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RollbackSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CurrentListPlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "managed"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "currentProfileId": { "type": "string" },
+        "detectedProfileId": { "type": "string" },
+        "managed": { "type": "boolean" },
+        "currentScope": { "type": "string" },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "SecretReferenceStats": {
+      "type": "object",
+      "required": [
+        "profileCount",
+        "referenceProfileCount",
+        "resolvedReferenceProfileCount",
+        "missingReferenceProfileCount",
+        "unsupportedReferenceProfileCount",
+        "inlineProfileCount",
+        "writeUnsupportedProfileCount",
+        "hasReferenceProfiles",
+        "hasResolvedReferenceProfiles",
+        "hasMissingReferenceProfiles",
+        "hasUnsupportedReferenceProfiles",
+        "hasInlineProfiles",
+        "hasWriteUnsupportedProfiles"
+      ],
+      "properties": {
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "referenceProfileCount": { "type": "integer", "minimum": 0 },
+        "resolvedReferenceProfileCount": { "type": "integer", "minimum": 0 },
+        "missingReferenceProfileCount": { "type": "integer", "minimum": 0 },
+        "unsupportedReferenceProfileCount": { "type": "integer", "minimum": 0 },
+        "inlineProfileCount": { "type": "integer", "minimum": 0 },
+        "writeUnsupportedProfileCount": { "type": "integer", "minimum": 0 },
+        "hasReferenceProfiles": { "type": "boolean" },
+        "hasResolvedReferenceProfiles": { "type": "boolean" },
+        "hasMissingReferenceProfiles": { "type": "boolean" },
+        "hasUnsupportedReferenceProfiles": { "type": "boolean" },
+        "hasInlineProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutabilityStats": {
+      "type": "object",
+      "required": [
+        "profileCount",
+        "inlineReadyProfileCount",
+        "referenceReadyProfileCount",
+        "referenceMissingProfileCount",
+        "writeUnsupportedProfileCount",
+        "sourceRedactedProfileCount",
+        "hasInlineReadyProfiles",
+        "hasReferenceReadyProfiles",
+        "hasReferenceMissingProfiles",
+        "hasWriteUnsupportedProfiles",
+        "hasSourceRedactedProfiles"
+      ],
+      "properties": {
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "inlineReadyProfileCount": { "type": "integer", "minimum": 0 },
+        "referenceReadyProfileCount": { "type": "integer", "minimum": 0 },
+        "referenceMissingProfileCount": { "type": "integer", "minimum": 0 },
+        "writeUnsupportedProfileCount": { "type": "integer", "minimum": 0 },
+        "sourceRedactedProfileCount": { "type": "integer", "minimum": 0 },
+        "hasInlineReadyProfiles": { "type": "boolean" },
+        "hasReferenceReadyProfiles": { "type": "boolean" },
+        "hasReferenceMissingProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" },
+        "hasSourceRedactedProfiles": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ReadonlyTriageBucketStat": {
+      "type": "object",
+      "required": ["id", "title", "totalCount", "summaryFields", "recommendedNextStep"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+        },
+        "title": { "type": "string" },
+        "totalCount": { "type": "integer", "minimum": 0 },
+        "summaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "itemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommendedNextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReadonlyTriageStats": {
+      "type": "object",
+      "required": ["totalItems", "buckets"],
+      "properties": {
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "buckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReadonlyTriageBucketStat" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceGovernanceFailureDetails": {
+      "type": "object",
+      "required": [
+        "hasReferenceProfiles",
+        "hasInlineProfiles",
+        "hasWriteUnsupportedProfiles",
+        "reasonCodes"
+      ],
+      "properties": {
+        "hasReferenceProfiles": { "type": "boolean" },
+        "hasInlineProfiles": { "type": "boolean" },
+        "hasWriteUnsupportedProfiles": { "type": "boolean" },
+        "primaryReason": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_WRITE_UNSUPPORTED",
+            "INLINE_SECRET_PRESENT",
+            "REFERENCE_MISSING",
+            "REFERENCE_INPUT_CONFLICT"
+          ]
+        },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "REFERENCE_WRITE_UNSUPPORTED",
+              "INLINE_SECRET_PRESENT",
+              "REFERENCE_MISSING",
+              "REFERENCE_INPUT_CONFLICT"
+            ]
+          }
+        },
+        "referenceDetails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReferenceGovernanceDetail" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceGovernanceDetail": {
+      "type": "object",
+      "required": ["code", "field", "status", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_VALUE_MISSING",
+            "REFERENCE_ENV_RESOLVED",
+            "REFERENCE_ENV_UNRESOLVED",
+            "REFERENCE_SCHEME_UNSUPPORTED"
+          ]
+        },
+        "field": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["resolved", "missing", "unresolved", "unsupported-scheme"]
+        },
+        "reference": { "type": "string" },
+        "scheme": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceReadiness": {
+      "type": "object",
+      "required": ["level", "primaryReason", "canProceedToUse", "requiresForce", "nextAction", "summary"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["native-ready", "fallback-ready", "blocked"]
+        },
+        "primaryReason": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_NATIVE_WRITE_SUPPORTED",
+            "REFERENCE_INLINE_FALLBACK_REQUIRED",
+            "REFERENCE_ENV_UNRESOLVED",
+            "REFERENCE_SCHEME_UNSUPPORTED",
+            "NO_REFERENCE_INPUT"
+          ]
+        },
+        "canProceedToUse": { "type": "boolean" },
+        "requiresForce": { "type": "boolean" },
+        "nextAction": {
+          "type": "string",
+          "enum": ["proceed", "confirm-before-write", "fix-reference-before-write", "inspect-reference-details"]
+        },
+        "summary": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ReferenceSummary": {
+      "type": "object",
+      "required": [
+        "hasReferenceFields",
+        "hasInlineSecrets",
+        "writeUnsupported",
+        "resolvedReferenceCount",
+        "missingReferenceCount",
+        "unsupportedReferenceCount",
+        "missingValueCount"
+      ],
+      "properties": {
+        "hasReferenceFields": { "type": "boolean" },
+        "hasInlineSecrets": { "type": "boolean" },
+        "writeUnsupported": { "type": "boolean" },
+        "resolvedReferenceCount": { "type": "integer", "minimum": 0 },
+        "missingReferenceCount": { "type": "integer", "minimum": 0 },
+        "unsupportedReferenceCount": { "type": "integer", "minimum": 0 },
+        "missingValueCount": { "type": "integer", "minimum": 0 },
+        "referenceDetails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReferenceGovernanceDetail" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CurrentSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ListSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CurrentListPlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
     "SchemaCommandOutput": {
       "type": "object",
       "required": ["schemaVersion"],
@@ -201,8 +581,900 @@
           "type": "string",
           "const": "https://api-switcher.local/schemas/public-json-output.schema.json"
         },
+        "commandCatalog": {
+          "$ref": "#/$defs/SchemaCommandCatalog"
+        },
+        "catalogSummary": {
+          "$ref": "#/$defs/SchemaCatalogSummary"
+        },
         "schema": {
           "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionCapability": {
+      "type": "object",
+      "required": ["action", "hasPlatformSummary", "hasPlatformStats", "hasScopeCapabilities", "hasScopeAvailability", "hasScopePolicy", "primaryFields", "primaryErrorFields", "failureCodes", "failureTextActions", "successTextEntries", "fieldPresence", "fieldSources", "fieldStability", "readOrderGroups", "primaryFieldSemantics", "primaryErrorFieldSemantics"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["add", "current", "export", "import", "import-apply", "list", "preview", "rollback", "schema", "use", "validate"]
+        },
+        "hasPlatformSummary": { "type": "boolean" },
+        "hasPlatformStats": { "type": "boolean" },
+        "hasScopeCapabilities": { "type": "boolean" },
+        "hasScopeAvailability": { "type": "boolean" },
+        "hasScopePolicy": { "type": "boolean" },
+        "consumerProfileIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
+          }
+        },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "primaryErrorFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "failureCodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFailureCode" }
+        },
+        "failureTextActions": {
+          "type": "array",
+          "description": "Failure text-to-action index. Group by both textEntryPoint and recommendedHandling; the same textEntryPoint may appear multiple times when one non-JSON text entry maps to multiple stable recovery actions.",
+          "items": { "$ref": "#/$defs/SchemaFailureTextAction" }
+        },
+        "successTextEntries": {
+          "type": "array",
+          "description": "Success field to non-JSON text-entry mapping. Use when a stable success field should be located via an existing text summary or detail section.",
+          "items": { "$ref": "#/$defs/SchemaSuccessTextEntry" }
+        },
+        "fieldPresence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldPresence" }
+        },
+        "fieldSources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldSource" }
+        },
+        "fieldStability": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionFieldStability" }
+        },
+        "readOrderGroups": {
+          "$ref": "#/$defs/SchemaReadOrderGroups"
+        },
+        "summarySections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaSummarySection" }
+        },
+        "primaryFieldSemantics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
+        },
+        "primaryErrorFieldSemantics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFieldSemanticBinding" }
+        },
+        "referenceGovernanceCodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaReferenceGovernanceCode" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfile": {
+      "type": "object",
+      "required": ["id", "title", "appliesToActions", "exampleActions", "bestEntryAction", "sharedSummaryFields", "sharedItemFields", "sharedFailureFields", "optionalScopeFields", "optionalItemFields", "optionalFailureFields", "optionalArtifactFields", "recommendedStages"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
+        },
+        "title": { "type": "string" },
+        "appliesToActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+          }
+        },
+        "exampleActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+          }
+        },
+        "bestEntryAction": {
+          "type": "string",
+          "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+        },
+        "sharedSummaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sharedItemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sharedFailureFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalScopeFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalItemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalFailureFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalArtifactFields": { "type": "array", "items": { "type": "string" } },
+        "recommendedStages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["summary", "selection", "items", "detail", "artifacts"]
+          }
+        },
+        "defaultConsumerActionId": {
+          "type": "string"
+        },
+        "defaultCommandExample": {
+          "type": "string"
+        },
+        "defaultCommandPurpose": {
+          "type": "string"
+        },
+        "summarySectionGuidance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileSummarySectionGuidance" }
+        },
+        "followUpHints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileFollowUpHint" }
+        },
+        "triageBuckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileTriageBucket" }
+        },
+        "consumerActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileAction" }
+        },
+        "starterTemplate": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplate"
+        },
+        "starterRecipes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileStarterRecipe" }
+        },
+        "defaultConsumerFlowId": {
+          "type": "string"
+        },
+        "consumerFlow": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfileFlowStep" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileSummarySectionGuidance": {
+      "type": "object",
+      "required": ["id", "title", "priority", "fields", "purpose", "recommendedUses"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["platform", "reference", "executability", "source-executability"]
+        },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedUses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overview", "governance", "gating", "routing"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileFollowUpHint": {
+      "type": "object",
+      "required": ["use", "nextStep", "primaryFields", "purpose"],
+      "properties": {
+        "use": {
+          "type": "string",
+          "enum": ["overview", "governance", "gating", "routing"]
+        },
+        "nextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileTriageBucket": {
+      "type": "object",
+      "required": ["id", "title", "summaryFields", "purpose", "recommendedNextStep"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+        },
+        "title": { "type": "string" },
+        "summaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "itemFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedNextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileAction": {
+      "type": "object",
+      "required": ["id", "title", "priority", "use", "appliesWhen", "triggerFields", "summarySectionIds", "nextStep", "primaryFields", "purpose"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "use": {
+          "type": "string",
+          "enum": ["overview", "governance", "gating", "routing"]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "summarySectionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["platform", "reference", "executability", "source-executability"]
+          }
+        },
+        "triageBucketIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+          }
+        },
+        "nextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        },
+        "primaryFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplate": {
+      "type": "object",
+      "required": ["id", "summary", "items", "failure", "flow"],
+      "properties": {
+        "id": { "type": "string" },
+        "summary": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateSection"
+        },
+        "items": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateItems"
+        },
+        "failure": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateSection"
+        },
+        "flow": {
+          "$ref": "#/$defs/SchemaConsumerProfileStarterTemplateFlow"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateSection": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateItems": {
+      "type": "object",
+      "required": ["sharedFields"],
+      "properties": {
+        "sharedFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterTemplateFlow": {
+      "type": "object",
+      "properties": {
+        "defaultConsumerFlowId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileStarterRecipe": {
+      "type": "object",
+      "required": ["id", "intent", "discover", "action", "nextStep", "runtime", "appliesTo"],
+      "properties": {
+        "id": { "type": "string" },
+        "intent": { "type": "string" },
+        "discover": { "type": "string" },
+        "action": { "type": "string" },
+        "nextStep": { "type": "string" },
+        "runtime": { "type": "string" },
+        "appliesTo": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaConsumerProfileFlowStep": {
+      "type": "object",
+      "required": ["id", "title", "priority", "defaultEntry", "defaultOnBucket", "selectionReason", "summarySectionIds", "readFields", "consumerActionId", "nextStep", "purpose"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "defaultEntry": { "type": "boolean" },
+        "defaultOnBucket": { "type": "boolean" },
+        "selectionReason": { "type": "string" },
+        "summarySectionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["platform", "reference", "executability", "source-executability"]
+          }
+        },
+        "triageBucketIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overview", "reference-governance", "write-readiness", "source-blocked", "platform-routing"]
+          }
+        },
+        "readFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "consumerActionId": { "type": "string" },
+        "nextStep": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write"]
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaRecommendedAction": {
+      "type": "object",
+      "required": ["code", "title", "family", "availability", "purpose"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
+          ]
+        },
+        "title": { "type": "string" },
+        "family": {
+          "type": "string",
+          "enum": ["inspect", "repair", "route", "execute"]
+        },
+        "availability": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["readonly", "failure"]
+          }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaFailureTextAction": {
+      "type": "object",
+      "required": ["textEntryPoint", "recommendedHandling", "appliesToCodes"],
+      "properties": {
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "error-message",
+            "reference-summary",
+            "risk-summary",
+            "scope-availability",
+            "preview-decision",
+            "redacted-fields"
+          ]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
+          ]
+        },
+        "appliesToCodes": {
+          "type": "array",
+          "description": "Stable error.code values routed to this textEntryPoint + recommendedHandling pair.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSuccessTextEntry": {
+      "type": "object",
+      "required": ["path", "textEntryPoint"],
+      "properties": {
+        "path": { "type": "string" },
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "platform-summary",
+            "reference-stats-summary",
+            "executability-stats-summary",
+            "scope-availability",
+            "reference-summary",
+            "reference-details",
+            "preview-detail"
+          ]
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFailureCode": {
+      "type": "object",
+      "required": ["code", "priority", "category", "recommendedHandling", "textEntryPoint", "appliesWhen", "triggerFields"],
+      "properties": {
+        "code": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "category": {
+          "type": "string",
+          "enum": ["input", "state", "scope", "confirmation", "platform", "runtime", "source"]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "fix-reference-input",
+            "resolve-reference-support",
+            "migrate-inline-secret"
+          ]
+        },
+        "textEntryPoint": {
+          "type": "string",
+          "enum": [
+            "error-message",
+            "reference-summary",
+            "risk-summary",
+            "scope-availability",
+            "preview-decision",
+            "redacted-fields"
+          ]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaReferenceGovernanceCode": {
+      "type": "object",
+      "required": ["code", "priority", "category", "recommendedHandling", "appliesWhen", "triggerFields"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REFERENCE_INPUT_CONFLICT",
+            "REFERENCE_MISSING",
+            "REFERENCE_WRITE_UNSUPPORTED",
+            "INLINE_SECRET_PRESENT"
+          ]
+        },
+        "priority": { "type": "integer", "minimum": 1 },
+        "category": {
+          "type": "string",
+          "enum": ["reference", "inline-secret", "input"]
+        },
+        "recommendedHandling": {
+          "type": "string",
+          "enum": [
+            "inspect-items",
+            "review-reference-details",
+            "repair-source-input",
+            "group-by-platform",
+            "continue-to-write",
+            "fix-input-and-retry",
+            "select-existing-resource",
+            "resolve-scope-before-retry",
+            "confirm-before-write",
+            "check-platform-support",
+            "inspect-runtime-details",
+            "check-import-source",
+            "resolve-reference-support",
+            "migrate-inline-secret",
+            "fix-reference-input"
+          ]
+        },
+        "appliesWhen": { "type": "string" },
+        "triggerFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldPresence": {
+      "type": "object",
+      "required": ["path", "channel", "presence"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "presence": {
+          "type": "string",
+          "enum": ["always", "conditional"]
+        },
+        "conditionCode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldSource": {
+      "type": "object",
+      "required": ["path", "channel", "source"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "command-service",
+            "platform-adapter",
+            "schema-service",
+            "write-pipeline",
+            "import-analysis",
+            "error-envelope"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaActionFieldStability": {
+      "type": "object",
+      "required": ["path", "channel", "stabilityTier"],
+      "properties": {
+        "path": { "type": "string" },
+        "channel": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "stabilityTier": {
+          "type": "string",
+          "enum": ["stable", "bounded", "expandable"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaReadOrderGroups": {
+      "type": "object",
+      "required": ["success", "failure"],
+      "properties": {
+        "success": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaSuccessReadOrderGroup" }
+        },
+        "failure": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaFailureReadOrderGroup" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSummarySection": {
+      "type": "object",
+      "required": ["id", "title", "priority", "fields", "purpose"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["platform", "reference", "executability", "source-executability"]
+        },
+        "title": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" },
+        "recommendedWhen": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaSuccessReadOrderGroup": {
+      "type": "object",
+      "required": ["stage", "fields"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["summary", "selection", "items", "detail", "artifacts"]
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaFailureReadOrderGroup": {
+      "type": "object",
+      "required": ["stage", "fields"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["error-core", "error-details", "error-recovery"]
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "purpose": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaFieldSemanticBinding": {
+      "type": "object",
+      "required": ["path", "semantic"],
+      "properties": {
+        "path": { "type": "string" },
+        "semantic": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCommandCatalog": {
+      "type": "object",
+      "required": ["actions"],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaActionCapability" }
+        },
+        "consumerProfiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaConsumerProfile" }
+        },
+        "recommendedActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaRecommendedAction" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummary": {
+      "type": "object",
+      "description": "schema --json --catalog-summary 的轻量目录模式。只暴露 consumerProfiles / actions / recommendedActions 的稳定摘要和计数，不再展开完整 commandCatalog、schemaId 或 schema。",
+      "required": ["counts", "consumerProfiles", "actions", "recommendedActions"],
+      "properties": {
+        "counts": { "$ref": "#/$defs/SchemaCatalogSummaryCounts" },
+        "consumerProfiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryConsumerProfile" }
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryAction" }
+        },
+        "recommendedActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SchemaCatalogSummaryRecommendedAction" }
+        }
+      },
+      "examples": [
+        {
+          "counts": {
+            "consumerProfiles": 3,
+            "actions": 11,
+            "recommendedActions": 15
+          },
+          "consumerProfiles": [
+            {
+              "id": "readonly-state-audit",
+              "bestEntryAction": "current",
+              "defaultConsumerActionId": "inspect-overview",
+              "defaultCommandExample": "api-switcher current --json",
+              "defaultCommandPurpose": "先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。",
+              "recommendedEntryMode": "starter-template",
+              "hasStarterTemplate": true,
+              "starterTemplateId": "readonly-state-audit-minimal-reader"
+            },
+            {
+              "id": "single-platform-write",
+              "bestEntryAction": "preview",
+              "recommendedEntryMode": "full-consumer-profile"
+            },
+            {
+              "id": "readonly-import-batch",
+              "bestEntryAction": "import",
+              "defaultConsumerActionId": "repair-source-blockers",
+              "defaultCommandExample": "api-switcher import <file> --json",
+              "defaultCommandPurpose": "先做导入源分流与可执行性判断，再决定是否修复源数据或继续 apply。",
+              "recommendedEntryMode": "starter-template",
+              "hasStarterTemplate": true,
+              "starterTemplateId": "readonly-import-batch-minimal-reader"
+            }
+          ],
+          "actions": [
+            { "action": "add" },
+            { "action": "current" },
+            { "action": "export" }
+          ],
+          "recommendedActions": [
+            { "code": "inspect-items", "family": "inspect" },
+            { "code": "continue-to-write", "family": "execute" },
+            { "code": "migrate-inline-secret", "family": "repair" }
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryCounts": {
+      "type": "object",
+      "required": ["consumerProfiles", "actions", "recommendedActions"],
+      "properties": {
+        "consumerProfiles": { "type": "integer", "minimum": 0 },
+        "actions": { "type": "integer", "minimum": 0 },
+        "recommendedActions": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryConsumerProfile": {
+      "type": "object",
+      "required": ["id", "bestEntryAction"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["single-platform-write", "readonly-import-batch", "readonly-state-audit"]
+        },
+        "bestEntryAction": {
+          "type": "string",
+          "enum": ["add", "preview", "use", "rollback", "current", "list", "validate", "export", "import", "import-apply"]
+        },
+        "defaultConsumerActionId": {
+          "type": "string"
+        },
+        "defaultCommandExample": {
+          "type": "string"
+        },
+        "defaultCommandPurpose": {
+          "type": "string"
+        },
+        "hasStarterTemplate": {
+          "type": "boolean"
+        },
+        "starterTemplateId": {
+          "type": "string"
+        },
+        "recommendedEntryMode": {
+          "type": "string",
+          "enum": ["starter-template", "full-consumer-profile"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryAction": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["add", "current", "export", "import", "import-apply", "list", "preview", "rollback", "schema", "use", "validate"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchemaCatalogSummaryRecommendedAction": {
+      "type": "object",
+      "required": ["code", "family"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["inspect-items", "review-reference-details", "repair-source-input", "group-by-platform", "continue-to-write", "fix-input-and-retry", "select-existing-resource", "resolve-scope-before-retry", "confirm-before-write", "check-platform-support", "inspect-runtime-details", "check-import-source", "fix-reference-input", "resolve-reference-support", "migrate-inline-secret"]
+        },
+        "family": {
+          "type": "string",
+          "enum": ["inspect", "repair", "route", "execute"]
         }
       },
       "additionalProperties": false
@@ -231,7 +1503,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/CurrentProfileResult" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/CurrentSummary" }
       },
       "additionalProperties": true
     },
@@ -248,10 +1520,12 @@
         },
         "details": {},
         "currentScope": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
@@ -288,7 +1562,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ListCommandItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ListSummary" }
       },
       "additionalProperties": true
     },
@@ -300,16 +1574,110 @@
         "current": { "type": "boolean" },
         "healthStatus": { "type": "string" },
         "riskLevel": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
         }
       },
       "additionalProperties": true
+    },
+    "PlatformExplainableSummary": {
+      "type": "object",
+      "required": ["kind", "facts"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["scope-precedence", "multi-file-composition"]
+        },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PlatformExplainableFact" }
+        },
+        "precedence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "currentScope": { "type": "string" },
+        "composedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlatformExplainableFact": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ValidateExportPlatformStat": {
+      "type": "object",
+      "required": ["platform", "profileCount", "okCount", "warningCount", "limitationCount"],
+      "properties": {
+        "platform": { "type": "string" },
+        "profileCount": { "type": "integer", "minimum": 0 },
+        "okCount": { "type": "integer", "minimum": 0 },
+        "warningCount": { "type": "integer", "minimum": 0 },
+        "limitationCount": { "type": "integer", "minimum": 0 },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" }
+      },
+      "additionalProperties": false
+    },
+    "ValidateSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExportSummary": {
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValidateExportPlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
+        "secretExportPolicy": { "$ref": "#/$defs/SecretExportPolicySummary" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
     },
     "ValidateCommandOutput": {
       "type": "object",
@@ -319,7 +1687,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ValidateCommandItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ValidateSummary" }
       },
       "additionalProperties": true
     },
@@ -330,10 +1698,12 @@
         "profileId": { "type": "string" },
         "platform": { "type": "string" },
         "validation": {},
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
@@ -349,7 +1719,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ExportedProfileItem" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/ExportSummary" }
       },
       "additionalProperties": true
     },
@@ -359,18 +1729,76 @@
       "properties": {
         "profile": {},
         "validation": {},
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "defaultWriteScope": { "type": "string" },
         "observedAt": { "type": "string" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
         },
+        "referenceSummary": { "$ref": "#/$defs/ReferenceSummary" },
+        "secretExportSummary": { "$ref": "#/$defs/SecretExportItemSummary" },
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
         }
       },
       "additionalProperties": true
+    },
+    "SecretExportPolicySummary": {
+      "type": "object",
+      "required": [
+        "mode",
+        "inlineSecretsExported",
+        "inlineSecretsRedacted",
+        "referenceSecretsPreserved",
+        "profilesWithRedactedSecrets"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["redacted-by-default", "include-secrets"]
+        },
+        "inlineSecretsExported": { "type": "integer", "minimum": 0 },
+        "inlineSecretsRedacted": { "type": "integer", "minimum": 0 },
+        "referenceSecretsPreserved": { "type": "integer", "minimum": 0 },
+        "profilesWithRedactedSecrets": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "SecretExportItemDetail": {
+      "type": "object",
+      "required": ["field", "kind"],
+      "properties": {
+        "field": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["inline-secret-redacted", "inline-secret-exported", "reference-preserved"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecretExportItemSummary": {
+      "type": "object",
+      "required": [
+        "hasInlineSecrets",
+        "hasRedactedInlineSecrets",
+        "hasReferenceSecrets",
+        "redactedFieldCount",
+        "preservedReferenceCount"
+      ],
+      "properties": {
+        "hasInlineSecrets": { "type": "boolean" },
+        "hasRedactedInlineSecrets": { "type": "boolean" },
+        "hasReferenceSecrets": { "type": "boolean" },
+        "redactedFieldCount": { "type": "integer", "minimum": 0 },
+        "preservedReferenceCount": { "type": "integer", "minimum": 0 },
+        "details": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SecretExportItemDetail" }
+        }
+      },
+      "additionalProperties": false
     },
     "ImportObservation": {
       "type": "object",
@@ -514,6 +1942,33 @@
       },
       "additionalProperties": false
     },
+    "ImportSourceExecutabilityCodeStat": {
+      "type": "object",
+      "required": ["code", "totalCount"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["REDACTED_INLINE_SECRET"]
+        },
+        "totalCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportSourceExecutabilitySummary": {
+      "type": "object",
+      "required": ["totalItems", "applyReadyCount", "previewOnlyCount", "blockedCount", "blockedByCodeStats"],
+      "properties": {
+        "totalItems": { "type": "integer", "minimum": 0 },
+        "applyReadyCount": { "type": "integer", "minimum": 0 },
+        "previewOnlyCount": { "type": "integer", "minimum": 0 },
+        "blockedCount": { "type": "integer", "minimum": 0 },
+        "blockedByCodeStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportSourceExecutabilityCodeStat" }
+        }
+      },
+      "additionalProperties": false
+    },
     "ImportPreviewDriftKindStat": {
       "type": "object",
       "required": ["driftKind", "totalCount", "blockingCount", "warningCount", "infoCount"],
@@ -531,13 +1986,16 @@
     },
     "ImportPreviewSummary": {
       "type": "object",
-      "required": ["totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount", "platformStats", "decisionCodeStats", "driftKindStats", "warnings", "limitations"],
+      "required": ["totalItems", "matchCount", "mismatchCount", "partialCount", "insufficientDataCount", "sourceExecutability", "platformStats", "decisionCodeStats", "driftKindStats", "warnings", "limitations"],
       "properties": {
         "totalItems": { "type": "integer", "minimum": 0 },
         "matchCount": { "type": "integer", "minimum": 0 },
         "mismatchCount": { "type": "integer", "minimum": 0 },
         "partialCount": { "type": "integer", "minimum": 0 },
         "insufficientDataCount": { "type": "integer", "minimum": 0 },
+        "sourceExecutability": { "$ref": "#/$defs/ImportSourceExecutabilitySummary" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
         "platformStats": {
           "type": "array",
           "items": { "$ref": "#/$defs/ImportPreviewPlatformStat" }
@@ -613,6 +2071,7 @@
       "properties": {
         "profile": {},
         "platform": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "exportedObservation": { "$ref": "#/$defs/ImportObservation" },
         "localObservation": { "$ref": "#/$defs/ImportObservation" },
         "fidelity": { "$ref": "#/$defs/ImportFidelityReport" },
@@ -655,20 +2114,35 @@
       "additionalProperties": false
     },
     "ImportApplySummary": {
-      "$ref": "#/$defs/Summary"
+      "type": "object",
+      "required": ["warnings", "limitations"],
+      "properties": {
+        "platformStats": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SinglePlatformStat" }
+        },
+        "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
+        "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
     },
     "ImportApplyCommandOutput": {
       "type": "object",
       "required": [
         "sourceFile",
         "importedProfile",
-        "appliedScope",
-        "scopePolicy",
         "scopeCapabilities",
         "validation",
         "preview",
         "risk",
-        "backupId",
         "changedFiles",
         "noChanges",
         "summary"
@@ -677,9 +2151,10 @@
         "sourceFile": { "type": "string" },
         "importedProfile": {},
         "appliedScope": {
-          "type": "string",
-          "enum": ["user", "project"]
+          "type": "string"
         },
+        "dryRun": { "type": "boolean" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
@@ -711,6 +2186,19 @@
       },
       "additionalProperties": true
     },
+    "ImportApplyRedactedSecretDetails": {
+      "type": "object",
+      "required": ["sourceFile", "profileId", "redactedInlineSecretFields"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "profileId": { "type": "string" },
+        "redactedInlineSecretFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
     "ImportApplyNotReadyDetails": {
       "type": "object",
       "required": ["sourceFile", "profileId", "previewDecision"],
@@ -730,8 +2218,7 @@
       "properties": {
         "requestedScope": { "type": "string" },
         "resolvedScope": {
-          "type": "string",
-          "enum": ["user", "project"]
+          "type": "string"
         },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
@@ -745,12 +2232,61 @@
       },
       "additionalProperties": true
     },
+    "ImportApplyBatchItemResult": {
+      "type": "object",
+      "required": ["profileId", "ok"],
+      "properties": {
+        "profileId": { "type": "string" },
+        "platform": { "type": "string" },
+        "appliedScope": { "type": "string" },
+        "ok": { "type": "boolean" },
+        "noChanges": { "type": "boolean" },
+        "failureCategory": { "type": "string" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "backupId": { "type": "string" },
+        "changedFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "$ref": "#/$defs/CommandError" }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplyBatchSummary": {
+      "type": "object",
+      "required": ["totalProfiles", "appliedCount", "failedCount"],
+      "properties": {
+        "totalProfiles": { "type": "integer", "minimum": 0 },
+        "appliedCount": { "type": "integer", "minimum": 0 },
+        "failedCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ImportApplyBatchCommandOutput": {
+      "type": "object",
+      "required": ["sourceFile", "results", "summary"],
+      "properties": {
+        "sourceFile": { "type": "string" },
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ImportApplyBatchItemResult" }
+        },
+        "summary": { "$ref": "#/$defs/ImportApplyBatchSummary" }
+      },
+      "additionalProperties": false
+    },
     "ImportApplyFailureDetails": {
       "anyOf": [
         { "$ref": "#/$defs/ImportApplySourceDetails" },
+        { "$ref": "#/$defs/ImportApplyRedactedSecretDetails" },
         { "$ref": "#/$defs/ImportApplyNotReadyDetails" },
         { "$ref": "#/$defs/ImportScopeUnavailableDetails" },
-        { "$ref": "#/$defs/ConfirmationRequiredDetails" }
+        { "$ref": "#/$defs/ImportApplyBatchCommandOutput" },
+        { "$ref": "#/$defs/ConfirmationRequiredDetails" },
+        { "$ref": "#/$defs/ValidationFailureDetails" }
       ]
     },
     "ImportApplySuccessResult": {
@@ -763,7 +2299,12 @@
         },
         "ok": { "const": true },
         "action": { "const": "import-apply" },
-        "data": { "$ref": "#/$defs/ImportApplyCommandOutput" },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/$defs/ImportApplyCommandOutput" },
+            { "$ref": "#/$defs/ImportApplyBatchCommandOutput" }
+          ]
+        },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -816,7 +2357,8 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "summary": { "$ref": "#/$defs/AddSummary" },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -832,7 +2374,9 @@
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/PreviewRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "referenceReadiness": { "$ref": "#/$defs/ReferenceReadiness" },
+        "summary": { "$ref": "#/$defs/UseSummary" },
+        "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeCapability" }
@@ -849,11 +2393,13 @@
       "required": ["profile", "preview", "risk", "summary", "changedFiles", "noChanges"],
       "properties": {
         "profile": {},
+        "dryRun": { "type": "boolean" },
         "backupId": { "type": "string" },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "validation": {},
         "preview": {},
         "risk": { "$ref": "#/$defs/UseRiskSummary" },
-        "summary": { "$ref": "#/$defs/Summary" },
+        "summary": { "$ref": "#/$defs/UseSummary" },
         "changedFiles": {
           "type": "array",
           "items": { "type": "string" }
@@ -879,6 +2425,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "platformSummary": { "$ref": "#/$defs/PlatformExplainableSummary" },
         "rollback": {},
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
@@ -889,7 +2436,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
         },
-        "summary": { "$ref": "#/$defs/Summary" }
+        "summary": { "$ref": "#/$defs/RollbackSummary" }
       },
       "additionalProperties": true
     },
@@ -898,6 +2445,7 @@
       "required": ["risk"],
       "properties": {
         "risk": { "$ref": "#/$defs/UseRiskSummary" },
+        "referenceReadiness": { "$ref": "#/$defs/ReferenceReadiness" },
         "scopePolicy": { "$ref": "#/$defs/SnapshotScopePolicy" },
         "scopeCapabilities": {
           "type": "array",
@@ -906,7 +2454,29 @@
         "scopeAvailability": {
           "type": "array",
           "items": { "$ref": "#/$defs/ScopeAvailability" }
-        }
+        },
+        "referenceGovernance": { "$ref": "#/$defs/ReferenceGovernanceFailureDetails" }
+      },
+      "additionalProperties": true
+    },
+    "ValidationFailureDetails": {
+      "type": "object",
+      "required": ["ok", "errors", "warnings", "limitations"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "errors": {
+          "type": "array",
+          "items": {}
+        },
+        "warnings": {
+          "type": "array",
+          "items": {}
+        },
+        "limitations": {
+          "type": "array",
+          "items": {}
+        },
+        "referenceGovernance": { "$ref": "#/$defs/ReferenceGovernanceFailureDetails" }
       },
       "additionalProperties": true
     },

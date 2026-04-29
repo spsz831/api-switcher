@@ -60,6 +60,14 @@ describe('import preview service', () => {
       expect.objectContaining({
         profile,
         platform: 'gemini',
+        platformSummary: {
+          kind: 'scope-precedence',
+          precedence: ['system-defaults', 'user', 'project', 'system-overrides'],
+          facts: [
+            { code: 'GEMINI_SCOPE_PRECEDENCE', message: 'Gemini 按 system-defaults < user < project < system-overrides 推导最终生效值。' },
+            { code: 'GEMINI_PROJECT_OVERRIDES_USER', message: 'project scope 会覆盖 user 中的同名字段。' },
+          ],
+        },
         exportedObservation: expect.objectContaining({
           defaultWriteScope: 'user',
           observedAt: '2026-04-16T00:00:00.000Z',
@@ -82,6 +90,28 @@ describe('import preview service', () => {
       mismatchCount: 0,
       partialCount: 0,
       insufficientDataCount: 0,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
+      executabilityStats: {
+        profileCount: 1,
+        inlineReadyProfileCount: 1,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 0,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: false,
+      },
       platformStats: [
         {
           platform: 'gemini',
@@ -104,6 +134,35 @@ describe('import preview service', () => {
         { driftKind: 'availability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
         { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
       ],
+      triageStats: {
+        totalItems: 1,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+            totalCount: 0,
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+            totalCount: 0,
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+            totalCount: 1,
+          },
+        ],
+      },
       warnings: [],
       limitations: [],
     })
@@ -220,6 +279,15 @@ describe('import preview service', () => {
     expect(result.data?.summary).toEqual(expect.objectContaining({
       totalItems: 1,
       mismatchCount: 1,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
       decisionCodeStats: expect.arrayContaining([
         expect.objectContaining({ code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1 }),
         expect.objectContaining({ code: 'REQUIRES_LOCAL_SCOPE_RESOLUTION', totalCount: 1, blockingCount: 1 }),
@@ -275,6 +343,14 @@ describe('import preview service', () => {
     expect(result.ok).toBe(true)
     expect(result.data?.items[0]).toEqual(expect.objectContaining({
       platform: 'claude',
+      platformSummary: {
+        kind: 'scope-precedence',
+        precedence: ['user', 'project', 'local'],
+        facts: [
+          { code: 'CLAUDE_SCOPE_PRECEDENCE', message: 'Claude 支持 user < project < local 三层 precedence。' },
+          { code: 'CLAUDE_LOCAL_SCOPE_HIGHEST', message: '如果存在 local，同名字段最终以 local 为准。' },
+        ],
+      },
       localObservation: expect.objectContaining({
         defaultWriteScope: 'user',
       }),
@@ -286,6 +362,15 @@ describe('import preview service', () => {
     expect(result.data?.summary).toEqual(expect.objectContaining({
       totalItems: 1,
       partialCount: 1,
+      sourceExecutability: {
+        totalItems: 1,
+        applyReadyCount: 1,
+        previewOnlyCount: 0,
+        blockedCount: 0,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 0 },
+        ],
+      },
       decisionCodeStats: expect.arrayContaining([
         expect.objectContaining({ code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, nonBlockingCount: 1 }),
       ]),
@@ -357,6 +442,24 @@ describe('import preview service', () => {
               profile: createGeminiProfile('gemini-insufficient'),
               exportedObservation: undefined,
             },
+            {
+              profile: {
+                ...createGeminiProfile('gemini-redacted'),
+                source: { apiKey: '<redacted:inline-secret>', authType: 'gemini-api-key' },
+                apply: { GEMINI_API_KEY: '<redacted:inline-secret>', enforcedAuthType: 'gemini-api-key' },
+              },
+              redactedInlineSecretFields: ['source.apiKey', 'apply.GEMINI_API_KEY'],
+              exportedObservation: {
+                defaultWriteScope: 'user',
+                observedAt: '2026-04-16T00:00:00.000Z',
+                scopeCapabilities: [
+                  { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+                ],
+                scopeAvailability: [
+                  { scope: 'user', status: 'available', detected: true, writable: true, path: 'C:/Users/test/.gemini/settings.json' },
+                ],
+              },
+            },
           ],
         }),
       } as any,
@@ -395,25 +498,48 @@ describe('import preview service', () => {
       ['gemini-partial', 'partial'],
       ['gemini-mismatch', 'mismatch'],
       ['gemini-insufficient', 'insufficient-data'],
+      ['gemini-redacted', 'match'],
     ])
     expect(result.data?.summary).toEqual({
-      totalItems: 4,
-      matchCount: 1,
+      totalItems: 5,
+      matchCount: 2,
       mismatchCount: 1,
       partialCount: 1,
       insufficientDataCount: 1,
+      sourceExecutability: {
+        totalItems: 5,
+        applyReadyCount: 4,
+        previewOnlyCount: 1,
+        blockedCount: 1,
+        blockedByCodeStats: [
+          { code: 'REDACTED_INLINE_SECRET', totalCount: 1 },
+        ],
+      },
+      executabilityStats: {
+        profileCount: 5,
+        inlineReadyProfileCount: 4,
+        referenceReadyProfileCount: 0,
+        referenceMissingProfileCount: 0,
+        writeUnsupportedProfileCount: 0,
+        sourceRedactedProfileCount: 1,
+        hasInlineReadyProfiles: true,
+        hasReferenceReadyProfiles: false,
+        hasReferenceMissingProfiles: false,
+        hasWriteUnsupportedProfiles: false,
+        hasSourceRedactedProfiles: true,
+      },
       platformStats: [
         {
           platform: 'gemini',
-          totalItems: 4,
-          matchCount: 1,
+          totalItems: 5,
+          matchCount: 2,
           mismatchCount: 1,
           partialCount: 1,
           insufficientDataCount: 1,
         },
       ],
       decisionCodeStats: [
-        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
+        { code: 'READY_USING_LOCAL_OBSERVATION', totalCount: 2, blockingCount: 0, nonBlockingCount: 2 },
         { code: 'LIMITED_BY_PARTIAL_EXPORTED_OBSERVATION', totalCount: 1, blockingCount: 0, nonBlockingCount: 1 },
         { code: 'BLOCKED_BY_INSUFFICIENT_OBSERVATION', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
         { code: 'BLOCKED_BY_FIDELITY_MISMATCH', totalCount: 1, blockingCount: 1, nonBlockingCount: 0 },
@@ -424,6 +550,35 @@ describe('import preview service', () => {
         { driftKind: 'availability-drift', totalCount: 1, blockingCount: 1, warningCount: 0, infoCount: 0 },
         { driftKind: 'capability-drift', totalCount: 0, blockingCount: 0, warningCount: 0, infoCount: 0 },
       ],
+      triageStats: {
+        totalItems: 5,
+        buckets: [
+          {
+            id: 'source-blocked',
+            title: 'Source blocked bucket',
+            summaryFields: ['summary.sourceExecutability'],
+            itemFields: ['sourceCompatibility', 'items.previewDecision'],
+            recommendedNextStep: 'repair-source-input',
+            totalCount: 1,
+          },
+          {
+            id: 'write-readiness',
+            title: 'Write readiness bucket',
+            summaryFields: ['summary.executabilityStats'],
+            itemFields: ['items.previewDecision', 'items.fidelity'],
+            recommendedNextStep: 'continue-to-write',
+            totalCount: 2,
+          },
+          {
+            id: 'platform-routing',
+            title: 'Platform routing bucket',
+            summaryFields: ['summary.platformStats'],
+            itemFields: ['platformSummary'],
+            recommendedNextStep: 'group-by-platform',
+            totalCount: 5,
+          },
+        ],
+      },
       warnings: ['project 作用域的可用性与当前本地环境不一致。'],
       limitations: [
         '导出文件的 scope observation 不完整，当前仅能做部分 fidelity 对比。',

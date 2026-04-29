@@ -1,10 +1,13 @@
-import { collectIssueMessages } from '../domain/masking'
+import { collectIssueMessages, collectUniqueIssueMessages, mergeUniqueMessages } from '../domain/masking'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import { SnapshotStore } from '../stores/snapshot.store'
 import { StateStore } from '../stores/state.store'
 import type { ScopeAvailability } from '../types/capabilities'
 import type { CommandResult, RollbackCommandOutput, RollbackErrorDetails } from '../types/command'
 import type { PlatformName } from '../types/platform'
+import { buildPlatformSummary } from './platform-summary'
+import { ProfileNotFoundError, ProfileService } from './profile.service'
+import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
 import {
   assertTargetScope,
   buildSnapshotScopePolicy,
@@ -42,6 +45,7 @@ export class RollbackService {
     private readonly registry = new AdapterRegistry(),
     private readonly snapshotStore = new SnapshotStore(),
     private readonly stateStore = new StateStore(),
+    private readonly profileService = new ProfileService(),
   ) {}
 
   async rollback(backupId?: string, options: { scope?: string } = {}): Promise<CommandResult<RollbackCommandOutput>> {
@@ -105,8 +109,8 @@ export class RollbackService {
         return {
           ok: false,
           action: 'rollback',
-          warnings: collectIssueMessages(result.warnings),
-          limitations: collectIssueMessages(result.limitations),
+          warnings: collectUniqueIssueMessages(result.warnings),
+          limitations: collectUniqueIssueMessages(result.limitations),
           error: {
             code: isScopeMismatch ? 'ROLLBACK_SCOPE_MISMATCH' : 'ROLLBACK_FAILED',
             message: isScopeMismatch ? collectIssueMessages(result.warnings)[0] ?? '回滚 scope 不匹配。' : '回滚失败',
@@ -115,14 +119,24 @@ export class RollbackService {
         }
       }
 
-      const warnings = Array.from(new Set([
-        ...(snapshot.manifest.warnings ?? []),
-        ...collectIssueMessages(result.warnings),
-      ]))
-      const limitations = Array.from(new Set([
-        ...(snapshot.manifest.limitations ?? []),
-        ...collectIssueMessages(result.limitations),
-      ]))
+      const warnings = mergeUniqueMessages(
+        snapshot.manifest.warnings,
+        collectIssueMessages(result.warnings),
+      )
+      const limitations = mergeUniqueMessages(
+        snapshot.manifest.limitations,
+        collectIssueMessages(result.limitations),
+      )
+      const summaryProfileId = snapshot.manifest.previousProfileId ?? snapshot.manifest.profileId
+      const summaryProfile = summaryProfileId
+        ? await this.profileService.resolve(summaryProfileId).catch((error: unknown) => {
+            if (error instanceof ProfileNotFoundError) {
+              return undefined
+            }
+
+            throw error
+          })
+        : undefined
 
       if (snapshot.manifest.previousProfileId) {
         await this.stateStore.markCurrent(platform, snapshot.manifest.previousProfileId, targetBackupId, 'rolled-back', {
@@ -142,14 +156,32 @@ export class RollbackService {
         data: {
           backupId: targetBackupId,
           restoredFiles: result.restoredFiles,
+          platformSummary: buildPlatformSummary(platform, {
+            currentScope: resolvedScope,
+            composedFiles: result.restoredFiles,
+            listMode: true,
+          }),
           rollback: result,
           scopePolicy: snapshot.manifest.scopePolicy,
           scopeCapabilities,
           scopeAvailability,
-          summary: {
+          summary: buildSingleProfileCommandSummary({
+            platform,
+            profileId: summaryProfileId,
+            profile: summaryProfile,
+            targetScope: resolvedScope,
+            warningCount: warnings.length,
+            limitationCount: limitations.length,
+            restoredFileCount: result.restoredFiles.length,
+            noChanges: result.restoredFiles.length === 0,
+            platformSummary: buildPlatformSummary(platform, {
+              currentScope: resolvedScope,
+              composedFiles: result.restoredFiles,
+              listMode: true,
+            }),
             warnings,
             limitations,
-          },
+          }),
         },
         warnings,
         limitations,

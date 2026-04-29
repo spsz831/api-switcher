@@ -2,9 +2,15 @@
 
 ## 0.1.1
 
+### Behavior
+
+- `import apply` 现在会把已解析的 `env://VAR_NAME` reference-only profile 计入 reference-ready / inline-fallback 写入链路，不再在成功态 summary 中继续归类为 write unsupported。
+- `add` 现在会对 reference-only 输入做第二阶段最小预检：空白 reference 输入会返回 `ADD_INPUT_REQUIRED`，同时传入 `--secret-ref` 与 `--auth-reference` 时若两者不一致或格式明显无效，会返回 `ADD_INPUT_CONFLICT`。
+
 ### Build
 
 - `smoke:release` 现在会校验 `dist` 构建产物的顶层 `--help` 关键命令面，避免安装后 CLI 可发现性漂移。
+- `smoke:release` 现在会校验 `dist` 构建产物的 `schema --json` 共享 `consumerProfiles` 目录与 `bestEntryAction` 提示。
 - `smoke:release` 现在会校验 `dist` 构建产物的 `schema --schema-version --json` 成功态 contract。
 - `smoke:release` 现在会校验 `dist` 构建产物上的稳定失败出口：未知命令保持 Commander `stderr` 失败行为。
 - `smoke:release` 现在会校验 `dist` 构建产物上的稳定 JSON 失败 envelope：`import <missing-file> --json` 返回 `schemaVersion / ok=false / action / error.code`。
@@ -18,19 +24,20 @@
 - 接通 `add / list / current / validate / preview / use / rollback / export / schema` 主命令。
 - 发布稳定公共 JSON contract，并提供 [`docs/public-json-schema.md`](docs/public-json-schema.md) 与 [`docs/public-json-output.schema.json`](docs/public-json-output.schema.json)。
 - 新增 `import preview` mixed-batch 导入预览，包含 `summary.decisionCodeStats`、`summary.driftKindStats` 和 explainable 聚合字段。
-- 新增 `import apply <file> --profile <id>`，当前支持 Gemini 单条 profile 导入应用。
+- 新增 `import apply <file> --profile <id>`，当前支持 Gemini / Codex / Claude 单条 profile 导入应用。
 - 发布 [`docs/import-preview-consumer-guide.md`](docs/import-preview-consumer-guide.md)，明确 mixed-batch 机器消费方式。
 - 新增 GitHub Actions CI。
 
 ### Platform Support
 
-- Claude：支持 `user / project / local` 三层 scope 的 `preview / use / rollback`。
+- Claude：支持 `user / project / local` 三层 scope 的 `preview / use / rollback / import apply`。
 - Codex：支持双文件目标的 `preview / use / rollback`。
 - Gemini：支持四层 precedence 的 `current / preview` 检测，开放 `user / project` 两层可写 scope。
 - Gemini `project scope` 已支持显式 `--scope project --force` 写入、独立快照与严格 `rollback --scope project` 恢复。
 
 ### Behavior
 
+- `preview / use` 第一阶段已消费 `env://VAR_NAME` secret reference：Claude 保留原始引用写入，Codex / Gemini 以解析后的明文 fallback 写入，unresolved / unsupported 会直接阻断。
 - `validate` 现在按真实目标 scope 执行，不再只按平台默认 scope 生成 validation 结果。
 - `preview / use / import apply` 在显式 `--scope` 下已对齐同一个目标 scope，避免“预览目标”和“真实写入目标”漂移。
 - Gemini `project scope` 的 gate 顺序固定为 availability-before-confirmation：先判定 `scopeAvailability`，再进入高风险确认门槛。
@@ -46,7 +53,9 @@
 
 ### Known Limits
 
-- `import apply` 当前仅支持 Gemini，不支持 Claude / Codex。
+- `import apply` 当前支持 Gemini / Codex / Claude。
 - 一次仅支持应用单个 imported profile，必须显式传 `--profile`。
 - Gemini `project scope` 属于高风险显式 opt-in 写入，不会默认升级为 project。
+- Claude `local scope` 属于更高敏感度写入目标，未 `--force` 时会额外触发确认门槛。
+- Codex 不支持 `--scope`，导入应用时会直接写入 `config.toml` 与 `auth.json`。
 - `system-defaults` 与 `system-overrides` 当前只参与 Gemini effective config 检测，不允许写入或回滚。

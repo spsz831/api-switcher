@@ -25,10 +25,12 @@ corepack pnpm test
 corepack pnpm smoke:release
 ```
 
-其中 `corepack pnpm smoke:release` 作为发布前一键 smoke 入口，串联执行 `typecheck / build / test / CLI help / schema --json`，并额外校验两类 `dist` 构建产物 contract：
+其中 `corepack pnpm smoke:release` 作为发布前一键 smoke 入口，串联执行 `typecheck / build / test / CLI help / schema --json`，并额外校验多类 `dist` 构建产物 contract：
 
 - 可发现性：顶层 `--help` 仍保留关键命令面（`preview / use / rollback / current / list / validate / export / add / schema / import`）
+- schema 目录：`schema --json` 仍暴露三条 `consumerProfiles`，且 `bestEntryAction` 分别保持 `current / import / preview`；两条只读画像的 `defaultConsumerFlowId` 继续指向对应 `consumerFlow[]`；三条画像的 `starterRecipes[]` 继续保留稳定的 `discover / action / nextStep / runtime` 命令跳转链；`schema --json --consumer-profile readonly-import-batch` 只裁剪 `consumerProfiles[]`，不会裁剪 `actions[]` 或完整 `schema`；`schema --json --action import-apply` 只裁剪 `actions[]`，不会裁剪 `consumerProfiles[]` 或完整 `schema`；`schema --json --recommended-action continue-to-write` 只裁剪 `recommendedActions[]`，不会裁剪 `actions[]`、`consumerProfiles[]` 或完整 `schema`；`schema --json --catalog-summary` 只返回轻量 `catalogSummary`，不会再展开 `commandCatalog`、`schemaId` 或 `schema`
 - 成功态：`schema --schema-version --json` 仍符合当前公开 contract
+- 当前态与列表态：`current/list --json` 仍输出 `platformSummary`，并覆盖 Gemini `scope-precedence` 与 Codex `multi-file-composition`
 - 失败态：未知命令仍保持稳定的 Commander 失败出口（exit code `1` + `stderr` 含 `unknown command`）
 - JSON 失败态：`import <missing-file> --json` 仍返回稳定 envelope（`schemaVersion / ok=false / action / error.code`）
 

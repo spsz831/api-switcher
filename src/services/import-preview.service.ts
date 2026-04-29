@@ -9,10 +9,15 @@ import type {
   ImportPreviewItem,
   ImportPreviewPlatformStat,
   ImportPreviewSummary,
+  ImportSourceExecutabilityCode,
+  ImportSourceExecutabilitySummary,
 } from '../types/command'
 import { type ImportedProfileSource, ImportSourceError, ImportSourceService } from './import-source.service'
 import { ImportFidelityService } from './import-fidelity.service'
+import { buildPlatformSummary } from './platform-summary'
+import { buildReadonlyImportTriageStats } from './readonly-triage-summary'
 import { getScopeCapabilityMatrix, resolveTargetScope } from './scope-options'
+import { buildExecutabilityStats } from '../domain/secret-inspection'
 
 export class ImportPreviewService {
   constructor(
@@ -25,7 +30,7 @@ export class ImportPreviewService {
     try {
       const source = await this.importSourceService.load(filePath)
       const items = await Promise.all(source.profiles.map((item) => this.buildPreviewItem(item)))
-      const summary = this.buildSummary(items)
+      const summary = this.buildSummary(items, source.profiles)
 
       return {
         ok: true,
@@ -68,6 +73,10 @@ export class ImportPreviewService {
     return {
       profile: sourceItem.profile,
       platform: sourceItem.profile.platform,
+      platformSummary: buildPlatformSummary(sourceItem.profile.platform, {
+        listMode: true,
+        composedFiles: detection?.targetFiles.map((item) => item.path),
+      }),
       exportedObservation: sourceItem.exportedObservation,
       localObservation,
       fidelity,
@@ -86,7 +95,7 @@ export class ImportPreviewService {
     }
   }
 
-  private buildSummary(items: ImportPreviewItem[]): ImportPreviewCommandOutput['summary'] {
+  private buildSummary(items: ImportPreviewItem[], sourceProfiles: ImportedProfileSource[]): ImportPreviewCommandOutput['summary'] {
     const counts = items.reduce<Pick<ImportPreviewSummary, 'totalItems' | 'matchCount' | 'mismatchCount' | 'partialCount' | 'insufficientDataCount'>>((acc, item) => {
       switch (item.fidelity?.status) {
         case 'match':
@@ -116,6 +125,12 @@ export class ImportPreviewService {
 
     return {
       ...counts,
+      sourceExecutability: this.buildSourceExecutabilitySummary(sourceProfiles),
+      executabilityStats: buildExecutabilityStats(sourceProfiles.map((item) => ({
+        profile: item.profile,
+        sourceRedacted: (item.redactedInlineSecretFields?.length ?? 0) > 0,
+      }))),
+      triageStats: buildReadonlyImportTriageStats(items, sourceProfiles),
       platformStats: this.buildPlatformStats(items),
       decisionCodeStats: this.buildDecisionCodeStats(items),
       driftKindStats: this.buildDriftKindStats(items),
@@ -131,6 +146,34 @@ export class ImportPreviewService {
 
         return []
       }))),
+    }
+  }
+
+  private buildSourceExecutabilitySummary(sourceProfiles: ImportedProfileSource[]): ImportSourceExecutabilitySummary {
+    const orderedCodes: ImportSourceExecutabilityCode[] = [
+      'REDACTED_INLINE_SECRET',
+    ]
+
+    const blockedByCodeStats = orderedCodes.map((code) => ({
+      code,
+      totalCount: sourceProfiles.filter((item) => {
+        switch (code) {
+          case 'REDACTED_INLINE_SECRET':
+            return (item.redactedInlineSecretFields?.length ?? 0) > 0
+          default:
+            return false
+        }
+      }).length,
+    }))
+
+    const blockedCount = blockedByCodeStats.reduce((count, item) => count + item.totalCount, 0)
+
+    return {
+      totalItems: sourceProfiles.length,
+      applyReadyCount: sourceProfiles.length - blockedCount,
+      previewOnlyCount: blockedCount,
+      blockedCount,
+      blockedByCodeStats,
     }
   }
 

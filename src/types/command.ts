@@ -8,7 +8,7 @@ import type { HealthStatus, PlatformName, RiskLevel } from './platform'
 import type { Profile } from './profile'
 import type { LastSwitchRecord } from './state'
 import type { SnapshotScopePolicy } from './snapshot'
-import type { PlatformScopeCapability, ScopeAvailability } from './capabilities'
+import type { PlatformExplainableSummary, PlatformScopeCapability, ScopeAvailability } from './capabilities'
 
 export const COMMAND_ACTIONS = [
   'add',
@@ -48,6 +48,9 @@ export interface PreviewRiskSummary {
 }
 
 export interface PreviewSummary {
+  platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -58,6 +61,10 @@ export interface PreviewCommandOutput {
   preview: PreviewResult
   risk: PreviewRiskSummary
   summary: PreviewSummary
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+  referenceDecision?: ReferenceWriteDecision
+  referenceReadiness?: ReferenceReadiness
+  scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
 }
@@ -70,6 +77,9 @@ export interface UseRiskSummary {
 }
 
 export interface UseSummary {
+  platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -79,15 +89,21 @@ export interface ConfirmationRequiredDetails {
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+  referenceDecision?: ReferenceWriteDecision
+  referenceReadiness?: ReferenceReadiness
 }
 
 export interface UseCommandOutput {
   profile: Profile
+  dryRun?: boolean
   backupId?: string
+  platformSummary?: PlatformExplainableSummary
   validation?: ValidationResult
   preview: PreviewResult
   risk: UseRiskSummary
   summary: UseSummary
+  referenceDecision?: ReferenceWriteDecision
   changedFiles: string[]
   noChanges: boolean
   scopeCapabilities?: PlatformScopeCapability[]
@@ -95,34 +111,516 @@ export interface UseCommandOutput {
 }
 
 export interface RollbackSummary {
+  platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
 
+export interface SinglePlatformStat {
+  platform: PlatformName
+  profileCount: number
+  profileId?: string
+  targetScope?: string
+  warningCount: number
+  limitationCount: number
+  changedFileCount?: number
+  restoredFileCount?: number
+  backupCreated?: boolean
+  noChanges?: boolean
+  platformSummary?: PlatformExplainableSummary
+}
+
+export interface SecretReferenceStats {
+  profileCount: number
+  referenceProfileCount: number
+  resolvedReferenceProfileCount: number
+  missingReferenceProfileCount: number
+  unsupportedReferenceProfileCount: number
+  inlineProfileCount: number
+  writeUnsupportedProfileCount: number
+  hasReferenceProfiles: boolean
+  hasResolvedReferenceProfiles: boolean
+  hasMissingReferenceProfiles: boolean
+  hasUnsupportedReferenceProfiles: boolean
+  hasInlineProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+}
+
+export interface ExecutabilityStats {
+  profileCount: number
+  inlineReadyProfileCount: number
+  referenceReadyProfileCount: number
+  referenceMissingProfileCount: number
+  writeUnsupportedProfileCount: number
+  sourceRedactedProfileCount: number
+  hasInlineReadyProfiles: boolean
+  hasReferenceReadyProfiles: boolean
+  hasReferenceMissingProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+  hasSourceRedactedProfiles: boolean
+}
+
+export interface ReadonlyTriageBucketStat {
+  id: 'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'
+  title: string
+  totalCount: number
+  summaryFields: string[]
+  itemFields?: string[]
+  recommendedNextStep: 'inspect-items' | 'review-reference-details' | 'repair-source-input' | 'group-by-platform' | 'continue-to-write'
+}
+
+export interface ReadonlyTriageStats {
+  totalItems: number
+  buckets: ReadonlyTriageBucketStat[]
+}
+
+export type ReferenceGovernanceReasonCode =
+  | 'REFERENCE_WRITE_UNSUPPORTED'
+  | 'INLINE_SECRET_PRESENT'
+  | 'REFERENCE_MISSING'
+  | 'REFERENCE_INPUT_CONFLICT'
+
+export type ReferenceGovernanceDetailCode =
+  | 'REFERENCE_VALUE_MISSING'
+  | 'REFERENCE_ENV_RESOLVED'
+  | 'REFERENCE_ENV_UNRESOLVED'
+  | 'REFERENCE_SCHEME_UNSUPPORTED'
+
+export interface ReferenceGovernanceDetail {
+  code: ReferenceGovernanceDetailCode
+  field: string
+  status: 'resolved' | 'missing' | 'unresolved' | 'unsupported-scheme'
+  reference?: string
+  scheme?: string
+  message: string
+}
+
+export interface ReferenceGovernanceFailureDetails {
+  hasReferenceProfiles: boolean
+  hasInlineProfiles: boolean
+  hasWriteUnsupportedProfiles: boolean
+  primaryReason?: ReferenceGovernanceReasonCode
+  reasonCodes: ReferenceGovernanceReasonCode[]
+  referenceDetails?: ReferenceGovernanceDetail[]
+}
+
+export interface ReferenceSummary {
+  hasReferenceFields: boolean
+  hasInlineSecrets: boolean
+  writeUnsupported: boolean
+  resolvedReferenceCount: number
+  missingReferenceCount: number
+  unsupportedReferenceCount: number
+  missingValueCount: number
+  referenceDetails?: ReferenceGovernanceDetail[]
+}
+
+export interface ReferenceWriteDecision {
+  writeDecision: 'native-reference-write' | 'inline-fallback-write' | 'reference-blocked'
+  writeStrategy: 'native-reference-supported' | 'inline-fallback-only' | 'blocked'
+  requiresForce: boolean
+  blocking: boolean
+  reasonCodes: Array<
+    | 'REFERENCE_NATIVE_WRITE_SUPPORTED'
+    | 'REFERENCE_INLINE_FALLBACK_REQUIRED'
+    | 'REFERENCE_ENV_UNRESOLVED'
+    | 'REFERENCE_SCHEME_UNSUPPORTED'
+  >
+}
+
+export interface ReferenceReadiness {
+  level: 'native-ready' | 'fallback-ready' | 'blocked'
+  primaryReason:
+    | 'REFERENCE_NATIVE_WRITE_SUPPORTED'
+    | 'REFERENCE_INLINE_FALLBACK_REQUIRED'
+    | 'REFERENCE_ENV_UNRESOLVED'
+    | 'REFERENCE_SCHEME_UNSUPPORTED'
+    | 'NO_REFERENCE_INPUT'
+  canProceedToUse: boolean
+  requiresForce: boolean
+  nextAction: 'proceed' | 'confirm-before-write' | 'fix-reference-before-write' | 'inspect-reference-details'
+  summary: string
+}
+
+export interface CurrentListPlatformStat {
+  platform: PlatformName
+  profileCount: number
+  currentProfileId?: string
+  detectedProfileId?: string
+  managed: boolean
+  currentScope?: string
+  referenceStats?: SecretReferenceStats
+  platformSummary?: PlatformExplainableSummary
+}
+
 export interface CurrentSummary {
+  platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
 
 export interface ListSummary {
+  platformStats?: CurrentListPlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
 
+export interface ValidateExportPlatformStat {
+  platform: PlatformName
+  profileCount: number
+  okCount: number
+  warningCount: number
+  limitationCount: number
+  referenceStats?: SecretReferenceStats
+  platformSummary?: PlatformExplainableSummary
+}
+
 export interface ExportSummary {
+  platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
+  secretExportPolicy?: SecretExportPolicySummary
   warnings: string[]
   limitations: string[]
+}
+
+export interface SecretExportPolicySummary {
+  mode: 'redacted-by-default' | 'include-secrets'
+  inlineSecretsExported: number
+  inlineSecretsRedacted: number
+  referenceSecretsPreserved: number
+  profilesWithRedactedSecrets: number
+}
+
+export interface SecretExportItemDetail {
+  field: string
+  kind: 'inline-secret-redacted' | 'inline-secret-exported' | 'reference-preserved'
+}
+
+export interface SecretExportItemSummary {
+  hasInlineSecrets: boolean
+  hasRedactedInlineSecrets: boolean
+  hasReferenceSecrets: boolean
+  redactedFieldCount: number
+  preservedReferenceCount: number
+  details?: SecretExportItemDetail[]
 }
 
 export interface SchemaCommandOutput {
   schemaVersion: string
   schemaId?: string
+  commandCatalog?: SchemaCommandCatalog
+  catalogSummary?: SchemaCatalogSummary
   schema?: Record<string, unknown>
+}
+
+export interface SchemaConsumerProfile {
+  id: 'single-platform-write' | 'readonly-import-batch' | 'readonly-state-audit'
+  title: string
+  appliesToActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
+  exampleActions: Array<'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'>
+  bestEntryAction: 'add' | 'preview' | 'use' | 'rollback' | 'current' | 'list' | 'validate' | 'export' | 'import' | 'import-apply'
+  sharedSummaryFields: string[]
+  sharedItemFields: string[]
+  sharedFailureFields: string[]
+  optionalScopeFields: string[]
+  optionalItemFields: string[]
+  optionalFailureFields: string[]
+  optionalArtifactFields: string[]
+  recommendedStages: Array<'summary' | 'selection' | 'items' | 'detail' | 'artifacts'>
+  defaultConsumerActionId?: SchemaConsumerProfileAction['id']
+  defaultCommandExample?: string
+  defaultCommandPurpose?: string
+  summarySectionGuidance?: SchemaConsumerProfileSummarySectionGuidance[]
+  followUpHints?: SchemaConsumerProfileFollowUpHint[]
+  triageBuckets?: SchemaConsumerProfileTriageBucket[]
+  consumerActions?: SchemaConsumerProfileAction[]
+  starterTemplate?: SchemaConsumerProfileStarterTemplate
+  starterRecipes?: SchemaConsumerProfileStarterRecipe[]
+  defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
+  consumerFlow?: SchemaConsumerProfileFlowStep[]
+}
+
+export interface SchemaActionCapability {
+  action: typeof COMMAND_ACTIONS[number]
+  hasPlatformSummary: boolean
+  hasPlatformStats: boolean
+  hasScopeCapabilities: boolean
+  hasScopeAvailability: boolean
+  hasScopePolicy: boolean
+  consumerProfileIds?: SchemaConsumerProfile['id'][]
+  primaryFields: string[]
+  primaryErrorFields: string[]
+  failureCodes: SchemaActionFailureCode[]
+  fieldPresence: SchemaActionFieldPresence[]
+  fieldSources: SchemaActionFieldSource[]
+  fieldStability: SchemaActionFieldStability[]
+  readOrderGroups: SchemaReadOrderGroups
+  summarySections?: SchemaSummarySection[]
+  primaryFieldSemantics: SchemaFieldSemanticBinding[]
+  primaryErrorFieldSemantics: SchemaFieldSemanticBinding[]
+  referenceGovernanceCodes?: SchemaReferenceGovernanceCode[]
+  failureTextActions?: SchemaFailureTextAction[]
+  successTextEntries?: SchemaSuccessTextEntry[]
+}
+
+export interface SchemaCommandCatalog {
+  actions: SchemaActionCapability[]
+  consumerProfiles?: SchemaConsumerProfile[]
+  recommendedActions?: SchemaRecommendedAction[]
+}
+
+export interface SchemaCatalogSummary {
+  counts: {
+    consumerProfiles: number
+    actions: number
+    recommendedActions: number
+  }
+  consumerProfiles: Array<{
+    id: SchemaConsumerProfile['id']
+    bestEntryAction: SchemaConsumerProfile['bestEntryAction']
+    defaultConsumerActionId?: SchemaConsumerProfile['defaultConsumerActionId']
+    defaultCommandExample?: SchemaConsumerProfile['defaultCommandExample']
+    defaultCommandPurpose?: SchemaConsumerProfile['defaultCommandPurpose']
+    hasStarterTemplate?: boolean
+    starterTemplateId?: NonNullable<SchemaConsumerProfile['starterTemplate']>['id']
+    recommendedEntryMode?: 'starter-template' | 'full-consumer-profile'
+  }>
+  actions: Array<{
+    action: SchemaActionCapability['action']
+  }>
+  recommendedActions: Array<{
+    code: SchemaRecommendedAction['code']
+    family: SchemaRecommendedAction['family']
+  }>
+}
+
+export interface SchemaFieldSemanticBinding {
+  path: string
+  semantic: string
+}
+
+export interface SchemaSummarySection {
+  id: 'platform' | 'reference' | 'executability' | 'source-executability'
+  title: string
+  priority: number
+  fields: string[]
+  purpose: string
+  recommendedWhen?: string[]
+}
+
+export interface SchemaConsumerProfileSummarySectionGuidance {
+  id: SchemaSummarySection['id']
+  title: string
+  priority: number
+  fields: string[]
+  purpose: string
+  recommendedUses: Array<'overview' | 'governance' | 'gating' | 'routing'>
+}
+
+export interface SchemaConsumerProfileFollowUpHint {
+  use: 'overview' | 'governance' | 'gating' | 'routing'
+  nextStep: SchemaRecommendedActionCode
+  primaryFields: string[]
+  purpose: string
+}
+
+export interface SchemaConsumerProfileTriageBucket {
+  id: 'overview' | 'reference-governance' | 'write-readiness' | 'source-blocked' | 'platform-routing'
+  title: string
+  summaryFields: string[]
+  itemFields?: string[]
+  purpose: string
+  recommendedNextStep: SchemaConsumerProfileFollowUpHint['nextStep']
+}
+
+export interface SchemaConsumerProfileAction {
+  id: string
+  title: string
+  priority: number
+  use: SchemaConsumerProfileFollowUpHint['use']
+  appliesWhen: string
+  triggerFields: string[]
+  summarySectionIds: SchemaSummarySection['id'][]
+  triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
+  nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
+  primaryFields: string[]
+  purpose: string
+}
+
+export interface SchemaConsumerProfileFlowStep {
+  id: string
+  title: string
+  priority: number
+  defaultEntry: boolean
+  defaultOnBucket: boolean
+  selectionReason: string
+  summarySectionIds: SchemaSummarySection['id'][]
+  triageBucketIds?: SchemaConsumerProfileTriageBucket['id'][]
+  readFields: string[]
+  consumerActionId: SchemaConsumerProfileAction['id']
+  nextStep: SchemaConsumerProfileFollowUpHint['nextStep']
+  purpose: string
+}
+
+export interface SchemaConsumerProfileStarterTemplateSection {
+  fields: string[]
+}
+
+export interface SchemaConsumerProfileStarterTemplateItems {
+  sharedFields: string[]
+}
+
+export interface SchemaConsumerProfileStarterTemplateFlow {
+  defaultConsumerFlowId?: SchemaConsumerProfileFlowStep['id']
+}
+
+export interface SchemaConsumerProfileStarterTemplate {
+  id: string
+  summary: SchemaConsumerProfileStarterTemplateSection
+  items: SchemaConsumerProfileStarterTemplateItems
+  failure: SchemaConsumerProfileStarterTemplateSection
+  flow: SchemaConsumerProfileStarterTemplateFlow
+}
+
+export interface SchemaConsumerProfileStarterRecipe {
+  id: string
+  intent: string
+  discover: string
+  action: string
+  nextStep: string
+  runtime: string
+  appliesTo: SchemaConsumerProfile['appliesToActions']
+}
+
+export interface SchemaActionFailureCode {
+  code: string
+  priority: number
+  category: 'input' | 'state' | 'scope' | 'confirmation' | 'platform' | 'runtime' | 'source'
+  recommendedHandling: SchemaRecommendedActionCode
+  textEntryPoint: SchemaFailureTextEntryPoint
+  appliesWhen: string
+  triggerFields: string[]
+}
+
+export interface SchemaFailureTextAction {
+  textEntryPoint: SchemaFailureTextEntryPoint
+  recommendedHandling: SchemaRecommendedActionCode
+  appliesToCodes: string[]
+}
+
+export interface SchemaSuccessTextEntry {
+  path: string
+  textEntryPoint: SchemaSuccessTextEntryPoint
+  note?: string
+}
+
+export type SchemaFailureTextEntryPoint =
+  | 'error-message'
+  | 'reference-summary'
+  | 'risk-summary'
+  | 'scope-availability'
+  | 'preview-decision'
+  | 'redacted-fields'
+
+export type SchemaSuccessTextEntryPoint =
+  | 'platform-summary'
+  | 'reference-stats-summary'
+  | 'executability-stats-summary'
+  | 'scope-availability'
+  | 'reference-summary'
+  | 'reference-details'
+  | 'preview-detail'
+
+export interface SchemaReferenceGovernanceCode {
+  code: ReferenceGovernanceReasonCode
+  priority: number
+  category: 'reference' | 'inline-secret' | 'input'
+  recommendedHandling: SchemaRecommendedActionCode
+  appliesWhen: string
+  triggerFields: string[]
+}
+
+export type SchemaRecommendedActionCode =
+  | 'inspect-items'
+  | 'review-reference-details'
+  | 'repair-source-input'
+  | 'group-by-platform'
+  | 'continue-to-write'
+  | 'fix-input-and-retry'
+  | 'select-existing-resource'
+  | 'resolve-scope-before-retry'
+  | 'confirm-before-write'
+  | 'check-platform-support'
+  | 'inspect-runtime-details'
+  | 'check-import-source'
+  | 'fix-reference-input'
+  | 'resolve-reference-support'
+  | 'migrate-inline-secret'
+
+export interface SchemaRecommendedAction {
+  code: SchemaRecommendedActionCode
+  title: string
+  family: 'inspect' | 'repair' | 'route' | 'execute'
+  availability: Array<'readonly' | 'failure'>
+  purpose: string
+}
+
+export interface SchemaReadOrderGroups {
+  success: SchemaSuccessReadOrderGroup[]
+  failure: SchemaFailureReadOrderGroup[]
+}
+
+export interface SchemaActionFieldPresence {
+  path: string
+  channel: 'success' | 'failure'
+  presence: 'always' | 'conditional'
+  conditionCode?: string
+}
+
+export interface SchemaActionFieldSource {
+  path: string
+  channel: 'success' | 'failure'
+  source:
+    | 'command-service'
+    | 'platform-adapter'
+    | 'schema-service'
+    | 'write-pipeline'
+    | 'import-analysis'
+    | 'error-envelope'
+}
+
+export interface SchemaActionFieldStability {
+  path: string
+  channel: 'success' | 'failure'
+  stabilityTier: 'stable' | 'bounded' | 'expandable'
+}
+
+export interface SchemaSuccessReadOrderGroup {
+  stage: 'summary' | 'selection' | 'items' | 'detail' | 'artifacts'
+  fields: string[]
+  purpose?: string
+}
+
+export interface SchemaFailureReadOrderGroup {
+  stage: 'error-core' | 'error-details' | 'error-recovery'
+  fields: string[]
+  purpose?: string
 }
 
 export interface RollbackCommandOutput {
   backupId: string
   restoredFiles: string[]
+  platformSummary?: PlatformExplainableSummary
   rollback?: RollbackResult
   scopePolicy?: SnapshotScopePolicy
   scopeCapabilities?: PlatformScopeCapability[]
@@ -145,6 +643,10 @@ export interface CurrentCommandOutput {
 }
 
 export interface ValidateSummary {
+  platformStats?: ValidateExportPlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   warnings: string[]
   limitations: string[]
 }
@@ -153,7 +655,9 @@ export interface ValidateCommandItem {
   profileId: string
   platform: PlatformName
   validation: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
+  referenceSummary?: ReferenceSummary
 }
 
 export interface ValidateCommandOutput {
@@ -164,10 +668,13 @@ export interface ValidateCommandOutput {
 export interface ExportedProfileItem {
   profile: Profile
   validation?: ValidationResult
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   defaultWriteScope?: string
   observedAt?: string
+  referenceSummary?: ReferenceSummary
+  secretExportSummary?: SecretExportItemSummary
 }
 
 export interface ExportCommandOutput {
@@ -181,6 +688,9 @@ export interface ImportPreviewSummary {
   mismatchCount: number
   partialCount: number
   insufficientDataCount: number
+  sourceExecutability: ImportSourceExecutabilitySummary
+  executabilityStats?: ExecutabilityStats
+  triageStats?: ReadonlyTriageStats
   platformStats: ImportPreviewPlatformStat[]
   decisionCodeStats: ImportPreviewDecisionCodeStat[]
   driftKindStats: ImportPreviewDriftKindStat[]
@@ -202,6 +712,22 @@ export interface ImportPreviewDecisionCodeStat {
   totalCount: number
   blockingCount: number
   nonBlockingCount: number
+}
+
+export type ImportSourceExecutabilityCode =
+  | 'REDACTED_INLINE_SECRET'
+
+export interface ImportSourceExecutabilityCodeStat {
+  code: ImportSourceExecutabilityCode
+  totalCount: number
+}
+
+export interface ImportSourceExecutabilitySummary {
+  totalItems: number
+  applyReadyCount: number
+  previewOnlyCount: number
+  blockedCount: number
+  blockedByCodeStats: ImportSourceExecutabilityCodeStat[]
 }
 
 export interface ImportPreviewDriftKindStat {
@@ -277,6 +803,7 @@ export interface ImportPreviewDecisionReason {
 export interface ImportPreviewItem {
   profile: Profile
   platform: PlatformName
+  platformSummary?: PlatformExplainableSummary
   exportedObservation?: ImportObservation
   localObservation?: ImportObservation
   fidelity?: ImportFidelityReport
@@ -301,6 +828,12 @@ export interface ImportApplySourceDetails {
   profileId?: string
 }
 
+export interface ImportApplyRedactedSecretDetails {
+  sourceFile: string
+  profileId: string
+  redactedInlineSecretFields: string[]
+}
+
 export interface ImportApplyNotReadyDetails {
   sourceFile: string
   profileId: string
@@ -310,7 +843,14 @@ export interface ImportApplyNotReadyDetails {
   exportedObservation?: ImportObservation
 }
 
+export interface ValidationFailureDetails extends ValidationResult {
+  referenceGovernance?: ReferenceGovernanceFailureDetails
+}
+
 export interface ImportApplySummary {
+  platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -325,20 +865,51 @@ export interface ImportApplyRiskSummary {
 export interface ImportApplyCommandOutput {
   sourceFile: string
   importedProfile: Profile
-  appliedScope: 'user' | 'project'
-  scopePolicy: SnapshotScopePolicy
+  appliedScope?: string
+  dryRun?: boolean
+  platformSummary?: PlatformExplainableSummary
+  scopePolicy?: SnapshotScopePolicy
   scopeCapabilities: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
   validation: ValidationResult
   preview: PreviewResult
   risk: ImportApplyRiskSummary
-  backupId: string
+  referenceDecision?: ReferenceWriteDecision
+  backupId?: string
   changedFiles: string[]
   noChanges: boolean
   summary: ImportApplySummary
 }
 
+export interface ImportApplyBatchItemResult {
+  profileId: string
+  platform?: PlatformName
+  appliedScope?: string
+  ok: boolean
+  noChanges?: boolean
+  failureCategory?: string
+  reasonCodes?: string[]
+  backupId?: string
+  changedFiles?: string[]
+  error?: CommandError
+}
+
+export interface ImportApplyBatchSummary {
+  totalProfiles: number
+  appliedCount: number
+  failedCount: number
+}
+
+export interface ImportApplyBatchCommandOutput {
+  sourceFile: string
+  results: ImportApplyBatchItemResult[]
+  summary: ImportApplyBatchSummary
+}
+
 export interface AddSummary {
+  platformStats?: SinglePlatformStat[]
+  referenceStats?: SecretReferenceStats
+  executabilityStats?: ExecutabilityStats
   warnings: string[]
   limitations: string[]
 }
@@ -364,8 +935,10 @@ export interface ListCommandItem {
   current: boolean
   healthStatus: HealthStatus
   riskLevel: RiskLevel
+  platformSummary?: PlatformExplainableSummary
   scopeCapabilities?: PlatformScopeCapability[]
   scopeAvailability?: ScopeAvailability[]
+  referenceSummary?: ReferenceSummary
 }
 
 export interface ListCommandOutput {
@@ -376,6 +949,8 @@ export interface ListCommandOutput {
 export interface AddProfileInput {
   platform: PlatformName
   name: string
-  key: string
+  key?: string
+  secretRef?: string
+  authReference?: string
   url?: string
 }

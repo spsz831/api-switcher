@@ -6,9 +6,12 @@ export function registerExportCommand(program: Command): void {
   program
     .command('export')
     .option('--json', '使用 JSON 输出')
-    .action(async (options: { json?: boolean }) => {
+    .option('--include-secrets', '显式包含 inline secret 明文')
+    .action(async (options: { json?: boolean; includeSecrets?: boolean }) => {
       const service = new ExportService()
-      const result = await service.export()
+      const result = await service.export({
+        includeSecrets: options.includeSecrets,
+      })
       outputCommandResult(result, options.json)
     })
 }

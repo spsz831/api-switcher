@@ -28,6 +28,7 @@ beforeEach(async () => {
   process.env.API_SWITCHER_CLAUDE_PROJECT_SETTINGS_PATH = claudeProjectSettingsPath
   process.env.API_SWITCHER_CLAUDE_LOCAL_SETTINGS_PATH = claudeLocalSettingsPath
   process.env.API_SWITCHER_CLAUDE_TARGET_SCOPE = 'project'
+  process.env.API_SWITCHER_ANTHROPIC_TOKEN = 'sk-ref-live-654321'
 
   const profilesStore = new ProfilesStore()
   await profilesStore.write({
@@ -40,6 +41,16 @@ beforeEach(async () => {
         source: { token: 'sk-live-123456', baseURL: 'https://gateway.example.com/api' },
         apply: {
           ANTHROPIC_AUTH_TOKEN: 'sk-live-123456',
+          ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
+        },
+      },
+      {
+        id: 'claude-ref-prod',
+        name: 'claude-ref-prod',
+        platform: 'claude',
+        source: { secret_ref: 'env://API_SWITCHER_ANTHROPIC_TOKEN' },
+        apply: {
+          auth_reference: 'env://API_SWITCHER_ANTHROPIC_TOKEN',
           ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
         },
       },
@@ -70,6 +81,7 @@ afterEach(async () => {
   delete process.env.API_SWITCHER_CLAUDE_LOCAL_SETTINGS_PATH
   delete process.env.API_SWITCHER_CLAUDE_TARGET_SCOPE
   delete process.env.API_SWITCHER_CLAUDE_SETTINGS_PATH
+  delete process.env.API_SWITCHER_ANTHROPIC_TOKEN
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
@@ -81,10 +93,10 @@ describe('preview/use/rollback integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
     expect(result.data?.preview.targetFiles).toEqual([
@@ -376,15 +388,30 @@ describe('preview/use/rollback integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Claude 配置存在非托管字段：theme')
     expect(result.data?.risk.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
 
     const content = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8'))
     expect(content.ANTHROPIC_AUTH_TOKEN).toBe('sk-live-123456')
+    expect(content.theme).toBe('dark')
+  })
+
+  it('Claude reference profile 会保留 env 引用写入原生字段', async () => {
+    const result = await new SwitchService().use('claude-ref-prod', { force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.referenceDecision).toEqual(expect.objectContaining({
+      writeDecision: 'native-reference-write',
+      requiresForce: false,
+    }))
+
+    const content = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>
+    expect(content.ANTHROPIC_AUTH_TOKEN).toBe('env://API_SWITCHER_ANTHROPIC_TOKEN')
+    expect(content.ANTHROPIC_BASE_URL).toBe('https://gateway.example.com/api')
     expect(content.theme).toBe('dark')
   })
 

@@ -21,6 +21,7 @@ beforeEach(async () => {
   process.env.API_SWITCHER_RUNTIME_DIR = runtimeDir
   process.env.API_SWITCHER_CODEX_CONFIG_PATH = codexConfigPath
   process.env.API_SWITCHER_CODEX_AUTH_PATH = codexAuthPath
+  process.env.API_SWITCHER_CODEX_REF_KEY = 'sk-codex-ref-654321'
 
   const profilesStore = new ProfilesStore()
   await profilesStore.write({
@@ -36,6 +37,16 @@ beforeEach(async () => {
           base_url: 'https://gateway.example.com/openai/v1',
         },
       },
+      {
+        id: 'codex-ref-prod',
+        name: 'codex-ref-prod',
+        platform: 'codex',
+        source: { secret_ref: 'env://API_SWITCHER_CODEX_REF_KEY', notes: 'Codex 引用链路' },
+        apply: {
+          auth_reference: 'env://API_SWITCHER_CODEX_REF_KEY',
+          base_url: 'https://gateway.example.com/openai/v1',
+        },
+      },
     ],
   })
 
@@ -47,6 +58,7 @@ afterEach(async () => {
   delete process.env.API_SWITCHER_RUNTIME_DIR
   delete process.env.API_SWITCHER_CODEX_CONFIG_PATH
   delete process.env.API_SWITCHER_CODEX_AUTH_PATH
+  delete process.env.API_SWITCHER_CODEX_REF_KEY
   await fs.rm(runtimeDir, { recursive: true, force: true })
 })
 
@@ -58,10 +70,10 @@ describe('codex preview/use/rollback integration', () => {
       allowed: false,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -156,10 +168,10 @@ describe('codex preview/use/rollback integration', () => {
       allowed: true,
       riskLevel: 'medium',
     }))
-    expect(result.data?.summary).toEqual({
+    expect(result.data?.summary).toEqual(expect.objectContaining({
       warnings: result.data?.risk.reasons ?? [],
       limitations: result.data?.risk.limitations ?? [],
-    })
+    }))
     expect(result.data?.risk.reasons).toContain('当前 Codex config.toml 存在非托管字段：default_provider')
     expect(result.data?.risk.reasons).toContain('当前 Codex auth.json 存在非托管字段：user_id')
     expect(result.data?.risk.reasons).toContain('Codex 将修改多个目标文件。')
@@ -190,6 +202,24 @@ describe('codex preview/use/rollback integration', () => {
 
     const state = await new StateStore().read()
     expect(state.current.codex).toBe('codex-prod')
+  })
+
+  it('Codex reference profile 会把解析后的 secret 内联写入双文件目标', async () => {
+    const result = await new SwitchService().use('codex-ref-prod', { force: true })
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.referenceDecision).toEqual(expect.objectContaining({
+      writeDecision: 'inline-fallback-write',
+      requiresForce: true,
+    }))
+
+    const configContent = await fs.readFile(codexConfigPath, 'utf8')
+    const config = parseCodexConfig(configContent)
+    const auth = JSON.parse(await fs.readFile(codexAuthPath, 'utf8')) as Record<string, unknown>
+
+    expect(config.base_url).toBe('https://gateway.example.com/openai/v1')
+    expect(auth.OPENAI_API_KEY).toBe('sk-codex-ref-654321')
+    expect(auth.user_id).toBe('u-1')
   })
 
   it('use 会保留 Codex config.toml 的注释空行和分隔样式', async () => {
