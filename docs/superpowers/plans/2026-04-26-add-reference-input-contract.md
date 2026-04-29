@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript、Commander CLI、Vitest、现有 command service / text renderer / public JSON schema / docs consistency 测试体系。
 
+> Status note (2026-04-29): 该计划对应的实现、测试与文档已进入主线；以下勾选项为合并后的执行回填，避免后续把已落地能力误判为仍未完成。
+
 ---
 
 ## 文件结构
@@ -48,7 +50,7 @@
 - Modify: `tests/unit/add.service.test.ts` 或现有承载 `add` 行为的 unit test 文件
 - Modify: `tests/unit/public-json-schema.test.ts`
 
-- [ ] **Step 1: 写 reference-only 成功与输入失败的 failing tests**
+- [x] **Step 1: 写 reference-only 成功与输入失败的 failing tests**
 
 补以下断言：
 
@@ -66,7 +68,7 @@ it('明文与 reference 同时出现时返回 ADD_INPUT_CONFLICT', async () => {
 })
 ```
 
-- [ ] **Step 2: 运行单测，确认先失败**
+- [x] **Step 2: 运行单测，确认先失败**
 
 Run: `corepack pnpm vitest run tests/unit/add.service.test.ts tests/unit/public-json-schema.test.ts --reporter=basic`
 
@@ -74,7 +76,7 @@ Expected:
 - `add` 相关新用例先失败。
 - 失败原因应是 contract 尚未实现或 schema 尚未声明，而不是测试拼写错误。
 
-- [ ] **Step 3: 最小实现 `add` 输入模式归类与失败码**
+- [x] **Step 3: 最小实现 `add` 输入模式归类与失败码**
 
 在 `src/services/add.service.ts` 中：
 
@@ -83,20 +85,20 @@ Expected:
 3. 冲突输入返回 `ADD_INPUT_CONFLICT`。
 4. reference-only 成功时保留原始 reference 字符串，不做本地解析。
 
-- [ ] **Step 4: 补齐 `summary.referenceStats` / `summary.executabilityStats` 语义**
+- [x] **Step 4: 补齐 `summary.referenceStats` / `summary.executabilityStats` 语义**
 
 确保 reference-only 成功时：
 
 1. `summary.referenceStats` 能反映 reference profile。
 2. `summary.executabilityStats` 只表达 profile 形态，不伪装成已通过 resolver 校验。
 
-- [ ] **Step 5: 运行单测，确认通过**
+- [x] **Step 5: 运行单测，确认通过**
 
 Run: `corepack pnpm vitest run tests/unit/add.service.test.ts tests/unit/public-json-schema.test.ts --reporter=basic`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/add.service.ts tests/unit/add.service.test.ts tests/unit/public-json-schema.test.ts
@@ -111,7 +113,7 @@ git commit -m "feat: define add reference input contract"
 - Test: `tests/integration/cli-add.test.ts`
 - Test: `tests/unit/text-renderer.test.ts`
 
-- [ ] **Step 1: 写 CLI 集成测试，先冻结 help / json / 文本文案**
+- [x] **Step 1: 写 CLI 集成测试，先冻结 help / json / 文本文案**
 
 在 `tests/integration/cli-add.test.ts` 中补场景：
 
@@ -122,34 +124,34 @@ git commit -m "feat: define add reference input contract"
 5. 非 JSON 模式输出边界文案：
    - `add 只记录 reference 输入；真正的本地解析、治理判断和写入可执行性检查在 preview/use/import apply 阶段完成。`
 
-- [ ] **Step 2: 运行 CLI 集成测试，确认先失败**
+- [x] **Step 2: 运行 CLI 集成测试，确认先失败**
 
 Run: `corepack pnpm vitest run tests/integration/cli-add.test.ts tests/unit/text-renderer.test.ts --reporter=basic`
 
 Expected:
 - 新增的 help/文本/reference-only 场景失败。
 
-- [ ] **Step 3: 最小实现 CLI help 与参数说明**
+- [x] **Step 3: 最小实现 CLI help 与参数说明**
 
 在 `src/cli/index.ts` 中：
 
 1. 明确 `--key` 与 `--secret-ref` / `--auth-reference` 的互斥说明。
 2. 在 help 中明确 `add` 只录入 reference，不验证当前环境可执行性。
 
-- [ ] **Step 4: 最小实现文本输出边界文案**
+- [x] **Step 4: 最小实现文本输出边界文案**
 
 在 `src/renderers/text-renderer.ts` 中：
 
 1. `add` 文本输出按 `summary.platformStats -> summary.referenceStats -> summary.executabilityStats -> preview/risk` 顺序展示。
 2. 追加稳定边界文案，明确真正的解析与治理阶段在 `preview/use/import apply`。
 
-- [ ] **Step 5: 运行 CLI/renderer 测试，确认通过**
+- [x] **Step 5: 运行 CLI/renderer 测试，确认通过**
 
 Run: `corepack pnpm vitest run tests/integration/cli-add.test.ts tests/unit/text-renderer.test.ts --reporter=basic`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/cli/index.ts src/renderers/text-renderer.ts tests/integration/cli-add.test.ts tests/unit/text-renderer.test.ts
@@ -166,7 +168,7 @@ git commit -m "feat: clarify add reference input cli behavior"
 - Test: `tests/unit/docs-consistency.test.ts`
 - Test: `tests/integration/cli-top-level-contracts.test.ts`
 
-- [ ] **Step 1: 写 failing tests，冻结 `add` 的 catalog / 文档口径**
+- [x] **Step 1: 写 failing tests，冻结 `add` 的 catalog / 文档口径**
 
 补以下断言：
 
@@ -179,14 +181,14 @@ git commit -m "feat: clarify add reference input cli behavior"
    - `ADD_INPUT_REQUIRED / ADD_INPUT_CONFLICT`
    - “只录入、不解析”的边界说明
 
-- [ ] **Step 2: 运行文档与顶层 contract 测试，确认先失败**
+- [x] **Step 2: 运行文档与顶层 contract 测试，确认先失败**
 
 Run: `corepack pnpm vitest run tests/unit/docs-consistency.test.ts tests/integration/cli-top-level-contracts.test.ts --reporter=basic`
 
 Expected:
 - `add` contract 断言先失败。
 
-- [ ] **Step 3: 最小更新 schema service 与 machine-readable schema**
+- [x] **Step 3: 最小更新 schema service 与 machine-readable schema**
 
 在 `src/services/schema.service.ts` 与 `docs/public-json-output.schema.json` 中：
 
@@ -194,7 +196,7 @@ Expected:
 2. 只补这次真正需要的稳定字段和失败码。
 3. 不扩新的 resolver 运行时字段。
 
-- [ ] **Step 4: 更新 README 与 `docs/public-json-schema.md`**
+- [x] **Step 4: 更新 README 与 `docs/public-json-schema.md`**
 
 补以下内容：
 
@@ -206,13 +208,13 @@ Expected:
    - `add` 负责录入
    - `preview/use/import apply` 负责解析与治理
 
-- [ ] **Step 5: 运行 contract / 文档测试，确认通过**
+- [x] **Step 5: 运行 contract / 文档测试，确认通过**
 
 Run: `corepack pnpm vitest run tests/unit/docs-consistency.test.ts tests/unit/public-json-schema.test.ts tests/integration/cli-top-level-contracts.test.ts --reporter=basic`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/schema.service.ts docs/public-json-output.schema.json README.md docs/public-json-schema.md tests/unit/docs-consistency.test.ts tests/integration/cli-top-level-contracts.test.ts
@@ -224,7 +226,7 @@ git commit -m "docs: align add reference input public contract"
 **Files:**
 - No new files
 
-- [ ] **Step 1: 运行 `add` 相关完整测试批次**
+- [x] **Step 1: 运行 `add` 相关完整测试批次**
 
 Run: `corepack pnpm vitest run tests/unit/add.service.test.ts tests/unit/text-renderer.test.ts tests/unit/public-json-schema.test.ts tests/unit/docs-consistency.test.ts tests/integration/cli-add.test.ts tests/integration/cli-top-level-contracts.test.ts tests/integration/schema-cli-commands.test.ts --reporter=basic`
 
@@ -232,7 +234,7 @@ Expected:
 - 全部通过。
 - 没有因为 `add` 轻量 contract 收口而破坏现有 schema / top-level contract。
 
-- [ ] **Step 2: 人工检查边界是否被破坏**
+- [x] **Step 2: 人工检查边界是否被破坏**
 
 检查点：
 
@@ -240,7 +242,7 @@ Expected:
 2. `add` 失败态没有长出新的治理 detail payload。
 3. 文档反复强调 `add` 只录入，不解析。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .
