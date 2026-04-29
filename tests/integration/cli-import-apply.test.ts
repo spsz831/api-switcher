@@ -804,6 +804,81 @@ describe('cli import apply integration', () => {
     }))
   })
 
+  it('import apply --force --json 对 resolved env auth_reference 可成功写入，并把 summary 标记为 reference-ready', async () => {
+    const importFile = path.join(context.runtimeDir, 'import-apply-reference-success.json')
+    await writeImportSourceFile(importFile, [
+      {
+        profile: {
+          id: 'gemini-reference-success',
+          name: 'gemini-reference-success',
+          platform: 'gemini',
+          source: { secret_ref: 'env://API_SWITCHER_GEMINI_IMPORT_SUCCESS_SECRET', authType: 'gemini-api-key' },
+          apply: {
+            auth_reference: 'env://API_SWITCHER_GEMINI_IMPORT_SUCCESS_SECRET',
+            enforcedAuthType: 'gemini-api-key',
+          },
+        },
+        defaultWriteScope: 'user',
+        observedAt: '2026-04-16T00:00:00.000Z',
+        scopeCapabilities: [
+          { scope: 'user', detect: true, preview: true, use: true, rollback: true, writable: true },
+          { scope: 'project', detect: true, preview: true, use: true, rollback: true, writable: true, risk: 'high', confirmationRequired: true },
+        ],
+      },
+    ])
+
+    const result = await runCli(['import', 'apply', importFile, '--profile', 'gemini-reference-success', '--force', '--json'], {
+      API_SWITCHER_GEMINI_IMPORT_SUCCESS_SECRET: 'gm-ref-success-123456',
+    })
+    const payload = parseJsonResult<{
+      referenceDecision?: {
+        writeDecision: string
+        writeStrategy: string
+        requiresForce: boolean
+        blocking: boolean
+        reasonCodes: string[]
+      }
+      summary: {
+        referenceStats?: {
+          referenceProfileCount: number
+          resolvedReferenceProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasWriteUnsupportedProfiles: boolean
+        }
+        executabilityStats?: {
+          referenceReadyProfileCount: number
+          writeUnsupportedProfileCount: number
+          hasReferenceReadyProfiles: boolean
+          hasWriteUnsupportedProfiles: boolean
+        }
+      }
+    }>(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    expect(payload.ok).toBe(true)
+    expect(payload.action).toBe('import-apply')
+    expect(payload.data?.referenceDecision).toEqual({
+      writeDecision: 'inline-fallback-write',
+      writeStrategy: 'inline-fallback-only',
+      requiresForce: true,
+      blocking: false,
+      reasonCodes: ['REFERENCE_INLINE_FALLBACK_REQUIRED'],
+    })
+    expect(payload.data?.summary.referenceStats).toEqual(expect.objectContaining({
+      referenceProfileCount: 1,
+      resolvedReferenceProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasWriteUnsupportedProfiles: false,
+    }))
+    expect(payload.data?.summary.executabilityStats).toEqual(expect.objectContaining({
+      referenceReadyProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceReadyProfiles: true,
+      hasWriteUnsupportedProfiles: false,
+    }))
+  })
+
   it('import apply --json 对 unresolved env auth_reference 会直接返回 IMPORT_APPLY_FAILED，并暴露 blocking referenceDecision', async () => {
     const importFile = path.join(context.runtimeDir, 'import-apply-reference-blocked.json')
     await writeImportSourceFile(importFile, [

@@ -1052,7 +1052,7 @@ describe('import apply service', () => {
     }))
   })
 
-  it('resolved auth_reference 导入 apply 成功时返回 referenceDecision，并按 reference profile 生成 summary', async () => {
+  it('resolved auth_reference 导入 apply 成功时返回 referenceDecision，并按 reference-ready profile 生成 summary', async () => {
     process.env.API_SWITCHER_IMPORT_APPLY_KEY = 'gm-import-apply-123456'
     const importedProfile = createProfile({
       source: { secret_ref: 'env://API_SWITCHER_IMPORT_APPLY_KEY' } as any,
@@ -1146,12 +1146,12 @@ describe('import apply service', () => {
       referenceProfileCount: 1,
       resolvedReferenceProfileCount: 1,
       inlineProfileCount: 0,
-      writeUnsupportedProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
     }))
     expect(result.data?.summary.executabilityStats).toEqual(expect.objectContaining({
       profileCount: 1,
-      referenceReadyProfileCount: 0,
-      writeUnsupportedProfileCount: 1,
+      referenceReadyProfileCount: 1,
+      writeUnsupportedProfileCount: 0,
       inlineReadyProfileCount: 0,
     }))
   })

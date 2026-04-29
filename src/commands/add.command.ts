@@ -16,6 +16,7 @@ export function registerAddCommand(program: Command): void {
     .addHelpText('after', `
 说明:
   - 明文输入与 reference-only 输入互斥
+  - reference-only 模式下，--secret-ref 与 --auth-reference 在同时传入时必须保持一致
   - add 只记录 reference 输入，不验证当前环境能否解析
   - reference 的可执行性与治理判断请在 preview/use/import apply 阶段查看
 `)

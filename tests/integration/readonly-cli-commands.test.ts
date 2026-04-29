@@ -1040,8 +1040,8 @@ describe('readonly cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
-    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
@@ -1111,8 +1111,8 @@ describe('readonly cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
-    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
@@ -1185,7 +1185,7 @@ describe('readonly cli commands integration', () => {
     expect(result.stderr).toBe('')
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('限制说明:')
-    expect(result.stdout).toContain('  - 当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(result.stdout).toContain('  - 当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(result.stdout).toContain('referenceStats 摘要:')
     expect(result.stdout).toContain('profiles=1, reference=1, inline=0, writeUnsupported=1')
     expect(result.stdout).toContain('reference 摘要:')
@@ -1322,7 +1322,7 @@ describe('readonly cli commands integration', () => {
     expect(result.exitCode).toBe(0)
     expect(payload.ok).toBe(true)
     expect(payload.data?.summary.warnings).toEqual([])
-    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,
@@ -1434,7 +1434,7 @@ describe('readonly cli commands integration', () => {
       }),
     ]))
     expect(payload.data?.summary.warnings).toEqual([])
-    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(payload.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,
       referenceProfileCount: 1,

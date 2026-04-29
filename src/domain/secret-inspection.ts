@@ -15,7 +15,7 @@ import type {
 export const INLINE_SECRET_IN_PROFILE = 'INLINE_SECRET_IN_PROFILE'
 export const SECRET_REFERENCE_MISSING = 'SECRET_REFERENCE_MISSING'
 export const SECRET_REFERENCE_WRITE_UNSUPPORTED = 'SECRET_REFERENCE_WRITE_UNSUPPORTED'
-export const SECRET_REFERENCE_WRITE_UNSUPPORTED_MESSAGE = '当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。'
+export const SECRET_REFERENCE_WRITE_UNSUPPORTED_MESSAGE = '当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -154,7 +154,7 @@ function collectReferenceGovernanceDetails(
         status: 'resolved',
         reference,
         scheme: resolution.scheme,
-        message: `profile.${field} 的 ${resolution.scheme ?? 'reference'} 引用已解析，但当前写入链路仍不会直接消费引用。`,
+        message: `profile.${field} 的 ${resolution.scheme ?? 'reference'} 引用已解析；是否保留引用写入、回退为明文写入或直接阻断，需结合当前命令与平台能力判断。`,
       }]
     }
 

@@ -260,4 +260,40 @@ describe('add service', () => {
       },
     })
   })
+
+  it('reference-only 输入全为空白时按缺失输入处理', async () => {
+    const result = await new AddService().add({
+      platform: 'codex',
+      name: 'blank-reference-input',
+      secretRef: '   ',
+      authReference: '\t',
+    } as any)
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'add',
+      error: {
+        code: 'ADD_INPUT_REQUIRED',
+        message: '必须提供 --key 或 --secret-ref/--auth-reference 其中之一。',
+      },
+    })
+  })
+
+  it('reference-only 输入明显冲突时返回参数错误', async () => {
+    const result = await new AddService().add({
+      platform: 'claude',
+      name: 'mismatched-reference-input',
+      secretRef: 'vault://claude/source',
+      authReference: 'vault://claude/apply',
+    } as any)
+
+    expect(result).toEqual({
+      ok: false,
+      action: 'add',
+      error: {
+        code: 'ADD_INPUT_CONFLICT',
+        message: 'reference-only 输入存在冲突；请确保 --secret-ref/--auth-reference 格式有效且在同时传入时保持一致。',
+      },
+    })
+  })
 })

@@ -31,6 +31,7 @@ describe('cli add integration', () => {
     expect(result.stdout).toContain('--secret-ref <ref>')
     expect(result.stdout).toContain('--auth-reference <reference>')
     expect(result.stdout).toContain('明文输入与 reference-only 输入互斥')
+    expect(result.stdout).toContain('reference-only 模式下，--secret-ref 与 --auth-reference 在同时传入时必须保持一致')
     expect(result.stdout).toContain('add 只记录 reference 输入，不验证当前环境能否解析')
     expect(result.stdout).toContain('reference 的可执行性与治理判断请在 preview/use/import apply 阶段查看')
   })
@@ -70,7 +71,7 @@ describe('cli add integration', () => {
     expect(result.stdout).toContain('限制说明:')
   })
 
-  it('add --json 支持 secret_ref/auth_reference 创建 profile，并明确写入链路未启用', async () => {
+  it('add --json 支持 secret_ref/auth_reference 创建 profile，并明确后续解析与写入策略需在执行阶段确认', async () => {
     const result = await runCli([
       'add',
       '--platform', 'codex',
@@ -115,8 +116,8 @@ describe('cli add integration', () => {
       hasWriteUnsupportedProfiles: true,
       hasSourceRedactedProfiles: false,
     })
-    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
-    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(payload.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
+    expect(payload.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
   })
 
   it('add 同时传入 --key 与 reference 参数时返回结构化参数错误', async () => {
@@ -135,6 +136,42 @@ describe('cli add integration', () => {
     expect(payload.ok).toBe(false)
     expect(payload.error?.code).toBe('ADD_INPUT_CONFLICT')
     expect(payload.error?.message).toBe('不能同时提供 --key 与 --secret-ref/--auth-reference。')
+  })
+
+  it('add reference-only 输入全为空白时返回结构化缺失输入错误', async () => {
+    const result = await runCli([
+      'add',
+      '--platform', 'codex',
+      '--name', 'blank-reference-input',
+      '--secret-ref', '   ',
+      '--auth-reference', ' ',
+      '--json',
+    ])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('ADD_INPUT_REQUIRED')
+    expect(payload.error?.message).toBe('必须提供 --key 或 --secret-ref/--auth-reference 其中之一。')
+  })
+
+  it('add reference-only 输入不一致时返回结构化冲突错误', async () => {
+    const result = await runCli([
+      'add',
+      '--platform', 'claude',
+      '--name', 'mismatched-reference-input',
+      '--secret-ref', 'vault://claude/source',
+      '--auth-reference', 'vault://claude/apply',
+      '--json',
+    ])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('ADD_INPUT_CONFLICT')
+    expect(payload.error?.message).toBe('reference-only 输入存在冲突；请确保 --secret-ref/--auth-reference 格式有效且在同时传入时保持一致。')
   })
 
   it('add 输出低风险摘要时显示无需确认', async () => {
@@ -484,24 +521,15 @@ describe('cli add integration', () => {
     expect(profiles.some((item) => item.id === 'gemini-needs-confirmation')).toBe(true)
   })
 
-  it('add 校验失败时仍返回摘要并写入 profile', async () => {
+  it('add 对空白 key 输入直接返回缺失输入错误', async () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'invalid-key', '--key', '', '--json'])
-    const payload = parseJsonResult<any>(result.stdout)
+    const payload = parseJsonResult(result.stdout)
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(0)
-    expect(payload.ok).toBe(true)
-    expect(payload.data?.validation.ok).toBe(false)
-    expect(payload.data?.validation.errors.some((item: any) => item.code === 'missing-anthropic-auth-token')).toBe(true)
-    expect(payload.data?.summary.warnings).toContain('缺少 ANTHROPIC_AUTH_TOKEN')
-    expect(payload.data?.summary.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
-    expect(payload.data?.preview.riskLevel).toBe('high')
-    expect(payload.data?.preview.requiresConfirmation).toBe(true)
-    expect(payload.warnings).toContain('缺少 ANTHROPIC_AUTH_TOKEN')
-    expect(payload.limitations).toContain('当前按目标作用域托管 Claude 配置中的 ANTHROPIC_AUTH_TOKEN 与 ANTHROPIC_BASE_URL。')
-
-    const profiles = await new ProfilesStore().list()
-    expect(profiles.some((item) => item.id === 'claude-invalid-key')).toBe(true)
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error?.code).toBe('ADD_INPUT_REQUIRED')
+    expect(payload.error?.message).toBe('必须提供 --key 或 --secret-ref/--auth-reference 其中之一。')
   })
 
   it('add 先输出摘要再持久化，因此重复 ID 不会被预览阶段拦截', async () => {
@@ -633,13 +661,13 @@ describe('cli add integration', () => {
     expect(result.stdout).toContain('  需要确认: 是')
   })
 
-  it('add 的文本摘要会展示 validation errors', async () => {
+  it('add 的文本输出会把空白 key 视为缺失输入错误', async () => {
     const result = await runCli(['add', '--platform', 'claude', '--name', 'text-validation-error', '--key', ''])
 
     expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('  校验结果: 失败')
-    expect(result.stdout).toContain('  错误: 缺少 ANTHROPIC_AUTH_TOKEN')
+    expect(result.exitCode).toBe(1)
+    expect(result.stdout).toContain('[add] 失败')
+    expect(result.stdout).toContain('必须提供 --key 或 --secret-ref/--auth-reference 其中之一。')
   })
 
   it('add --json 为 codex 构造匹配的 source/apply 字段', async () => {

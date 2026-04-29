@@ -136,7 +136,7 @@ function renderReferenceStats(stats?: SecretReferenceStats): string[] {
   }
 
   if (stats.hasWriteUnsupportedProfiles) {
-    lines.push('  - 提示: 当前有 write unsupported profiles，preview/use/import apply 仍不会直接消费 reference-only profiles。')
+    lines.push('  - 提示: 当前有 write unsupported profiles，应先结合 reference 摘要确认哪些命令与平台仍不能直接消费这些 profiles。')
   }
 
   if (stats.hasReferenceProfiles || stats.hasInlineProfiles || stats.hasWriteUnsupportedProfiles) {
@@ -162,7 +162,7 @@ function renderExecutabilityStats(stats?: ExecutabilityStats): string[] {
   }
 
   if (stats.hasWriteUnsupportedProfiles) {
-    lines.push('  - 提示: 当前有 write unsupported profiles，现有写入链路仍不会直接消费这些 profiles。')
+    lines.push('  - 提示: 当前有 write unsupported profiles，至少部分写入链路仍不能直接消费这些 profiles。')
   }
 
   if (stats.hasSourceRedactedProfiles) {

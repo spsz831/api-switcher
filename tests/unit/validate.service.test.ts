@@ -318,7 +318,7 @@ describe('validate service', () => {
     })
   })
 
-  it('secret_ref/auth_reference profile 在 validate 层可被识别，但会提示写入链路尚未消费引用', async () => {
+  it('secret_ref/auth_reference profile 在 validate 层可被识别，但会提示后续解析与写入策略需在执行阶段确认', async () => {
     const profile = {
       id: 'claude-ref',
       name: 'claude-ref',
@@ -376,7 +376,7 @@ describe('validate service', () => {
         level: 'limitation',
       }),
     ]))
-    expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。')
+    expect(result.data?.summary.limitations).toContain('当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。')
     expect(result.data?.summary.warnings).not.toContain('profile.source.auth_reference 当前以明文 secret 存储；后续版本建议迁移到 secret_ref 或环境变量引用。')
     expect(result.data?.summary.referenceStats).toMatchObject({
       profileCount: 1,

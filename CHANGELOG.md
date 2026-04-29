@@ -2,6 +2,11 @@
 
 ## 0.1.1
 
+### Behavior
+
+- `import apply` 现在会把已解析的 `env://VAR_NAME` reference-only profile 计入 reference-ready / inline-fallback 写入链路，不再在成功态 summary 中继续归类为 write unsupported。
+- `add` 现在会对 reference-only 输入做第二阶段最小预检：空白 reference 输入会返回 `ADD_INPUT_REQUIRED`，同时传入 `--secret-ref` 与 `--auth-reference` 时若两者不一致或格式明显无效，会返回 `ADD_INPUT_CONFLICT`。
+
 ### Build
 
 - `smoke:release` 现在会校验 `dist` 构建产物的顶层 `--help` 关键命令面，避免安装后 CLI 可发现性漂移。

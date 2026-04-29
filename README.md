@@ -110,7 +110,7 @@ api-switcher add --platform codex --name "Codex 生产" --secret-ref "vault://co
 - Codex / Gemini：会先解析环境变量，再以明文 fallback 写入目标配置文件，决策码为 `inline-fallback-write`
 - unresolved / unsupported-scheme：会在成功态 preview 中暴露 blocking decision `reference-blocked`，但不会允许继续进入 use/import apply
 
-当前这条能力线只覆盖 `preview/use`；`import apply` 仍未消费 reference-only profile。
+当前这条能力线已经覆盖 `preview/use/import apply`，但当前只消费 `env://VAR_NAME` 这一类第一阶段引用；`vault://`、`op://`、`1password://` 等 scheme 仍停留在治理与阻断面。
 
 也可以先用 `api-switcher list` 看现有 profiles，再决定后续用哪个 selector。
 

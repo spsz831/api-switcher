@@ -37,6 +37,7 @@ import {
 } from './import-source.service'
 import { buildPlatformSummary } from './platform-summary'
 import { SnapshotService } from './snapshot.service'
+import type { ExecutabilityStats, ReferenceWriteDecision, SecretReferenceStats } from '../types/command'
 
 function findImportedProfile(
   items: ImportedProfileSource[],
@@ -101,6 +102,81 @@ function buildSummary(
     }),
     warnings,
     limitations,
+  }
+}
+
+type ReferenceDecisionLike = ReferenceWriteDecision | { decisionCode: string } | undefined
+
+function getReferenceDecisionCode(referenceDecision: ReferenceDecisionLike): string | undefined {
+  if (!referenceDecision || typeof referenceDecision !== 'object') {
+    return undefined
+  }
+
+  if ('writeDecision' in referenceDecision && typeof referenceDecision.writeDecision === 'string') {
+    return referenceDecision.writeDecision
+  }
+
+  if ('decisionCode' in referenceDecision && typeof referenceDecision.decisionCode === 'string') {
+    return referenceDecision.decisionCode
+  }
+
+  return undefined
+}
+
+function buildImportApplySummaryOverrides(
+  referenceDecision: ReferenceDecisionLike,
+): Pick<{ referenceStats?: SecretReferenceStats; executabilityStats?: ExecutabilityStats }, 'referenceStats' | 'executabilityStats'> | undefined {
+  const decisionCode = getReferenceDecisionCode(referenceDecision)
+
+  if (!decisionCode || decisionCode !== 'inline-fallback-write') {
+    return undefined
+  }
+
+  return {
+    referenceStats: {
+      profileCount: 1,
+      referenceProfileCount: 1,
+      resolvedReferenceProfileCount: 1,
+      missingReferenceProfileCount: 0,
+      unsupportedReferenceProfileCount: 0,
+      inlineProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      hasReferenceProfiles: true,
+      hasResolvedReferenceProfiles: true,
+      hasMissingReferenceProfiles: false,
+      hasUnsupportedReferenceProfiles: false,
+      hasInlineProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+    },
+    executabilityStats: {
+      profileCount: 1,
+      inlineReadyProfileCount: 0,
+      referenceReadyProfileCount: 1,
+      referenceMissingProfileCount: 0,
+      writeUnsupportedProfileCount: 0,
+      sourceRedactedProfileCount: 0,
+      hasInlineReadyProfiles: false,
+      hasReferenceReadyProfiles: true,
+      hasReferenceMissingProfiles: false,
+      hasWriteUnsupportedProfiles: false,
+      hasSourceRedactedProfiles: false,
+    },
+  }
+}
+
+function applyImportApplySummaryOverrides(
+  summary: ReturnType<typeof buildSingleProfileCommandSummary>,
+  referenceDecision: ReferenceDecisionLike,
+) {
+  const overrides = buildImportApplySummaryOverrides(referenceDecision)
+  if (!overrides) {
+    return summary
+  }
+
+  return {
+    ...summary,
+    ...(overrides.referenceStats ? { referenceStats: overrides.referenceStats } : {}),
+    ...(overrides.executabilityStats ? { executabilityStats: overrides.executabilityStats } : {}),
   }
 }
 
@@ -381,7 +457,7 @@ export class ImportApplyService {
       }
 
       if (options.dryRun) {
-        const dryRunSummary = buildSingleProfileCommandSummary({
+        const dryRunSummary = applyImportApplySummaryOverrides(buildSingleProfileCommandSummary({
           platform: importedSource.profile.platform,
           profileId: importedSource.profile.id,
           profile: importedSource.profile,
@@ -396,9 +472,9 @@ export class ImportApplyService {
             composedFiles: preview.targetFiles.map((item) => item.path),
             listMode: true,
           }),
-          warnings: mergeUniqueMessages(sourceWarnings, decision.reasons),
-          limitations: decision.limitations,
-        })
+            warnings: mergeUniqueMessages(sourceWarnings, decision.reasons),
+            limitations: decision.limitations,
+        }), referenceDecision)
 
         return {
           ok: true,
@@ -481,6 +557,24 @@ export class ImportApplyService {
         backup.warnings,
         backup.limitations,
       )
+      const commandSummary = applyImportApplySummaryOverrides(buildSingleProfileCommandSummary({
+        platform: importedSource.profile.platform,
+        profileId: importedSource.profile.id,
+        profile: importedSource.profile,
+        targetScope: appliedScope,
+        warningCount: summary.warnings.length,
+        limitationCount: summary.limitations.length,
+        changedFileCount: applyResult.changedFiles.length,
+        backupCreated: true,
+        noChanges: applyResult.noChanges,
+        platformSummary: buildPlatformSummary(importedSource.profile.platform, {
+          currentScope: appliedScope,
+          composedFiles: preview.targetFiles.map((item) => item.path),
+          listMode: true,
+        }),
+        warnings: summary.warnings,
+        limitations: summary.limitations,
+      }), referenceDecision)
 
       return {
         ok: true,
@@ -519,24 +613,7 @@ export class ImportApplyService {
           backupId: backup.backupId,
           changedFiles: applyResult.changedFiles,
           noChanges: applyResult.noChanges,
-          summary: buildSingleProfileCommandSummary({
-            platform: importedSource.profile.platform,
-            profileId: importedSource.profile.id,
-            profile: importedSource.profile,
-            targetScope: appliedScope,
-            warningCount: summary.warnings.length,
-            limitationCount: summary.limitations.length,
-            changedFileCount: applyResult.changedFiles.length,
-            backupCreated: true,
-            noChanges: applyResult.noChanges,
-            platformSummary: buildPlatformSummary(importedSource.profile.platform, {
-              currentScope: appliedScope,
-              composedFiles: preview.targetFiles.map((item) => item.path),
-              listMode: true,
-            }),
-            warnings: summary.warnings,
-            limitations: summary.limitations,
-          }),
+          summary: commandSummary,
         },
         warnings: summary.warnings,
         limitations: summary.limitations,

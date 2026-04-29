@@ -35,8 +35,8 @@ class GeminiUrlUnsupportedError extends Error {
 }
 
 class AddInputConflictError extends Error {
-  constructor() {
-    super('不能同时提供 --key 与 --secret-ref/--auth-reference。')
+  constructor(message = '不能同时提供 --key 与 --secret-ref/--auth-reference。') {
+    super(message)
     this.name = 'AddInputConflictError'
   }
 }
@@ -121,8 +121,12 @@ function assertAddInput(input: AddServiceInput): asserts input is AddProfileInpu
     throw new UnsupportedPlatformError(input.platform)
   }
 
-  const hasKey = hasProvidedInputValue(input.key)
-  const hasReference = hasProvidedInputValue(input.secretRef) || hasProvidedInputValue(input.authReference)
+  const normalizedKey = normalizeInputValue(input.key)
+  const normalizedSecretRef = normalizeInputValue(input.secretRef)
+  const normalizedAuthReference = normalizeInputValue(input.authReference)
+
+  const hasKey = normalizedKey !== undefined
+  const hasReference = normalizedSecretRef !== undefined || normalizedAuthReference !== undefined
 
   if (hasKey && hasReference) {
     throw new AddInputConflictError()
@@ -132,13 +136,53 @@ function assertAddInput(input: AddServiceInput): asserts input is AddProfileInpu
     throw new AddInputRequiredError()
   }
 
+  if (hasReference) {
+    assertReferenceOnlyInput({
+      secretRef: normalizedSecretRef,
+      authReference: normalizedAuthReference,
+    })
+  }
+
   if (input.platform === 'gemini' && input.url) {
     throw new GeminiUrlUnsupportedError()
   }
+
+  input.key = normalizedKey
+  input.secretRef = normalizedSecretRef
+  input.authReference = normalizedAuthReference
 }
 
 function hasProvidedInputValue(value: unknown): boolean {
   return typeof value === 'string'
+}
+
+function normalizeInputValue(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function isLikelyReference(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\/.+/i.test(value)
+}
+
+function assertReferenceOnlyInput(input: { secretRef?: string; authReference?: string }): void {
+  const { secretRef, authReference } = input
+
+  if (secretRef && !isLikelyReference(secretRef)) {
+    throw new AddInputConflictError('reference-only 输入存在冲突；请确保 --secret-ref/--auth-reference 格式有效且在同时传入时保持一致。')
+  }
+
+  if (authReference && !isLikelyReference(authReference)) {
+    throw new AddInputConflictError('reference-only 输入存在冲突；请确保 --secret-ref/--auth-reference 格式有效且在同时传入时保持一致。')
+  }
+
+  if (secretRef && authReference && secretRef !== authReference) {
+    throw new AddInputConflictError('reference-only 输入存在冲突；请确保 --secret-ref/--auth-reference 格式有效且在同时传入时保持一致。')
+  }
 }
 
 function mapAddErrorCode(error: unknown): string {

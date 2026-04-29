@@ -71,7 +71,7 @@ describe('secret reference resolver', () => {
         code: 'SECRET_REFERENCE_WRITE_UNSUPPORTED',
         level: 'limitation',
         source: 'profile',
-        message: '当前已识别 secret_ref/auth_reference，但 preview/use/import apply 尚未消费引用；后续写入仍需明文 secret 或运行时环境变量。',
+        message: '当前已识别 secret_ref/auth_reference；真正的本地解析、治理判断与写入策略需要在 preview/use/import apply 阶段结合平台能力进一步确认。',
       }],
     }, resolver)).toEqual({
       hasReferenceProfiles: true,
@@ -94,7 +94,7 @@ describe('secret reference resolver', () => {
           status: 'resolved',
           reference: 'env://API_SWITCHER_TEST_SECRET',
           scheme: 'env',
-          message: 'profile.apply.auth_reference 的 env 引用已解析，但当前写入链路仍不会直接消费引用。',
+          message: 'profile.apply.auth_reference 的 env 引用已解析；是否保留引用写入、回退为明文写入或直接阻断，需结合当前命令与平台能力判断。',
         },
         {
           code: 'REFERENCE_SCHEME_UNSUPPORTED',
