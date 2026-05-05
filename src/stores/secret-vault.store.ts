@@ -28,13 +28,27 @@ export class SecretVaultStore {
     await this.write(file)
   }
 
+  async delete(referenceKey: string): Promise<void> {
+    const file = await this.read()
+    if (!(referenceKey in file.secrets)) {
+      return
+    }
+
+    delete file.secrets[referenceKey]
+    await this.write(file)
+  }
+
   getSync(referenceKey: string): string | undefined {
     const filePath = getRuntimePaths().secretsFile
     if (!fs.existsSync(filePath)) {
       return undefined
     }
 
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SecretVaultFile
-    return parsed.secrets?.[referenceKey]
+    try {
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SecretVaultFile
+      return parsed.secrets?.[referenceKey]
+    } catch {
+      return undefined
+    }
   }
 }

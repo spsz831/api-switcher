@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defaultSecretReferenceResolver } from '../../src/domain/secret-reference-resolver'
 import { AdapterNotRegisteredError } from '../../src/registry/adapter-registry'
 import { AddService } from '../../src/services/add.service'
+import { SecretVaultStore } from '../../src/stores/secret-vault.store'
 import { ProfilesStore } from '../../src/stores/profiles.store'
 import type { Profile } from '../../src/types/profile'
 
@@ -285,6 +286,27 @@ describe('add service', () => {
       referencePrefix: 'vault://api-switcher/',
       references: ['vault://api-switcher/claude/vault-profile'],
     })
+    expect(new SecretVaultStore().getSync('claude/vault-profile')).toBe('sk-vault-123456')
+  })
+
+  it('add 失败时会回滚已写入的 runtime secret', async () => {
+    const result = await new AddService(
+      {
+        add: async () => undefined,
+      } as any,
+      {
+        get: () => {
+          throw new AdapterNotRegisteredError('claude')
+        },
+      } as any,
+    ).add({
+      platform: 'claude',
+      name: 'vault-rollback-profile',
+      key: 'sk-vault-rollback-123456',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(new SecretVaultStore().getSync('claude/vault-rollback-profile')).toBeUndefined()
   })
 
   it('明文 key 与 secret reference 同时出现时返回参数错误', async () => {
