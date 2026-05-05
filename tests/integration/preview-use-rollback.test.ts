@@ -400,7 +400,7 @@ describe('preview/use/rollback integration', () => {
     expect(content.theme).toBe('dark')
   })
 
-  it('Claude reference profile 会保留 env 引用写入原生字段', async () => {
+  it('Claude reference profile 会把解析后的 secret 写入原生字段', async () => {
     const result = await new SwitchService().use('claude-ref-prod', { force: true })
 
     expect(result.ok).toBe(true)
@@ -410,7 +410,7 @@ describe('preview/use/rollback integration', () => {
     }))
 
     const content = JSON.parse(await fs.readFile(claudeProjectSettingsPath, 'utf8')) as Record<string, unknown>
-    expect(content.ANTHROPIC_AUTH_TOKEN).toBe('env://API_SWITCHER_ANTHROPIC_TOKEN')
+    expect(content.ANTHROPIC_AUTH_TOKEN).toBe('sk-ref-live-654321')
     expect(content.ANTHROPIC_BASE_URL).toBe('https://gateway.example.com/api')
     expect(content.theme).toBe('dark')
   })

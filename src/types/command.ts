@@ -914,6 +914,13 @@ export interface AddSummary {
   limitations: string[]
 }
 
+export interface SecretMigrationSummary {
+  mode: 'runtime-vault'
+  migratedSecretCount: number
+  referencePrefix: 'vault://api-switcher/'
+  references: string[]
+}
+
 export interface AddRiskSummary {
   allowed: boolean
   riskLevel: RiskLevel
@@ -927,6 +934,7 @@ export interface AddCommandOutput {
   preview: PreviewResult
   risk: AddRiskSummary
   summary: AddSummary
+  secretMigration?: SecretMigrationSummary
   scopeCapabilities?: PlatformScopeCapability[]
 }
 

@@ -20,13 +20,13 @@ function materializeClaude(profile: Profile, resolver: SecretReferenceResolver):
   }
 
   const resolution = resolver.resolve(reference)
-  if (resolution.status !== 'resolved') {
+  if (resolution.status !== 'resolved' || !resolution.resolvedValue) {
     return { profile, materialized: false }
   }
 
   const apply = {
     ...profile.apply,
-    ANTHROPIC_AUTH_TOKEN: reference,
+    ANTHROPIC_AUTH_TOKEN: resolution.resolvedValue,
   }
 
   return {

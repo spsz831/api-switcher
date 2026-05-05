@@ -1078,6 +1078,14 @@ function renderAdd(data: AddCommandOutput): string {
   const referenceOnlyBoundaryNote = data.summary.referenceStats?.hasReferenceProfiles
     ? ['  说明: add 只记录 reference 输入；真正的本地解析、治理判断和写入可执行性检查在 preview/use/import apply 阶段完成。']
     : []
+  const secretMigrationLines = data.secretMigration
+    ? [
+        '  Secret 迁移:',
+        `  - 模式: ${data.secretMigration.mode}`,
+        `  - 已迁移: ${data.secretMigration.migratedSecretCount}`,
+        ...data.secretMigration.references.map((reference) => `  - 引用: ${reference}`),
+      ]
+    : []
 
   return [
     ...renderSinglePlatformStats(data.summary.platformStats),
@@ -1100,6 +1108,7 @@ function renderAdd(data: AddCommandOutput): string {
     ...renderEffectiveConfig(data.preview.effectiveConfig),
     ...renderManagedBoundaries(data.preview.managedBoundaries),
     ...renderSecretReferences(data.preview.secretReferences),
+    ...secretMigrationLines,
     ...referenceOnlyBoundaryNote,
     ...renderDiffSummary(data.preview.diffSummary),
     ...renderValidationIssues('预览警告', data.preview.warnings),

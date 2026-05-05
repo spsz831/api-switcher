@@ -187,7 +187,7 @@ describe('cli add integration', () => {
     expect(result.stdout).toContain('  无变更: 否')
   })
 
-  it('add 无变更时摘要显示 noChanges', async () => {
+  it('add 明文 key 即使目标文件无变化也会迁移到 runtime vault', async () => {
     await fs.writeFile(
       context.claudeProjectSettingsPath,
       JSON.stringify({ theme: 'dark', ANTHROPIC_AUTH_TOKEN: 'sk-same-123', ANTHROPIC_BASE_URL: 'https://same.example.com/api' }, null, 2),

@@ -6,6 +6,7 @@ export interface RuntimePaths {
   rootDir: string
   profilesFile: string
   stateFile: string
+  secretsFile: string
   backupsDir: string
   logsDir: string
 }
@@ -21,6 +22,7 @@ export function getRuntimePaths(): RuntimePaths {
     rootDir,
     profilesFile: path.join(rootDir, 'profiles.json'),
     stateFile: path.join(rootDir, 'state.json'),
+    secretsFile: path.join(rootDir, 'secrets.json'),
     backupsDir: path.join(rootDir, 'backups'),
     logsDir: path.join(rootDir, 'logs'),
   }
