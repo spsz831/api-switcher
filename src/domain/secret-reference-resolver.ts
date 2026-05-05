@@ -1,3 +1,5 @@
+import { SecretVaultStore } from '../stores/secret-vault.store'
+
 export type SecretReferenceResolutionStatus = 'resolved' | 'unresolved' | 'unsupported-scheme'
 
 export interface SecretReferenceResolution {
@@ -17,11 +19,33 @@ function parseScheme(reference: string): string | undefined {
 }
 
 export class EnvSecretReferenceResolver implements SecretReferenceResolver {
-  constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
+  constructor(
+    private readonly env: NodeJS.ProcessEnv = process.env,
+    private readonly vaultStore = new SecretVaultStore(),
+  ) {}
 
   resolve(reference: string): SecretReferenceResolution {
     const trimmed = reference.trim()
     const scheme = parseScheme(trimmed)
+
+    if (scheme === 'vault') {
+      if (!trimmed.startsWith('vault://api-switcher/')) {
+        return {
+          reference: trimmed,
+          status: 'unsupported-scheme',
+          scheme,
+        }
+      }
+
+      const key = trimmed.slice('vault://api-switcher/'.length).trim()
+      const value = key ? this.vaultStore.getSync(key) : undefined
+      return {
+        reference: trimmed,
+        status: value && value.trim().length > 0 ? 'resolved' : 'unresolved',
+        scheme,
+        ...(value && value.trim().length > 0 ? { resolvedValue: value } : {}),
+      }
+    }
 
     if (scheme !== 'env') {
       return {

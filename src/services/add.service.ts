@@ -1,7 +1,9 @@
 import { evaluateRisk } from '../domain/risk-engine'
+import { materializeReferenceProfile } from '../domain/materialize-reference-profile'
 import {
   withProfileSecretReferenceContract,
 } from '../domain/secret-inspection'
+import { defaultSecretReferenceResolver } from '../domain/secret-reference-resolver'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { AddProfileInput, AddCommandOutput, CommandResult } from '../types/command'
 import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
@@ -10,6 +12,7 @@ import { DuplicateProfileIdError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 import { buildPlatformSummary } from './platform-summary'
 import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
+import { SecretVaultStore } from '../stores/secret-vault.store'
 
 type AddServiceInput = {
   platform: string
@@ -52,16 +55,34 @@ export class AddService {
   constructor(
     private readonly profileService = new ProfileService(),
     private readonly registry = new AdapterRegistry(),
+    private readonly secretVaultStore = new SecretVaultStore(),
   ) {}
 
   async add(input: AddServiceInput): Promise<CommandResult<AddCommandOutput>> {
     try {
       assertAddInput(input)
 
-      const profile = buildProfile(input)
-      const adapter = this.registry.get(profile.platform)
-      const validation = withProfileSecretReferenceContract(await adapter.validate(profile), profile)
-      const preview = await adapter.preview(profile)
+      const responseProfile = buildProfile(input)
+      const secretReference = input.key ? buildRuntimeVaultReference(input.platform, input.name) : undefined
+      const storedProfile = secretReference
+        ? buildProfile({
+            ...input,
+            key: undefined,
+            secretRef: secretReference,
+            authReference: secretReference,
+          })
+        : responseProfile
+
+      if (secretReference && input.key) {
+        await this.secretVaultStore.set(toRuntimeVaultKey(input.platform, input.name), input.key)
+      }
+
+      const adapter = this.registry.get(storedProfile.platform)
+      const runtimeProfile = secretReference
+        ? materializeReferenceProfile(storedProfile, defaultSecretReferenceResolver).profile
+        : storedProfile
+      const validation = withProfileSecretReferenceContract(await adapter.validate(runtimeProfile), responseProfile)
+      const preview = await adapter.preview(runtimeProfile)
       const decision = evaluateRisk(preview, validation)
       const risk = {
         allowed: decision.allowed,
@@ -71,15 +92,15 @@ export class AddService {
       }
 
       const summary = buildSingleProfileCommandSummary({
-        platform: profile.platform,
-        profileId: profile.id,
-        profile,
+        platform: responseProfile.platform,
+        profileId: responseProfile.id,
+        profile: responseProfile,
         warningCount: risk.reasons.length,
         limitationCount: risk.limitations.length,
         changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
         backupCreated: preview.backupPlanned,
         noChanges: preview.noChanges,
-        platformSummary: buildPlatformSummary(profile.platform, {
+        platformSummary: buildPlatformSummary(responseProfile.platform, {
           composedFiles: preview.targetFiles.map((item) => item.path),
           listMode: true,
         }),
@@ -87,18 +108,26 @@ export class AddService {
         limitations: risk.limitations,
       })
 
-      await this.profileService.add(profile)
+      await this.profileService.add(storedProfile)
 
       return {
         ok: true,
         action: 'add',
         data: {
-          profile,
+          profile: responseProfile,
           validation,
           preview,
           risk,
           summary,
-          scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+          ...(secretReference ? {
+            secretMigration: {
+              mode: 'runtime-vault',
+              migratedSecretCount: 1,
+              referencePrefix: 'vault://api-switcher/',
+              references: [secretReference],
+            },
+          } : {}),
+          scopeCapabilities: getScopeCapabilityMatrix(responseProfile.platform),
         },
         warnings: summary.warnings,
         limitations: summary.limitations,
@@ -224,6 +253,22 @@ function buildProfile(input: AddProfileInput): Profile {
     apply: buildApply(input.platform, input, input.url),
     meta: { createdAt: now, updatedAt: now },
   }
+}
+
+function sanitizeVaultPart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function toRuntimeVaultKey(platform: PlatformName, name: string): string {
+  return `${platform}/${sanitizeVaultPart(name)}`
+}
+
+function buildRuntimeVaultReference(platform: PlatformName, name: string): string {
+  return `vault://api-switcher/${toRuntimeVaultKey(platform, name)}`
 }
 
 function buildSource(platform: PlatformName, input: AddProfileInput, url?: string): Record<string, string> {
