@@ -28,6 +28,8 @@ import type {
   RollbackCommandOutput,
   SchemaCommandOutput,
   SecretReferenceStats,
+  AuditSummary,
+  OverlaySummary,
   UseCommandOutput,
   ValidateCommandOutput,
 } from '../types/command'
@@ -176,6 +178,35 @@ function renderExecutabilityStats(stats?: ExecutabilityStats): string[] {
   return lines
 }
 
+function renderAuditSummary(summary?: AuditSummary): string[] {
+  if (!summary) {
+    return []
+  }
+
+  return [
+    'auditSummary 摘要:',
+    `  - totalProfiles=${summary.totalProfiles}, platformCount=${summary.platformCount}`,
+    `  - hasReferenceProfiles=${summary.hasReferenceProfiles ? 'yes' : 'no'}, hasInlineSecrets=${summary.hasInlineSecrets ? 'yes' : 'no'}, hasWriteUnsupportedProfiles=${summary.hasWriteUnsupportedProfiles ? 'yes' : 'no'}, hasHighRiskItems=${summary.hasHighRiskItems ? 'yes' : 'no'}`,
+    `  - 下一步: ${summary.recommendedNextStep}`,
+  ]
+}
+
+function renderOverlaySummary(summary?: OverlaySummary): string[] {
+  if (!summary) {
+    return []
+  }
+
+  const lines = [
+    'overlaySummary 摘要:',
+    `  - hasOverlayLayer=${summary.hasOverlayLayer ? 'yes' : 'no'}, overlayItemCount=${summary.overlayItemCount}`,
+    `  - overlayKinds=${summary.overlayKinds.length > 0 ? summary.overlayKinds.join(', ') : 'none'}`,
+    `  - preservedKeys=${summary.preservedKeys.length > 0 ? summary.preservedKeys.join(', ') : 'none'}, runtimeOnlyKeys=${summary.runtimeOnlyKeys.length > 0 ? summary.runtimeOnlyKeys.join(', ') : 'none'}`,
+  ]
+
+  lines.push(...summary.notes.map((note) => `  - 说明: ${note}`))
+  return lines
+}
+
 function renderImportSourceExecutability(summary: ImportPreviewCommandOutput['summary']['sourceExecutability']): string[] {
   return [
     '导入源可执行性:',
@@ -253,8 +284,8 @@ function renderImportPreviewPlatformStats(stats: ImportPreviewCommandOutput['sum
 }
 
 function renderReadonlySummarySections(
-  action: 'current' | 'list' | 'validate' | 'export' | 'import',
-  renderers: Partial<Record<'platform' | 'reference' | 'executability' | 'source-executability', () => string[]>>,
+  action: 'current' | 'list' | 'validate' | 'export' | 'preview' | 'import',
+  renderers: Partial<Record<'platform' | 'reference' | 'executability' | 'audit' | 'overlay' | 'source-executability', () => string[]>>,
 ): string[] {
   return getReadonlySummarySections(action).flatMap((section) => {
     const renderer = renderers[section.id]
@@ -993,6 +1024,8 @@ function renderCurrent(data: CurrentCommandOutput): string {
     platform: () => renderCurrentListPlatformStats(data.summary.platformStats),
     reference: () => renderReferenceStats(data.summary.referenceStats),
     executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+    audit: () => renderAuditSummary(data.summary.auditSummary),
+    overlay: () => renderOverlaySummary(data.summary.overlaySummary),
   }))
 
   if (data.detections.length > 0) {
@@ -1011,9 +1044,13 @@ function renderCurrent(data: CurrentCommandOutput): string {
 
 function renderPreview(data: PreviewCommandOutput): string {
   const lines = [
-    ...renderSinglePlatformStats(data.summary.platformStats),
-    ...renderReferenceStats(data.summary.referenceStats),
-    ...renderExecutabilityStats(data.summary.executabilityStats),
+    ...renderReadonlySummarySections('preview', {
+      platform: () => renderSinglePlatformStats(data.summary.platformStats),
+      reference: () => renderReferenceStats(data.summary.referenceStats),
+      executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+      audit: () => renderAuditSummary(data.summary.auditSummary),
+      overlay: () => renderOverlaySummary(data.summary.overlaySummary),
+    }),
     `- 配置: ${data.profile.id} (${data.profile.platform})`,
     `  校验结果: ${data.validation.ok ? '通过' : '失败'}`,
     ...renderValidationIssues('错误', data.validation.errors),
@@ -1377,6 +1414,8 @@ function renderValidate(data: ValidateCommandOutput): string {
       platform: () => renderValidateExportPlatformStats(data.summary.platformStats),
       reference: () => renderReferenceStats(data.summary.referenceStats),
       executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+      audit: () => renderAuditSummary(data.summary.auditSummary),
+      overlay: () => renderOverlaySummary(data.summary.overlaySummary),
     }),
     data.items.map((item) => [
       `- ${item.profileId} (${item.platform})`,
@@ -1401,6 +1440,8 @@ function renderList(data: ListCommandOutput): string {
       platform: () => renderCurrentListPlatformStats(data.summary.platformStats),
       reference: () => renderReferenceStats(data.summary.referenceStats),
       executability: () => renderExecutabilityStats(data.summary.executabilityStats),
+      audit: () => renderAuditSummary(data.summary.auditSummary),
+      overlay: () => renderOverlaySummary(data.summary.overlaySummary),
     }),
     data.profiles.map((item) => [
       `- ${item.profile.id} (${item.profile.platform})`,

@@ -366,7 +366,7 @@ describe('public JSON contract types', () => {
             }>
           }
           summarySections?: Array<{
-            id: 'platform' | 'reference' | 'executability' | 'source-executability'
+            id: 'platform' | 'reference' | 'executability' | 'audit' | 'overlay' | 'source-executability'
             title: string
             priority: number
             fields: string[]
