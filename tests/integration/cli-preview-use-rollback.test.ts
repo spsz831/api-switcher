@@ -1494,6 +1494,32 @@ describe('cli preview/use/rollback integration', () => {
     expect(state.lastSwitch?.status).toBe('rolled-back')
   })
 
+  it('use --json 非法 --scope 返回 INVALID_SCOPE 结构化错误', async () => {
+    const result = await runCli(['use', 'gemini-prod', '--scope', 'system-overrides', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('use')
+    expect(payload.error?.code).toBe('INVALID_SCOPE')
+  })
+
+  it('rollback --json 非法 --scope 返回 INVALID_SCOPE 结构化错误', async () => {
+    const useResult = await runCli(['use', 'gemini-prod', '--force', '--json'])
+    const usePayload = parseJsonResult<{ backupId: string }>(useResult.stdout)
+    expect(usePayload.ok).toBe(true)
+
+    const result = await runCli(['rollback', usePayload.data!.backupId, '--scope', 'system-overrides', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('rollback')
+    expect(payload.error?.code).toBe('INVALID_SCOPE')
+  })
+
   it('preview 校验失败时仍输出预览摘要并设置 exitCode 1', async () => {
     const result = await runCli(['preview', 'gemini-invalid'])
 
