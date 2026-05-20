@@ -757,6 +757,21 @@ describe('cli add integration', () => {
     expect(payload.error?.message).toBe('gemini 平台暂不支持 --url，请改用默认官方链路。')
   })
 
+  it('add 重复 ID 时返回结构化失败对象并设置 exitCode 1', async () => {
+    const first = await runCli(['add', '--platform', 'claude', '--name', 'dup-json', '--key', 'sk-dup-json-123', '--json'])
+    expect(first.exitCode).toBe(0)
+
+    const second = await runCli(['add', '--platform', 'claude', '--name', 'dup-json', '--key', 'sk-dup-json-456', '--json'])
+    const payload = parseJsonResult(second.stdout)
+
+    expect(second.stderr).toBe('')
+    expect(second.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('add')
+    expect(payload.error?.code).toBe('DUPLICATE_PROFILE_ID')
+    expect(payload.error?.message).toBe('配置 ID 已存在：claude-dup-json')
+  })
+
   it('add 重复 ID 时返回 explainable 失败结果并保持已有 profiles 不变', async () => {
     const first = await runCli(['add', '--platform', 'claude', '--name', 'dup-prod', '--key', 'sk-new-123'])
     expect(first.stderr).toBe('')
