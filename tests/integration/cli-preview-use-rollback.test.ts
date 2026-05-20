@@ -880,6 +880,31 @@ describe('cli preview/use/rollback integration', () => {
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
+  it('preview 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
+    await new ProfilesStore().write({
+      version: 1,
+      profiles: [
+        {
+          id: 'openai-prod',
+          name: 'openai-prod',
+          platform: 'openai' as Profile['platform'],
+          source: { apiKey: 'sk-openai-123456' },
+          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
+        },
+      ],
+    })
+
+    const result = await runCli(['preview', 'openai-prod', '--json'])
+    const payload = parseJsonResult(result.stdout)
+
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.action).toBe('preview')
+    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
+    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
+  })
+
   it('preview 文本输出底层 settings 读取异常的失败结果', async () => {
     await fs.rm(context.geminiSettingsPath, { force: true, recursive: true })
     await fs.mkdir(context.geminiSettingsPath, { recursive: true })
