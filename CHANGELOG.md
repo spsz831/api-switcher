@@ -2,6 +2,10 @@
 
 ## 0.1.2
 
+### Testing
+
+- 补全 `list`、`use`、`rollback`、`import` 命令的 `--json` 结构化错误码集成断言，覆盖 UNSUPPORTED_PLATFORM、INVALID_SCOPE、IMPORT_SOURCE_INVALID、IMPORT_UNSUPPORTED_SCHEMA、ADAPTER_NOT_REGISTERED 等错误码。
+
 ### Security
 
 - 开发态在设置 `API_SWITCHER_RUNTIME_DIR` 时，默认把 Claude / Codex / Gemini 的目标文件重定向到运行时沙箱，避免源码 CLI、联调脚本或手工开发流程误写真实用户目录。
