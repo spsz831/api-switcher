@@ -5,7 +5,7 @@ import type { ValidationIssue } from '../types/adapter'
 import type { CommandResult, ValidateCommandOutput, ValidateExportPlatformStat } from '../types/command'
 import type { Profile } from '../types/profile'
 import { buildPlatformSummary } from './platform-summary'
-import { buildAuditSummary, buildEmptyOverlaySummary, buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
+import { buildReadonlyStateAuditTriageStats } from './readonly-triage-summary'
 import { ProfileNotFoundError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 
@@ -65,24 +65,11 @@ export class ValidateService {
   }
 
   private buildValidateSummary(profiles: Profile[], items: ValidateCommandOutput['items']): ValidateCommandOutput['summary'] {
-    const platformStats = this.buildPlatformStats(profiles, items)
-    const referenceStats = buildSecretReferenceStats(profiles)
-    const executabilityStats = buildExecutabilityStats(profiles.map((profile) => ({ profile })))
-    const triageStats = buildReadonlyStateAuditTriageStats(profiles)
-
     return {
-      platformStats,
-      referenceStats,
-      executabilityStats,
-      triageStats,
-      auditSummary: buildAuditSummary({
-        totalProfiles: profiles.length,
-        platformCount: platformStats.length,
-        referenceStats,
-        executabilityStats,
-        highRiskItemCount: profiles.filter((profile) => profile.meta?.riskLevel === 'high').length,
-      }),
-      overlaySummary: buildEmptyOverlaySummary(),
+      platformStats: this.buildPlatformStats(profiles, items),
+      referenceStats: buildSecretReferenceStats(profiles),
+      executabilityStats: buildExecutabilityStats(profiles.map((profile) => ({ profile }))),
+      triageStats: buildReadonlyStateAuditTriageStats(profiles),
       warnings: Array.from(new Set(items.flatMap((item) => [
         ...this.collectMessages(item.validation.warnings),
         ...item.validation.effectiveConfig?.overrides.map((override) => override.message) ?? [],

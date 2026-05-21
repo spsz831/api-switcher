@@ -12,29 +12,21 @@ describe('readonly summary sections', () => {
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(getReadonlySummarySections('list').map((section) => section.id)).toEqual([
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(getReadonlySummarySections('validate').map((section) => section.id)).toEqual([
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
-    expect(getReadonlySummarySections('preview').map((section) => section.id)).toEqual([
+    expect(getReadonlySummarySections('export').map((section) => section.id)).toEqual([
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(getReadonlySummarySections('import').map((section) => section.id)).toEqual([
       'source-executability',
@@ -57,10 +49,7 @@ describe('readonly summary sections', () => {
       expect(capability?.summarySections).toEqual(getReadonlySummarySections(action))
     }
 
-    for (const action of ['current', 'list', 'validate', 'preview'] as const) {
-      const capability = actions.find((item) => item.action === action)
-      expect(capability?.summarySections).toEqual(getReadonlySummarySections(action))
-    }
+    expect(actions.find((item) => item.action === 'preview')?.summarySections).toBeUndefined()
     expect(actions.find((item) => item.action === 'use')?.summarySections).toBeUndefined()
   })
 

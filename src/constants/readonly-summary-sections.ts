@@ -3,7 +3,7 @@ import type {
   SchemaSummarySection,
 } from '../types/command'
 
-export type ReadonlySummarySectionAction = 'current' | 'list' | 'validate' | 'export' | 'preview' | 'import'
+export type ReadonlySummarySectionAction = 'current' | 'list' | 'validate' | 'export' | 'import'
 
 const CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS: SchemaSummarySection[] = [
   {
@@ -29,26 +29,6 @@ const CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS: SchemaSummarySection[] = [
     fields: ['summary.executabilityStats'],
     purpose: '看后续若进入写入命令时是否具备可执行条件，用于区分可继续处理和需人工修复的项。',
     recommendedWhen: ['pre-write readiness', 'apply/use readiness check'],
-  },
-]
-
-const CURRENT_LIST_VALIDATE_PREVIEW_SUMMARY_SECTIONS: SchemaSummarySection[] = [
-  ...CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS,
-  {
-    id: 'audit',
-    title: 'Audit summary',
-    priority: 4,
-    fields: ['summary.auditSummary'],
-    purpose: '看统一审计入口，快速判断 profile 总数、平台数量、reference/inline/write-unsupported 和高风险信号。',
-    recommendedWhen: ['automation-friendly audit', 'top-level risk triage'],
-  },
-  {
-    id: 'overlay',
-    title: 'Overlay summary',
-    priority: 5,
-    fields: ['summary.overlaySummary'],
-    purpose: '看只读 overlay 骨架；当前只解释 overlay 状态，不提供 overlay 写入、合并或持久化能力。',
-    recommendedWhen: ['overlay readiness review', 'future overlay management discovery'],
   },
 ]
 
@@ -84,8 +64,6 @@ export function getReadonlySummarySections(action: ReadonlySummarySectionAction)
     case 'current':
     case 'list':
     case 'validate':
-    case 'preview':
-      return CURRENT_LIST_VALIDATE_PREVIEW_SUMMARY_SECTIONS
     case 'export':
       return CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS
     case 'import':
@@ -98,7 +76,7 @@ export function getReadonlyConsumerProfileSummarySectionGuidance(
 ): SchemaConsumerProfileSummarySectionGuidance[] {
   switch (profileId) {
     case 'readonly-state-audit':
-      return CURRENT_LIST_VALIDATE_PREVIEW_SUMMARY_SECTIONS.map((section) => ({
+      return CURRENT_LIST_VALIDATE_EXPORT_SUMMARY_SECTIONS.map((section) => ({
         id: section.id,
         title: section.title,
         priority: section.priority,

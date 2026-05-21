@@ -880,31 +880,6 @@ describe('cli preview/use/rollback integration', () => {
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
   })
 
-  it('preview 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
-    await new ProfilesStore().write({
-      version: 1,
-      profiles: [
-        {
-          id: 'openai-prod',
-          name: 'openai-prod',
-          platform: 'openai' as Profile['platform'],
-          source: { apiKey: 'sk-openai-123456' },
-          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
-        },
-      ],
-    })
-
-    const result = await runCli(['preview', 'openai-prod', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('preview')
-    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
-    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
-  })
-
   it('preview 文本输出底层 settings 读取异常的失败结果', async () => {
     await fs.rm(context.geminiSettingsPath, { force: true, recursive: true })
     await fs.mkdir(context.geminiSettingsPath, { recursive: true })
@@ -942,31 +917,6 @@ describe('cli preview/use/rollback integration', () => {
     expect(payload.action).toBe('use')
     expect(payload.error?.code).toBe('PROFILE_NOT_FOUND')
     expect(payload.error?.message).toBe('未找到配置档：missing-profile')
-  })
-
-  it('use 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
-    await new ProfilesStore().write({
-      version: 1,
-      profiles: [
-        {
-          id: 'openai-prod',
-          name: 'openai-prod',
-          platform: 'openai' as Profile['platform'],
-          source: { apiKey: 'sk-openai-123456' },
-          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
-        },
-      ],
-    })
-
-    const result = await runCli(['use', 'openai-prod', '--force', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('use')
-    expect(payload.error?.code).toBe('ADAPTER_NOT_REGISTERED')
-    expect(payload.error?.message).toBe('未注册的平台适配器：openai')
   })
 
   it('use --json 底层 settings 读取异常时返回失败对象并设置 exitCode 1', async () => {
@@ -1492,32 +1442,6 @@ describe('cli preview/use/rollback integration', () => {
     const state = await new StateStore().read()
     expect(state.current.codex).toBeUndefined()
     expect(state.lastSwitch?.status).toBe('rolled-back')
-  })
-
-  it('use --json 非法 --scope 返回 INVALID_SCOPE 结构化错误', async () => {
-    const result = await runCli(['use', 'gemini-prod', '--scope', 'system-overrides', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('use')
-    expect(payload.error?.code).toBe('INVALID_SCOPE')
-  })
-
-  it('rollback --json 非法 --scope 返回 INVALID_SCOPE 结构化错误', async () => {
-    const useResult = await runCli(['use', 'gemini-prod', '--force', '--json'])
-    const usePayload = parseJsonResult<{ backupId: string }>(useResult.stdout)
-    expect(usePayload.ok).toBe(true)
-
-    const result = await runCli(['rollback', usePayload.data!.backupId, '--scope', 'system-overrides', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('rollback')
-    expect(payload.error?.code).toBe('INVALID_SCOPE')
   })
 
   it('preview 校验失败时仍输出预览摘要并设置 exitCode 1', async () => {

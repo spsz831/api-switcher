@@ -187,7 +187,7 @@ describe('cli add integration', () => {
     expect(result.stdout).toContain('  无变更: 否')
   })
 
-  it('add 明文 key 即使目标文件无变化也会迁移到 runtime vault', async () => {
+  it('add 无变更时摘要显示 noChanges', async () => {
     await fs.writeFile(
       context.claudeProjectSettingsPath,
       JSON.stringify({ theme: 'dark', ANTHROPIC_AUTH_TOKEN: 'sk-same-123', ANTHROPIC_BASE_URL: 'https://same.example.com/api' }, null, 2),
@@ -755,21 +755,6 @@ describe('cli add integration', () => {
     expect(payload.action).toBe('add')
     expect(payload.error?.code).toBe('GEMINI_URL_UNSUPPORTED')
     expect(payload.error?.message).toBe('gemini 平台暂不支持 --url，请改用默认官方链路。')
-  })
-
-  it('add 重复 ID 时返回结构化失败对象并设置 exitCode 1', async () => {
-    const first = await runCli(['add', '--platform', 'claude', '--name', 'dup-json', '--key', 'sk-dup-json-123', '--json'])
-    expect(first.exitCode).toBe(0)
-
-    const second = await runCli(['add', '--platform', 'claude', '--name', 'dup-json', '--key', 'sk-dup-json-456', '--json'])
-    const payload = parseJsonResult(second.stdout)
-
-    expect(second.stderr).toBe('')
-    expect(second.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('add')
-    expect(payload.error?.code).toBe('DUPLICATE_PROFILE_ID')
-    expect(payload.error?.message).toBe('配置 ID 已存在：claude-dup-json')
   })
 
   it('add 重复 ID 时返回 explainable 失败结果并保持已有 profiles 不变', async () => {

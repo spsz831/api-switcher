@@ -83,22 +83,16 @@ describe('schema summary sections integration', () => {
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(byAction('list')?.summarySections?.map((item) => item.id)).toEqual([
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(byAction('validate')?.summarySections?.map((item) => item.id)).toEqual([
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(byAction('export')?.summarySections?.map((item) => item.id)).toEqual([
       'platform',
@@ -111,13 +105,7 @@ describe('schema summary sections integration', () => {
       'platform',
     ])
 
-    expect(byAction('preview')?.summarySections?.map((item) => item.id)).toEqual([
-      'platform',
-      'reference',
-      'executability',
-      'audit',
-      'overlay',
-    ])
+    expect(byAction('preview')?.summarySections).toBeUndefined()
     expect(byAction('use')?.summarySections).toBeUndefined()
     expect(byAction('rollback')?.summarySections).toBeUndefined()
     expect(byAction('import-apply')?.summarySections).toBeUndefined()
@@ -149,8 +137,6 @@ describe('schema summary sections integration', () => {
       'platform',
       'reference',
       'executability',
-      'audit',
-      'overlay',
     ])
     expect(byProfile('readonly-import-batch')?.summarySectionGuidance?.map((item) => item.id)).toEqual([
       'source-executability',

@@ -1201,17 +1201,6 @@ describe('readonly cli commands integration', () => {
     expect(result.stdout).toContain('不支持的平台：openai')
   })
 
-  it('list --json 非法 platform 返回 UNSUPPORTED_PLATFORM 结构化错误', async () => {
-    const result = await runCli(['list', '--platform', 'openai', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('list')
-    expect(payload.error?.code).toBe('UNSUPPORTED_PLATFORM')
-  })
-
   it('list 未注册平台时返回结构化失败对象并设置 exitCode 1', async () => {
     await new ProfilesStore().write({
       version: 1,

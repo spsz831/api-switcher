@@ -31,7 +31,7 @@ describe('materialize reference profile', () => {
     expect(result.materialized).toBe(true)
     expect(result.profile.apply).toEqual(expect.objectContaining({
       auth_reference: 'env://API_SWITCHER_ANTHROPIC_TOKEN',
-      ANTHROPIC_AUTH_TOKEN: 'sk-ant-live-123456',
+      ANTHROPIC_AUTH_TOKEN: 'env://API_SWITCHER_ANTHROPIC_TOKEN',
       ANTHROPIC_BASE_URL: 'https://gateway.example.com/api',
     }))
   })

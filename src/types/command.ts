@@ -51,8 +51,6 @@ export interface PreviewSummary {
   platformStats?: SinglePlatformStat[]
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
-  auditSummary?: AuditSummary
-  overlaySummary?: OverlaySummary
   warnings: string[]
   limitations: string[]
 }
@@ -148,25 +146,6 @@ export interface SecretReferenceStats {
   hasUnsupportedReferenceProfiles: boolean
   hasInlineProfiles: boolean
   hasWriteUnsupportedProfiles: boolean
-}
-
-export interface AuditSummary {
-  totalProfiles: number
-  platformCount: number
-  hasReferenceProfiles: boolean
-  hasInlineSecrets: boolean
-  hasWriteUnsupportedProfiles: boolean
-  hasHighRiskItems: boolean
-  recommendedNextStep: 'inspect-overview' | 'review-reference-details' | 'continue-to-write' | 'repair-input' | 'group-by-platform'
-}
-
-export interface OverlaySummary {
-  hasOverlayLayer: boolean
-  overlayItemCount: number
-  overlayKinds: string[]
-  preservedKeys: string[]
-  runtimeOnlyKeys: string[]
-  notes: string[]
 }
 
 export interface ExecutabilityStats {
@@ -281,8 +260,6 @@ export interface CurrentSummary {
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
   triageStats?: ReadonlyTriageStats
-  auditSummary?: AuditSummary
-  overlaySummary?: OverlaySummary
   warnings: string[]
   limitations: string[]
 }
@@ -292,8 +269,6 @@ export interface ListSummary {
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
   triageStats?: ReadonlyTriageStats
-  auditSummary?: AuditSummary
-  overlaySummary?: OverlaySummary
   warnings: string[]
   limitations: string[]
 }
@@ -435,7 +410,7 @@ export interface SchemaFieldSemanticBinding {
 }
 
 export interface SchemaSummarySection {
-  id: 'platform' | 'reference' | 'executability' | 'audit' | 'overlay' | 'source-executability'
+  id: 'platform' | 'reference' | 'executability' | 'source-executability'
   title: string
   priority: number
   fields: string[]
@@ -672,8 +647,6 @@ export interface ValidateSummary {
   referenceStats?: SecretReferenceStats
   executabilityStats?: ExecutabilityStats
   triageStats?: ReadonlyTriageStats
-  auditSummary?: AuditSummary
-  overlaySummary?: OverlaySummary
   warnings: string[]
   limitations: string[]
 }

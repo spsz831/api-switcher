@@ -199,8 +199,6 @@
         },
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
-        "auditSummary": { "$ref": "#/$defs/AuditSummary" },
-        "overlaySummary": { "$ref": "#/$defs/OverlaySummary" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -266,63 +264,6 @@
           "items": { "type": "string" }
         },
         "limitations": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "additionalProperties": false
-    },
-    "AuditSummary": {
-      "type": "object",
-      "required": [
-        "totalProfiles",
-        "platformCount",
-        "hasReferenceProfiles",
-        "hasInlineSecrets",
-        "hasWriteUnsupportedProfiles",
-        "hasHighRiskItems",
-        "recommendedNextStep"
-      ],
-      "properties": {
-        "totalProfiles": { "type": "integer", "minimum": 0 },
-        "platformCount": { "type": "integer", "minimum": 0 },
-        "hasReferenceProfiles": { "type": "boolean" },
-        "hasInlineSecrets": { "type": "boolean" },
-        "hasWriteUnsupportedProfiles": { "type": "boolean" },
-        "hasHighRiskItems": { "type": "boolean" },
-        "recommendedNextStep": {
-          "type": "string",
-          "enum": ["inspect-overview", "review-reference-details", "continue-to-write", "repair-input", "group-by-platform"]
-        }
-      },
-      "additionalProperties": false
-    },
-    "OverlaySummary": {
-      "type": "object",
-      "required": [
-        "hasOverlayLayer",
-        "overlayItemCount",
-        "overlayKinds",
-        "preservedKeys",
-        "runtimeOnlyKeys",
-        "notes"
-      ],
-      "properties": {
-        "hasOverlayLayer": { "type": "boolean" },
-        "overlayItemCount": { "type": "integer", "minimum": 0 },
-        "overlayKinds": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "preservedKeys": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "runtimeOnlyKeys": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "notes": {
           "type": "array",
           "items": { "type": "string" }
         }
@@ -595,8 +536,6 @@
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
-        "auditSummary": { "$ref": "#/$defs/AuditSummary" },
-        "overlaySummary": { "$ref": "#/$defs/OverlaySummary" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -619,8 +558,6 @@
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
-        "auditSummary": { "$ref": "#/$defs/AuditSummary" },
-        "overlaySummary": { "$ref": "#/$defs/OverlaySummary" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }
@@ -839,7 +776,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["platform", "reference", "executability", "audit", "overlay", "source-executability"]
+          "enum": ["platform", "reference", "executability", "source-executability"]
         },
         "title": { "type": "string" },
         "priority": { "type": "integer", "minimum": 1 },
@@ -1708,8 +1645,6 @@
         "referenceStats": { "$ref": "#/$defs/SecretReferenceStats" },
         "executabilityStats": { "$ref": "#/$defs/ExecutabilityStats" },
         "triageStats": { "$ref": "#/$defs/ReadonlyTriageStats" },
-        "auditSummary": { "$ref": "#/$defs/AuditSummary" },
-        "overlaySummary": { "$ref": "#/$defs/OverlaySummary" },
         "warnings": {
           "type": "array",
           "items": { "type": "string" }

@@ -1,9 +1,7 @@
 import { evaluateRisk } from '../domain/risk-engine'
-import { materializeReferenceProfile } from '../domain/materialize-reference-profile'
 import {
   withProfileSecretReferenceContract,
 } from '../domain/secret-inspection'
-import { defaultSecretReferenceResolver } from '../domain/secret-reference-resolver'
 import { AdapterNotRegisteredError, AdapterRegistry } from '../registry/adapter-registry'
 import type { AddProfileInput, AddCommandOutput, CommandResult } from '../types/command'
 import { PLATFORM_NAMES, type PlatformName } from '../types/platform'
@@ -12,7 +10,6 @@ import { DuplicateProfileIdError, ProfileService } from './profile.service'
 import { getScopeCapabilityMatrix } from './scope-options'
 import { buildPlatformSummary } from './platform-summary'
 import { buildSingleProfileCommandSummary } from './single-profile-command-summary'
-import { SecretVaultStore } from '../stores/secret-vault.store'
 
 type AddServiceInput = {
   platform: string
@@ -62,19 +59,34 @@ export class AddService {
     try {
       assertAddInput(input)
 
-      const responseProfile = buildProfile(input)
-      const secretReference = input.key ? buildRuntimeVaultReference(input.platform, input.name) : undefined
-      const storedProfile = secretReference
-        ? buildProfile({
-            ...input,
-            key: undefined,
-            secretRef: secretReference,
-            authReference: secretReference,
-          })
-        : responseProfile
+      const profile = buildProfile(input)
+      const adapter = this.registry.get(profile.platform)
+      const validation = withProfileSecretReferenceContract(await adapter.validate(profile), profile)
+      const preview = await adapter.preview(profile)
+      const decision = evaluateRisk(preview, validation)
+      const risk = {
+        allowed: decision.allowed,
+        riskLevel: decision.riskLevel,
+        reasons: Array.from(new Set(decision.reasons)),
+        limitations: Array.from(new Set(decision.limitations)),
+      }
 
-      const vaultKey = secretReference ? toRuntimeVaultKey(input.platform, input.name) : undefined
-      let secretStored = false
+      const summary = buildSingleProfileCommandSummary({
+        platform: profile.platform,
+        profileId: profile.id,
+        profile,
+        warningCount: risk.reasons.length,
+        limitationCount: risk.limitations.length,
+        changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
+        backupCreated: preview.backupPlanned,
+        noChanges: preview.noChanges,
+        platformSummary: buildPlatformSummary(profile.platform, {
+          composedFiles: preview.targetFiles.map((item) => item.path),
+          listMode: true,
+        }),
+        warnings: risk.reasons,
+        limitations: risk.limitations,
+      })
 
       try {
         if (secretReference && input.key) {
@@ -264,22 +276,6 @@ function buildProfile(input: AddProfileInput): Profile {
     apply: buildApply(input.platform, input, input.url),
     meta: { createdAt: now, updatedAt: now },
   }
-}
-
-function sanitizeVaultPart(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-function toRuntimeVaultKey(platform: PlatformName, name: string): string {
-  return `${platform}/${sanitizeVaultPart(name)}`
-}
-
-function buildRuntimeVaultReference(platform: PlatformName, name: string): string {
-  return `vault://api-switcher/${toRuntimeVaultKey(platform, name)}`
 }
 
 function buildSource(platform: PlatformName, input: AddProfileInput, url?: string): Record<string, string> {

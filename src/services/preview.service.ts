@@ -185,7 +185,6 @@ export class PreviewService {
           composedFiles: preview.targetFiles.map((item) => item.path),
           listMode: true,
         }),
-        includeReadonlyFoundations: true,
         warnings: risk.reasons,
         limitations: risk.limitations,
       })

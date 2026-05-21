@@ -8,8 +8,6 @@
 
 **Tech Stack:** TypeScript、Vitest、Commander CLI、现有 platform adapters、README、`docs/public-json-schema.md`。
 
-> Status note (2026-04-29): 该计划对应的 preview/use reference governance、文档与验证已经合并进主线；以下勾选项为合并后的执行回填。
-
 ---
 
 ## File Structure
@@ -65,7 +63,7 @@
 - Create: `src/domain/reference-write-governance.ts`
 - Modify: `src/domain/secret-inspection.ts`
 
-- [x] **Step 1: Write the failing unit test for `env://` resolver states**
+- [ ] **Step 1: Write the failing unit test for `env://` resolver states**
 
 新增针对 resolver 的最小红测，锁定三种稳定状态：
 
@@ -75,7 +73,7 @@ expect(resolver.resolve('env://MISSING_KEY').status).toBe('unresolved')
 expect(resolver.resolve('vault://prod/openai').status).toBe('unsupported-scheme')
 ```
 
-- [x] **Step 2: Write the failing unit test for platform write strategy mapping**
+- [ ] **Step 2: Write the failing unit test for platform write strategy mapping**
 
 在新测试文件里直接冻结第一阶段平台策略：
 
@@ -85,7 +83,7 @@ expect(planReferenceWrite({ platform: 'codex', resolution: 'resolved' }).decisio
 expect(planReferenceWrite({ platform: 'gemini', resolution: 'unsupported-scheme' }).decisionCode).toBe('reference-blocked')
 ```
 
-- [x] **Step 3: Write the failing unit test for force requirement and blocking reasons**
+- [ ] **Step 3: Write the failing unit test for force requirement and blocking reasons**
 
 锁定共享治理对象至少包含：
 
@@ -103,7 +101,7 @@ expect(planReferenceWrite({ platform: 'claude', resolution: 'resolved' }).blocki
 expect(planReferenceWrite({ platform: 'claude', resolution: 'unresolved' }).blocking).toBe(true)
 ```
 
-- [x] **Step 4: Run the governance unit tests to verify red**
+- [ ] **Step 4: Run the governance unit tests to verify red**
 
 Run:
 
@@ -113,7 +111,7 @@ corepack pnpm vitest run tests/unit/reference-write-governance.test.ts
 
 Expected: FAIL because the shared governance module does not exist and resolver still returns `missing` instead of `unresolved`.
 
-- [x] **Step 5: Implement the minimal governance module and resolver rename**
+- [ ] **Step 5: Implement the minimal governance module and resolver rename**
 
 最小实现要求：
 
@@ -125,7 +123,7 @@ Expected: FAIL because the shared governance module does not exist and resolver 
   - Gemini -> `inline-fallback-only`
 - 不在治理对象中暴露解析后的 secret 明文
 
-- [x] **Step 6: Refactor `secret-inspection` to consume the new resolver semantics**
+- [ ] **Step 6: Refactor `secret-inspection` to consume the new resolver semantics**
 
 只做最小迁移：
 
@@ -133,7 +131,7 @@ Expected: FAIL because the shared governance module does not exist and resolver 
 - 保留 `referenceDetails[]` 字段级 explainable
 - 为后续 `preview/use` 暴露共享 summary 输入，避免 service 层重复遍历 profile
 
-- [x] **Step 7: Re-run the governance unit tests**
+- [ ] **Step 7: Re-run the governance unit tests**
 
 Run:
 
@@ -143,7 +141,7 @@ corepack pnpm vitest run tests/unit/reference-write-governance.test.ts
 
 Expected: PASS.
 
-- [x] **Step 8: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add tests/unit/reference-write-governance.test.ts src/domain/secret-reference-resolver.ts src/domain/reference-write-governance.ts src/domain/secret-inspection.ts
@@ -158,7 +156,7 @@ git commit -m "feat: add shared reference write governance"
 - Modify: `src/types/command.ts`
 - Modify: `src/domain/risk-engine.ts`
 
-- [x] **Step 1: Write the failing preview unit test for Claude native reference write**
+- [ ] **Step 1: Write the failing preview unit test for Claude native reference write**
 
 添加一个 `ANTHROPIC_AUTH_TOKEN: "env://ANTHROPIC_AUTH_TOKEN"` 的 profile，断言：
 
@@ -168,7 +166,7 @@ expect(result.data?.referenceSummary?.writeDecision).toBe('native-reference-writ
 expect(result.data?.risk.allowed).toBe(true)
 ```
 
-- [x] **Step 2: Write the failing preview unit test for Codex inline fallback write**
+- [ ] **Step 2: Write the failing preview unit test for Codex inline fallback write**
 
 断言 preview 不失败，但会明确标出 fallback 风险：
 
@@ -178,7 +176,7 @@ expect(result.data?.referenceSummary?.requiresForce).toBe(true)
 expect(result.limitations).toContain('如继续执行，将以明文写入目标配置文件。')
 ```
 
-- [x] **Step 3: Write the failing preview unit test for unresolved and unsupported references**
+- [ ] **Step 3: Write the failing preview unit test for unresolved and unsupported references**
 
 断言：
 
@@ -190,7 +188,7 @@ expect(result.error?.details.referenceGovernance.primaryReason).toBe('REFERENCE_
 
 再补一个 unsupported-scheme case，确认 reason code 区分清楚。
 
-- [x] **Step 4: Run the preview service tests to verify red**
+- [ ] **Step 4: Run the preview service tests to verify red**
 
 Run:
 
@@ -200,7 +198,7 @@ corepack pnpm vitest run tests/unit/preview.service.test.ts
 
 Expected: FAIL because `preview.service` 目前只会套旧的 `withProfileSecretReferenceContract`，既不会输出新决策，也不会在 unresolved/unsupported 时主动阻断。
 
-- [x] **Step 5: Implement preview-side governance wiring**
+- [ ] **Step 5: Implement preview-side governance wiring**
 
 实现要点：
 
@@ -210,7 +208,7 @@ Expected: FAIL because `preview.service` 目前只会套旧的 `withProfileSecre
 - unresolved / unsupported -> 返回结构化 `PREVIEW_FAILED`
 - 将 machine-readable detail 放到 success payload 和 failure details，而不是只靠文本 warning
 
-- [x] **Step 6: Make the smallest type updates for public contract**
+- [ ] **Step 6: Make the smallest type updates for public contract**
 
 只补最小稳定字段，例如：
 
@@ -218,7 +216,7 @@ Expected: FAIL because `preview.service` 目前只会套旧的 `withProfileSecre
 - failure details 中的 `referenceGovernance`
 - 如需要，补 `summary.referenceStats` / `summary.executabilityStats` 的单 profile 对齐说明
 
-- [x] **Step 7: Re-run preview tests**
+- [ ] **Step 7: Re-run preview tests**
 
 Run:
 
@@ -228,7 +226,7 @@ corepack pnpm vitest run tests/unit/preview.service.test.ts
 
 Expected: PASS.
 
-- [x] **Step 8: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add tests/unit/preview.service.test.ts src/services/preview.service.ts src/types/command.ts src/domain/risk-engine.ts
@@ -243,7 +241,7 @@ git commit -m "feat: add reference-aware preview decisions"
 - Modify: `src/types/command.ts`
 - Modify: `src/services/snapshot.service.ts`
 
-- [x] **Step 1: Write the failing unit test for Codex fallback without `--force`**
+- [ ] **Step 1: Write the failing unit test for Codex fallback without `--force`**
 
 断言：
 
@@ -253,7 +251,7 @@ expect(result.error?.code).toBe('CONFIRMATION_REQUIRED')
 expect(result.error?.details.referenceGovernance.primaryReason).toBe('REFERENCE_WRITE_UNSUPPORTED')
 ```
 
-- [x] **Step 2: Write the failing unit test for Codex fallback with `--force`**
+- [ ] **Step 2: Write the failing unit test for Codex fallback with `--force`**
 
 断言：
 
@@ -263,7 +261,7 @@ expect(result.data?.changedFiles.length).toBeGreaterThan(0)
 expect(result.data?.referenceSummary?.writeDecision).toBe('inline-fallback-write')
 ```
 
-- [x] **Step 3: Write the failing unit test for unresolved references not entering snapshot/apply**
+- [ ] **Step 3: Write the failing unit test for unresolved references not entering snapshot/apply**
 
 用 spy 或 fake adapter 断言：
 
@@ -273,7 +271,7 @@ expect(applySpy).not.toHaveBeenCalled()
 expect(result.error?.code).toBe('USE_FAILED')
 ```
 
-- [x] **Step 4: Write the failing unit test for Claude native reference write succeeding without force**
+- [ ] **Step 4: Write the failing unit test for Claude native reference write succeeding without force**
 
 断言：
 
@@ -283,7 +281,7 @@ expect(result.error).toBeUndefined()
 expect(result.data?.backupId).toBeDefined()
 ```
 
-- [x] **Step 5: Run the switch service tests to verify red**
+- [ ] **Step 5: Run the switch service tests to verify red**
 
 Run:
 
@@ -293,7 +291,7 @@ corepack pnpm vitest run tests/unit/switch.service.test.ts
 
 Expected: FAIL because `switch.service` 目前不会基于 reference 决策主动阻断，也不会把 fallback-only 提升成显式确认门槛。
 
-- [x] **Step 6: Implement use-side reference gate**
+- [ ] **Step 6: Implement use-side reference gate**
 
 最小实现原则：
 
@@ -303,11 +301,11 @@ Expected: FAIL because `switch.service` 目前不会基于 reference 决策主�
 - `resolved + inline-fallback-only + --force` 允许继续
 - `unresolved / unsupported-scheme` 返回失败，不进入 snapshot/apply
 
-- [x] **Step 7: Patch snapshot metadata only if tests reveal a contract gap**
+- [ ] **Step 7: Patch snapshot metadata only if tests reveal a contract gap**
 
 只有在现有 snapshot manifest 无法准确表达 fallback/native 写入事实时，才最小化补一层 metadata；不要顺手扩大 snapshot schema。
 
-- [x] **Step 8: Re-run switch service tests**
+- [ ] **Step 8: Re-run switch service tests**
 
 Run:
 
@@ -317,7 +315,7 @@ corepack pnpm vitest run tests/unit/switch.service.test.ts
 
 Expected: PASS.
 
-- [x] **Step 9: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add tests/unit/switch.service.test.ts src/services/switch.service.ts src/types/command.ts src/services/snapshot.service.ts
@@ -333,7 +331,7 @@ git commit -m "feat: gate use with reference write governance"
 - Modify: `tests/unit/switch.service.test.ts`
 - Modify: `tests/integration/cli-commands.test.ts`
 
-- [x] **Step 1: Write the failing adapter-facing test for Claude native reference persistence**
+- [ ] **Step 1: Write the failing adapter-facing test for Claude native reference persistence**
 
 补一个真实 CLI 或 service 级 case，确认 Claude 最终写入保留引用值而不是解析后的明文：
 
@@ -341,7 +339,7 @@ git commit -m "feat: gate use with reference write governance"
 expect(writtenSettings.ANTHROPIC_AUTH_TOKEN).toBe('env://ANTHROPIC_AUTH_TOKEN')
 ```
 
-- [x] **Step 2: Write the failing adapter-facing test for Codex inline fallback persistence**
+- [ ] **Step 2: Write the failing adapter-facing test for Codex inline fallback persistence**
 
 断言 Codex 写入的是解析后的真实值，并且同时覆盖 `config.toml` / `auth.json`：
 
@@ -350,11 +348,11 @@ expect(writtenAuth.OPENAI_API_KEY).toBe('sk-live-123')
 expect(changedFiles).toEqual(expect.arrayContaining([configPath, authPath]))
 ```
 
-- [x] **Step 3: Write the failing adapter-facing test for Gemini inline fallback persistence**
+- [ ] **Step 3: Write the failing adapter-facing test for Gemini inline fallback persistence**
 
 断言 Gemini 在 `env://GEMINI_API_KEY` resolved + `--force` 时，会把值写入当前 target scope settings，而不是继续保持 env-only 旧路径。
 
-- [x] **Step 4: Run the targeted unit/integration tests to verify red**
+- [ ] **Step 4: Run the targeted unit/integration tests to verify red**
 
 Run:
 
@@ -364,7 +362,7 @@ corepack pnpm vitest run tests/unit/switch.service.test.ts tests/integration/cli
 
 Expected: FAIL because当前 adapters 仍按旧假设处理 secret 字段，Claude 不能原生保留引用，Codex/Gemini 也没有 fallback 写入。
 
-- [x] **Step 5: Implement the smallest adapter changes per platform**
+- [ ] **Step 5: Implement the smallest adapter changes per platform**
 
 平台要求：
 
@@ -373,7 +371,7 @@ Expected: FAIL because当前 adapters 仍按旧假设处理 secret 字段，Clau
 - Gemini：apply 前将 resolved value 内联到目标 scope settings payload
 - unresolved / unsupported 不在 adapter 里兜底；应由 service 层提前拦截
 
-- [x] **Step 6: Re-run the targeted tests**
+- [ ] **Step 6: Re-run the targeted tests**
 
 Run:
 
@@ -383,7 +381,7 @@ corepack pnpm vitest run tests/unit/switch.service.test.ts tests/integration/cli
 
 Expected: PASS for the new reference cases and no regression in existing non-reference writes.
 
-- [x] **Step 7: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/adapters/claude/claude.adapter.ts src/adapters/codex/codex.adapter.ts src/adapters/gemini/gemini.adapter.ts tests/unit/switch.service.test.ts tests/integration/cli-commands.test.ts
@@ -400,7 +398,7 @@ git commit -m "feat: support reference writes across preview and use adapters"
 - Modify: `tests/unit/docs-consistency.test.ts`
 - Modify: `CHANGELOG.md`
 
-- [x] **Step 1: Write the failing schema test for preview/use success payloads**
+- [ ] **Step 1: Write the failing schema test for preview/use success payloads**
 
 新增样例至少覆盖：
 
@@ -409,7 +407,7 @@ git commit -m "feat: support reference writes across preview and use adapters"
 - `use` Codex fallback without force -> `CONFIRMATION_REQUIRED`
 - `use` unsupported scheme -> structured failure with `referenceGovernance`
 
-- [x] **Step 2: Write the failing docs consistency assertion**
+- [ ] **Step 2: Write the failing docs consistency assertion**
 
 锁定 README 不再出现旧文案：
 
@@ -423,7 +421,7 @@ expect(readme).not.toContain('preview/use/import apply 暂不解析引用')
 - `inline-fallback-write`
 - `reference-blocked`
 
-- [x] **Step 3: Run schema/docs tests to verify red**
+- [ ] **Step 3: Run schema/docs tests to verify red**
 
 Run:
 
@@ -433,7 +431,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts tests/unit/docs-c
 
 Expected: FAIL because schema 样例和 README 仍停在旧限制说明。
 
-- [x] **Step 4: Update text renderer to consume the shared governance object**
+- [ ] **Step 4: Update text renderer to consume the shared governance object**
 
 文本目标：
 
@@ -441,7 +439,7 @@ Expected: FAIL because schema 样例和 README 仍停在旧限制说明。
 - use 失败时直接显示 unresolved/unsupported/fallback gate 原因
 - 不回显 secret 明文
 
-- [x] **Step 5: Update README and `docs/public-json-schema.md`**
+- [ ] **Step 5: Update README and `docs/public-json-schema.md`**
 
 最小文档范围：
 
@@ -449,7 +447,7 @@ Expected: FAIL because schema 样例和 README 仍停在旧限制说明。
 - schema 文档的 `preview --json` / `use --json` 成功样例与失败样例
 - force gate 风险说明
 
-- [x] **Step 6: Re-run schema/docs tests**
+- [ ] **Step 6: Re-run schema/docs tests**
 
 Run:
 
@@ -459,7 +457,7 @@ corepack pnpm vitest run tests/unit/public-json-schema.test.ts tests/unit/docs-c
 
 Expected: PASS.
 
-- [x] **Step 7: Run the focused end-to-end verification set**
+- [ ] **Step 7: Run the focused end-to-end verification set**
 
 Run:
 
@@ -470,7 +468,7 @@ corepack pnpm typecheck
 
 Expected: PASS.
 
-- [x] **Step 8: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/renderers/text-renderer.ts tests/unit/public-json-schema.test.ts README.md docs/public-json-schema.md tests/unit/docs-consistency.test.ts CHANGELOG.md
@@ -482,7 +480,7 @@ git commit -m "feat: document reference resolver preview use contract"
 **Files:**
 - Modify: none unless regression fix is required
 
-- [x] **Step 1: Run the full test suite**
+- [ ] **Step 1: Run the full test suite**
 
 Run:
 
@@ -492,7 +490,7 @@ corepack pnpm test
 
 Expected: PASS.
 
-- [x] **Step 2: Run build validation**
+- [ ] **Step 2: Run build validation**
 
 Run:
 
@@ -502,7 +500,7 @@ corepack pnpm build
 
 Expected: PASS.
 
-- [x] **Step 3: Run release smoke if schema/docs or CLI packaging changed materially**
+- [ ] **Step 3: Run release smoke if schema/docs or CLI packaging changed materially**
 
 Run:
 
@@ -512,7 +510,7 @@ corepack pnpm smoke:release
 
 Expected: PASS.
 
-- [x] **Step 4: Commit regression fixes only if needed**
+- [ ] **Step 4: Commit regression fixes only if needed**
 
 ```bash
 git add <files>

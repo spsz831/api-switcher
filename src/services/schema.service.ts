@@ -37,7 +37,7 @@ const SCHEMA_CONSUMER_PROFILES: SchemaConsumerProfile[] = [
     defaultConsumerActionId: 'inspect-overview',
     defaultCommandExample: 'api-switcher current --json',
     defaultCommandPurpose: '先读取当前状态与平台级聚合，再决定是否进入 list / validate / export。',
-    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.auditSummary', 'summary.overlaySummary'],
+    sharedSummaryFields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'],
     sharedItemFields: ['platformSummary'],
     sharedFailureFields: ['error.code', 'error.message'],
     optionalScopeFields: ['scopeCapabilities', 'scopeAvailability', 'defaultWriteScope', 'observedAt'],
@@ -895,8 +895,6 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'summary.triageStats', channel: 'success', presence: 'always' },
-        { path: 'summary.auditSummary', channel: 'success', presence: 'always' },
-        { path: 'summary.overlaySummary', channel: 'success', presence: 'always' },
         { path: 'current', channel: 'success', presence: 'always' },
         { path: 'detections', channel: 'success', presence: 'always' },
         { path: 'detections.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
@@ -952,8 +950,6 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'summary.triageStats', channel: 'success', presence: 'always' },
-        { path: 'summary.auditSummary', channel: 'success', presence: 'always' },
-        { path: 'summary.overlaySummary', channel: 'success', presence: 'always' },
         { path: 'profiles', channel: 'success', presence: 'always' },
         { path: 'profiles.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
@@ -962,8 +958,6 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.platformStats', channel: 'success', presence: 'always' },
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
-        { path: 'summary.auditSummary', channel: 'success', presence: 'always' },
-        { path: 'summary.overlaySummary', channel: 'success', presence: 'always' },
         { path: 'risk', channel: 'success', presence: 'always' },
         { path: 'referenceReadiness', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_DECISION_IS_DETECTED' },
         { path: 'referenceDecision', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_REFERENCE_DECISION_IS_DETECTED' },
@@ -1023,8 +1017,6 @@ function getFieldPresence(action: typeof COMMAND_ACTIONS[number]): SchemaActionF
         { path: 'summary.referenceStats', channel: 'success', presence: 'always' },
         { path: 'summary.executabilityStats', channel: 'success', presence: 'always' },
         { path: 'summary.triageStats', channel: 'success', presence: 'always' },
-        { path: 'summary.auditSummary', channel: 'success', presence: 'always' },
-        { path: 'summary.overlaySummary', channel: 'success', presence: 'always' },
         { path: 'items', channel: 'success', presence: 'always' },
         { path: 'items.referenceSummary', channel: 'success', presence: 'conditional', conditionCode: 'WHEN_ITEM_HAS_REFERENCE_OR_INLINE_SECRET_CONTEXT' },
       ]
@@ -1050,8 +1042,6 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
-        { path: 'summary.auditSummary', channel: 'success', source: 'command-service' },
-        { path: 'summary.overlaySummary', channel: 'success', source: 'command-service' },
         { path: 'current', channel: 'success', source: 'command-service' },
         { path: 'detections', channel: 'success', source: 'platform-adapter' },
         { path: 'detections.referenceSummary', channel: 'success', source: 'command-service' },
@@ -1107,8 +1097,6 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
-        { path: 'summary.auditSummary', channel: 'success', source: 'command-service' },
-        { path: 'summary.overlaySummary', channel: 'success', source: 'command-service' },
         { path: 'profiles', channel: 'success', source: 'command-service' },
         { path: 'profiles.referenceSummary', channel: 'success', source: 'command-service' },
       ]
@@ -1117,8 +1105,6 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.platformStats', channel: 'success', source: 'command-service' },
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
-        { path: 'summary.auditSummary', channel: 'success', source: 'command-service' },
-        { path: 'summary.overlaySummary', channel: 'success', source: 'command-service' },
         { path: 'risk', channel: 'success', source: 'command-service' },
         { path: 'referenceReadiness', channel: 'success', source: 'command-service' },
         { path: 'referenceDecision', channel: 'success', source: 'command-service' },
@@ -1177,8 +1163,6 @@ function getFieldSources(action: typeof COMMAND_ACTIONS[number]): SchemaActionFi
         { path: 'summary.referenceStats', channel: 'success', source: 'command-service' },
         { path: 'summary.executabilityStats', channel: 'success', source: 'command-service' },
         { path: 'summary.triageStats', channel: 'success', source: 'command-service' },
-        { path: 'summary.auditSummary', channel: 'success', source: 'command-service' },
-        { path: 'summary.overlaySummary', channel: 'success', source: 'command-service' },
         { path: 'items', channel: 'success', source: 'command-service' },
         { path: 'items.referenceSummary', channel: 'success', source: 'command-service' },
       ]
@@ -1204,8 +1188,6 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.auditSummary', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.overlaySummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'current', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections', channel: 'success', stabilityTier: 'stable' },
         { path: 'detections.referenceSummary', channel: 'success', stabilityTier: 'stable' },
@@ -1261,8 +1243,6 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.auditSummary', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.overlaySummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles', channel: 'success', stabilityTier: 'stable' },
         { path: 'profiles.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
@@ -1271,8 +1251,6 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.platformStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.auditSummary', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.overlaySummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'risk', channel: 'success', stabilityTier: 'stable' },
         { path: 'referenceReadiness', channel: 'success', stabilityTier: 'stable' },
         { path: 'referenceDecision', channel: 'success', stabilityTier: 'stable' },
@@ -1331,8 +1309,6 @@ function getFieldStability(action: typeof COMMAND_ACTIONS[number]): SchemaAction
         { path: 'summary.referenceStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.executabilityStats', channel: 'success', stabilityTier: 'stable' },
         { path: 'summary.triageStats', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.auditSummary', channel: 'success', stabilityTier: 'stable' },
-        { path: 'summary.overlaySummary', channel: 'success', stabilityTier: 'stable' },
         { path: 'items', channel: 'success', stabilityTier: 'stable' },
         { path: 'items.referenceSummary', channel: 'success', stabilityTier: 'stable' },
       ]
@@ -1356,7 +1332,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'current':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.auditSummary', 'summary.overlaySummary'], purpose: '先看平台级聚合、reference 聚合、写入可执行性聚合、triage 分流桶、统一审计入口和只读 overlay 骨架。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'selection', fields: ['current'], purpose: '再看当前 state 记录。' },
           { stage: 'items', fields: ['detections', 'detections.referenceSummary'], purpose: '最后展开检测结果列表，并按需读取每项的 reference explainable。' },
           { stage: 'detail', fields: ['scopeCapabilities', 'scopeAvailability'], purpose: '按需展开 scope 元信息。' },
@@ -1403,7 +1379,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'list':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.auditSummary', 'summary.overlaySummary'], purpose: '先按平台分组并识别 reference 聚合、写入可执行性聚合、triage 分流桶、统一审计入口与只读 overlay 骨架。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先按平台分组并识别 reference 聚合、写入可执行性聚合与 triage 分流桶。' },
           { stage: 'items', fields: ['profiles', 'profiles.referenceSummary'], purpose: '再读 profile 列表，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -1413,7 +1389,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'preview':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.auditSummary', 'summary.overlaySummary'], purpose: '先看目标 scope 的平台聚合、reference 聚合、写入可执行性聚合、统一审计入口和只读 overlay 骨架。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats'], purpose: '先看目标 scope 的平台聚合、reference 聚合和写入可执行性聚合。' },
           { stage: 'detail', fields: ['risk', 'referenceReadiness', 'referenceDecision', 'referenceGovernance', 'preview', 'scopePolicy', 'scopeCapabilities', 'scopeAvailability'], purpose: '再先看轻量 reference readiness，再按需展开 reference 治理分支、预览、风险和 scope 元信息。' },
         ],
         failure: [
@@ -1460,7 +1436,7 @@ function getReadOrderGroups(action: typeof COMMAND_ACTIONS[number]): SchemaReadO
     case 'validate':
       return {
         success: [
-          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats', 'summary.auditSummary', 'summary.overlaySummary'], purpose: '先看平台级通过/限制聚合、reference 聚合、写入可执行性聚合、triage 分流桶、统一审计入口和只读 overlay 骨架。' },
+          { stage: 'summary', fields: ['summary.platformStats', 'summary.referenceStats', 'summary.executabilityStats', 'summary.triageStats'], purpose: '先看平台级通过/限制聚合、reference 聚合、写入可执行性聚合和 triage 分流桶。' },
           { stage: 'items', fields: ['items', 'items.referenceSummary'], purpose: '再展开各 profile 校验结果，并按需读取每项的 reference explainable。' },
         ],
         failure: [
@@ -1481,8 +1457,6 @@ function getSummarySections(action: typeof COMMAND_ACTIONS[number]) {
     case 'list':
     case 'validate':
     case 'export':
-      return getReadonlySummarySections(action)
-    case 'preview':
       return getReadonlySummarySections(action)
     case 'import':
       return getReadonlySummarySections(action)
@@ -1508,8 +1482,6 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'summary.triageStats', semantic: 'triage-aggregate' },
-        { path: 'summary.auditSummary', semantic: 'audit-aggregate' },
-        { path: 'summary.overlaySummary', semantic: 'overlay-scaffold' },
         { path: 'current', semantic: 'result-core' },
         { path: 'detections', semantic: 'item-collection' },
         { path: 'detections.referenceSummary', semantic: 'item-explainable' },
@@ -1557,8 +1529,6 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'summary.triageStats', semantic: 'triage-aggregate' },
-        { path: 'summary.auditSummary', semantic: 'audit-aggregate' },
-        { path: 'summary.overlaySummary', semantic: 'overlay-scaffold' },
         { path: 'profiles', semantic: 'item-collection' },
         { path: 'profiles.referenceSummary', semantic: 'item-explainable' },
       ]
@@ -1567,8 +1537,6 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.platformStats', semantic: 'platform-aggregate' },
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
-        { path: 'summary.auditSummary', semantic: 'audit-aggregate' },
-        { path: 'summary.overlaySummary', semantic: 'overlay-scaffold' },
         { path: 'risk', semantic: 'risk' },
         { path: 'referenceReadiness', semantic: 'reference-governance' },
         { path: 'referenceDecision', semantic: 'reference-governance' },
@@ -1617,8 +1585,6 @@ function getPrimaryFieldSemantics(action: typeof COMMAND_ACTIONS[number]): Schem
         { path: 'summary.referenceStats', semantic: 'platform-aggregate' },
         { path: 'summary.executabilityStats', semantic: 'executability-aggregate' },
         { path: 'summary.triageStats', semantic: 'triage-aggregate' },
-        { path: 'summary.auditSummary', semantic: 'audit-aggregate' },
-        { path: 'summary.overlaySummary', semantic: 'overlay-scaffold' },
         { path: 'items', semantic: 'item-collection' },
         { path: 'items.referenceSummary', semantic: 'item-explainable' },
       ]

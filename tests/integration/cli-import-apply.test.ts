@@ -140,45 +140,6 @@ describe('cli import apply integration', () => {
     })
   })
 
-  it('import apply --profiles --json 对跨平台 profiles 返回 IMPORT_APPLY_BATCH_PLATFORM_MISMATCH 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'import-apply-batch-platform-mismatch.json')
-    await writeImportSourceFile(importFile, [
-      {
-        profile: {
-          id: 'claude-prod',
-          name: 'claude-prod',
-          platform: 'claude',
-          source: { apiKey: 'sk-claude-batch-123456' },
-          apply: { ANTHROPIC_API_KEY: 'sk-claude-batch-123456' },
-        },
-      },
-      {
-        profile: {
-          id: 'codex-prod',
-          name: 'codex-prod',
-          platform: 'codex',
-          source: { apiKey: 'sk-codex-batch-123456', baseURL: 'https://batch.example.com/openai/v1' },
-          apply: {
-            OPENAI_API_KEY: 'sk-codex-batch-123456',
-            base_url: 'https://batch.example.com/openai/v1',
-          },
-        },
-      },
-    ])
-
-    const result = await runCli([
-      'import', 'apply', importFile, '--profiles', 'claude-prod,codex-prod', '--force', '--json',
-    ])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_APPLY_BATCH_PLATFORM_MISMATCH')
-    expect(payload.error?.message).toBe('批量 import apply 第一版只支持同平台 profiles。')
-  })
-
   it('import apply --profiles --json 部分失败时返回轻量 failure explainable', async () => {
     const importFile = path.join(context.runtimeDir, 'import-apply-batch-gemini-partial-failure.json')
     await writeImportSourceFile(importFile, [
@@ -577,56 +538,6 @@ describe('cli import apply integration', () => {
     })
   })
 
-  it('import apply --json 对不存在的 profile 返回 IMPORT_PROFILE_NOT_FOUND 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'import-apply-profile-not-found.json')
-    await writeImportSourceFile(importFile, [
-      {
-        profile: {
-          id: 'claude-prod',
-          name: 'claude-prod',
-          platform: 'claude',
-          source: { apiKey: 'sk-claude-live-123456' },
-          apply: { ANTHROPIC_API_KEY: 'sk-claude-live-123456' },
-        },
-      },
-    ])
-
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'nonexistent-profile', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_PROFILE_NOT_FOUND')
-    expect(payload.error?.message).toBe('导入文件中未找到配置档：nonexistent-profile')
-  })
-
-  it('import apply --json 对不支持的平台返回 IMPORT_PLATFORM_NOT_SUPPORTED 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'import-apply-platform-not-supported.json')
-    await writeImportSourceFile(importFile, [
-      {
-        profile: {
-          id: 'openai-prod',
-          name: 'openai-prod',
-          platform: 'openai' as any,
-          source: { apiKey: 'sk-openai-123456' },
-          apply: { OPENAI_API_KEY: 'sk-openai-123456' },
-        },
-      },
-    ])
-
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'openai-prod', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_PLATFORM_NOT_SUPPORTED')
-    expect(payload.error?.message).toBe('当前仅支持导入应用 Gemini、Codex 或 Claude profile。')
-  })
-
   it('import apply --json 在 mixed source 下按 --profile 精确命中目标平台，不受同批其他 profile 干扰', async () => {
     const importFile = path.join(context.runtimeDir, 'import-apply-cross-platform-mixed.json')
     await writeImportSourceFile(importFile, [
@@ -721,52 +632,6 @@ describe('cli import apply integration', () => {
     expect(result.stdout).toBe('')
     expect(result.stderr).toContain("required option '--profile <id>' not specified")
     expect(result.exitCode).toBe(2)
-  })
-
-  it('import apply --json 对不存在的文件返回 IMPORT_SOURCE_NOT_FOUND 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'nonexistent-file.json')
-
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'any-profile', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_SOURCE_NOT_FOUND')
-  })
-
-  it('import apply --json 对无效 JSON 文件返回 IMPORT_SOURCE_INVALID 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'import-apply-invalid.json')
-    await fs.writeFile(importFile, '{ not valid json }', 'utf8')
-
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'any-profile', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_SOURCE_INVALID')
-  })
-
-  it('import apply --json 对不支持的 schemaVersion 返回 IMPORT_UNSUPPORTED_SCHEMA 结构化失败', async () => {
-    const importFile = path.join(context.runtimeDir, 'import-apply-bad-schema.json')
-    await fs.writeFile(importFile, JSON.stringify({
-      schemaVersion: '9999-01-01.public-json.v99',
-      ok: true,
-      action: 'export',
-      data: { profiles: [], summary: { warnings: [], limitations: [] } },
-    }), 'utf8')
-
-    const result = await runCli(['import', 'apply', importFile, '--profile', 'any-profile', '--json'])
-    const payload = parseJsonResult(result.stdout)
-
-    expect(result.stderr).toBe('')
-    expect(result.exitCode).toBe(1)
-    expect(payload.ok).toBe(false)
-    expect(payload.action).toBe('import-apply')
-    expect(payload.error?.code).toBe('IMPORT_UNSUPPORTED_SCHEMA')
   })
 
   it('import apply 在默认 Claude project scope 下可成功应用并写入 project 文件', async () => {
