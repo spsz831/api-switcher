@@ -52,7 +52,6 @@ export class AddService {
   constructor(
     private readonly profileService = new ProfileService(),
     private readonly registry = new AdapterRegistry(),
-    private readonly secretVaultStore = new SecretVaultStore(),
   ) {}
 
   async add(input: AddServiceInput): Promise<CommandResult<AddCommandOutput>> {
@@ -88,72 +87,21 @@ export class AddService {
         limitations: risk.limitations,
       })
 
-      try {
-        if (secretReference && input.key) {
-          await this.secretVaultStore.set(vaultKey!, input.key)
-          secretStored = true
-        }
+      await this.profileService.add(profile)
 
-        const adapter = this.registry.get(storedProfile.platform)
-        const runtimeProfile = secretReference
-          ? materializeReferenceProfile(storedProfile, defaultSecretReferenceResolver).profile
-          : storedProfile
-        const validation = withProfileSecretReferenceContract(await adapter.validate(runtimeProfile), responseProfile)
-        const preview = await adapter.preview(runtimeProfile)
-        const decision = evaluateRisk(preview, validation)
-        const risk = {
-          allowed: decision.allowed,
-          riskLevel: decision.riskLevel,
-          reasons: Array.from(new Set(decision.reasons)),
-          limitations: Array.from(new Set(decision.limitations)),
-        }
-
-        const summary = buildSingleProfileCommandSummary({
-          platform: responseProfile.platform,
-          profileId: responseProfile.id,
-          profile: responseProfile,
-          warningCount: risk.reasons.length,
-          limitationCount: risk.limitations.length,
-          changedFileCount: preview.diffSummary.filter((item) => item.hasChanges).length,
-          backupCreated: preview.backupPlanned,
-          noChanges: preview.noChanges,
-          platformSummary: buildPlatformSummary(responseProfile.platform, {
-            composedFiles: preview.targetFiles.map((item) => item.path),
-            listMode: true,
-          }),
-          warnings: risk.reasons,
-          limitations: risk.limitations,
-        })
-
-        await this.profileService.add(storedProfile)
-
-        return {
-          ok: true,
-          action: 'add',
-          data: {
-            profile: responseProfile,
-            validation,
-            preview,
-            risk,
-            summary,
-            ...(secretReference ? {
-              secretMigration: {
-                mode: 'runtime-vault',
-                migratedSecretCount: 1,
-                referencePrefix: 'vault://api-switcher/',
-                references: [secretReference],
-              },
-            } : {}),
-            scopeCapabilities: getScopeCapabilityMatrix(responseProfile.platform),
-          },
-          warnings: summary.warnings,
-          limitations: summary.limitations,
-        }
-      } catch (error) {
-        if (secretStored && vaultKey) {
-          await this.secretVaultStore.delete(vaultKey)
-        }
-        throw error
+      return {
+        ok: true,
+        action: 'add',
+        data: {
+          profile,
+          validation,
+          preview,
+          risk,
+          summary,
+          scopeCapabilities: getScopeCapabilityMatrix(profile.platform),
+        },
+        warnings: summary.warnings,
+        limitations: summary.limitations,
       }
     } catch (error) {
       return {

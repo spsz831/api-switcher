@@ -27,7 +27,7 @@
 
 要求：
 
-- Node.js `>=20`
+- Node.js `>=22`
 - `pnpm` 或可用的 `corepack`
 
 本地开发：
@@ -67,12 +67,15 @@ api-switcher --help
 
 ## 发布状态
 
-当前版本已经具备可试用的核心闭环，适合本地自用、小范围评审和 Beta 级试用：
+当前版本 **v0.1.3**，已具备可试用的核心闭环，适合本地自用、小范围评审和 Beta 级试用：
 
 - `preview / use / rollback / current / list / validate / export / add / schema` 已接通
 - Claude、Codex、Gemini 三个平台都有真实适配链路
 - Gemini `project scope` 已支持显式写入、风险提示、独立备份和严格回滚校验
-- `import preview` 与 `import apply` 已落地，其中 `import apply` 当前支持 Gemini / Codex / Claude 的单条与同平台批量 profile
+- `import preview` 与 `import apply` 已落地，`import apply` 支持 Gemini / Codex / Claude 的单条与同平台批量 profile
+- `schema --json` 新增 consumer profiles 系统，提供 `readonly-state-audit`、`readonly-import-consumer` 等多种消费画像和稳定 machine-readable 入口
+- `--secret-ref` / `--auth-reference` reference-only 输入与治理链路已接通
+- `--dry-run` 已覆盖 `use` 与 `import apply`
 - `--json` 公共 contract、机器可读 schema 和消费者文档已发布
 
 当前不应误读为“所有平台所有导入写入能力都完全开放”。首版产品边界仍然是：
@@ -4300,11 +4303,11 @@ reference 解析摘要:
 
 ## 说明
 
-当前版本已经把首发所需的核心闭环落地，后续迭代重点主要是增强能力，而不是补回缺失的基础命令：
+v0.1.3 已把首发所需的核心闭环落地，reference governance、dry-run、schema catalog 和批量 import apply 等关键能力线也已接通，后续迭代方向：
 
+- 扩展 secret reference resolver 的 scheme 支持（vault://、op://、1password:// 等）
+- 更完整的跨平台导入导出与交互式体验
 - Claude 真实契约细化
-- Gemini 多作用域真实契约
-- 更完整的导入导出与交互式体验
 
 ## Gemini 说明
 

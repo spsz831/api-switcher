@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.1.3
+
+### Schema Catalog
+
+- `schema --json` 新增 consumer profiles 系统，提供 `readonly-state-audit`、`readonly-import-consumer` 等多种消费画像
+- 每个 consumer profile 暴露稳定的 `summarySections`、`summarySectionGuidance`、`followUpHints`、`triageBuckets` 与 `consumerActions`
+- 新增 `schema --json --consumer-profile <id>` 按画像过滤
+- 新增 `schema --json --action <id>` 按动作能力过滤
+- 新增 `schema --json --recommended-action <code>` 按推荐动作码过滤
+- 新增 `schema --json --catalog-summary` 轻量 catalog 索引模式
+- 新增 `schema --schema-version --json` 只输出版本号
+- 为只读 consumer profiles 暴露默认 consumer flow、starter recipes 与机器消费模板
+
+### Reference Governance
+
+- `add` 现在支持 `--secret-ref` / `--auth-reference` reference-only 输入模式，与 `--key` 明文模式互斥
+- `preview` / `use` / `import apply` 对 reference profile 执行解析阶段检查，区分 resolved / unresolved / blocking 三种决策状态
+- `preview` 成功态暴露 blocking reference 决策，`use` / `import apply` 失败态暴露 `referenceDecision`
+- reference-only 输入增加格式校验：空白输入返回 `ADD_INPUT_REQUIRED`，不一致输入返回 `ADD_INPUT_CONFLICT`
+- reference profile 在 `list` / `current` / `validate` / `export` 中聚合写入未启用的 limitation 提示
+
+### Dry-Run
+
+- `use --dry-run` 执行写入前全量检查但不写入文件、不创建备份
+- `import apply --dry-run` 执行 apply 前检查但不写入目标文件
+- `preview` / `use` / `import apply` 文本输出明确区分 dry-run 与实际写入
+
+### Import Apply Batch
+
+- `import apply --profiles <ids>` 支持顺序应用同平台多条 profile 并返回批量结果
+- 部分失败时返回轻量 failure explainable
+
+### Security
+
+- 开发态在设置 `API_SWITCHER_RUNTIME_DIR` 时，默认把 Claude / Codex / Gemini 目标文件重定向到运行时沙箱
+- `use` / `import apply` 在命中真实用户目录时增加二次保护：低风险也强制要求确认门槛
+
+### Behavior
+
+- 修复真实用户目录二次确认 guard 的阻断缺陷：显式 `--force` 时真实目标写入可以继续执行
+- Gemini `project scope` 的 gate 顺序固定为 availability-before-confirmation
+- `rollback` 对 scope 严格匹配；scope mismatch 返回 `ROLLBACK_SCOPE_MISMATCH`
+- Codex 不支持 `--scope`，传入时返回 `INVALID_SCOPE`
+
+### Build
+
+- CI Node.js 版本升级至 22（pnpm 11.x 要求）
+- `engine` 字段更新为 `>=22`
+- `smoke:release` 扩展覆盖 schema catalog summary、consumer flow linkage、starter templates 等新入口
+
 ## 0.1.2
 
 ### Testing

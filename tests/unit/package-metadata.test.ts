@@ -29,7 +29,7 @@ describe('package metadata', () => {
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
 
     expect(smokeScript).toContain("Invoke-Step -Name 'schema version json'")
-    expect(smokeScript).toContain('node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json')
+    expect(smokeScript).toContain('node dist/src/cli/index.js schema --schema-version --json | Out-String | ConvertFrom-Json')
     expect(smokeScript).toContain(`$publicJsonSchemaVersion = '${PUBLIC_JSON_SCHEMA_VERSION}'`)
     expect(smokeScript).toContain("$payload.action -ne 'schema'")
     expect(smokeScript).toContain('$payload.data.schemaVersion -ne $publicJsonSchemaVersion')
@@ -196,8 +196,8 @@ describe('package metadata', () => {
     const smokeScript = fs.readFileSync(smokeScriptPath, 'utf8')
 
     expect(smokeScript).toContain("Invoke-Step -Name 'current list json platform summaries'")
-    expect(smokeScript).toContain("node dist/src/cli/index.js current --json | ConvertFrom-Json")
-    expect(smokeScript).toContain("node dist/src/cli/index.js list --json | ConvertFrom-Json")
+    expect(smokeScript).toContain("node dist/src/cli/index.js current --json | Out-String | ConvertFrom-Json")
+    expect(smokeScript).toContain("node dist/src/cli/index.js list --json | Out-String | ConvertFrom-Json")
     expect(smokeScript).toContain("GEMINI_SCOPE_PRECEDENCE")
     expect(smokeScript).toContain("CODEX_MULTI_FILE_CONFIGURATION")
     expect(smokeScript).toContain("scope-precedence")

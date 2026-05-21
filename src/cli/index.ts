@@ -39,7 +39,7 @@ function normalizeCliArgv(argv: string[]): string[] {
 async function main(): Promise<void> {
   const program = new Command()
 
-  program.name('api-switcher').description('多平台 API 配置切换 CLI').version('0.1.0')
+  program.name('api-switcher').description('多平台 API 配置切换 CLI').version('0.1.3')
 
   registerAddCommand(program)
   registerListCommand(program)

@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $repoRoot
@@ -283,7 +284,7 @@ Invoke-Step -Name 'cli help' -Action {
   }
 }
 Invoke-Step -Name 'schema json' -Action {
-  $payload = node dist/src/cli/index.js schema --json | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --json | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --json returned no payload'
   }
@@ -398,7 +399,7 @@ Invoke-Step -Name 'schema json' -Action {
   }
 }
 Invoke-Step -Name 'schema consumer profile filter json' -Action {
-  $payload = node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --json --consumer-profile readonly-import-batch | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --json --consumer-profile returned no payload'
   }
@@ -454,7 +455,7 @@ Invoke-Step -Name 'schema consumer profile filter failure json' -Action {
   }
 }
 Invoke-Step -Name 'schema action filter json' -Action {
-  $payload = node dist/src/cli/index.js schema --json --action import-apply | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --json --action import-apply | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --json --action returned no payload'
   }
@@ -510,7 +511,7 @@ Invoke-Step -Name 'schema action filter failure json' -Action {
   }
 }
 Invoke-Step -Name 'schema recommended action filter json' -Action {
-  $payload = node dist/src/cli/index.js schema --json --recommended-action continue-to-write | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --json --recommended-action continue-to-write | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --json --recommended-action returned no payload'
   }
@@ -570,7 +571,7 @@ Invoke-Step -Name 'schema recommended action filter failure json' -Action {
 }
 Invoke-Step -Name 'schema catalog summary json' -Action {
   $publicSchema = Get-PublicSchema
-  $payload = node dist/src/cli/index.js schema --json --catalog-summary | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --json --catalog-summary | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --json --catalog-summary returned no payload'
   }
@@ -622,7 +623,7 @@ Invoke-Step -Name 'schema catalog summary json' -Action {
   }
 }
 Invoke-Step -Name 'schema version json' -Action {
-  $payload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
+  $payload = node dist/src/cli/index.js schema --schema-version --json | Out-String | ConvertFrom-Json
   if ($null -eq $payload) {
     throw 'schema --schema-version --json returned no payload'
   }
@@ -641,7 +642,7 @@ Invoke-Step -Name 'schema version json' -Action {
 }
 Invoke-Step -Name 'public schema validation smoke' -Action {
   $publicSchema = Get-PublicSchema
-  $schemaVersionPayload = node dist/src/cli/index.js schema --schema-version --json | ConvertFrom-Json
+  $schemaVersionPayload = node dist/src/cli/index.js schema --schema-version --json | Out-String | ConvertFrom-Json
 
   if (-not (Validate-SchemaNode -Schema $publicSchema -Value $schemaVersionPayload -RootSchema $publicSchema)) {
     throw "schemaVersion payload failed public schema validation"
@@ -791,7 +792,7 @@ Invoke-Step -Name 'current list json platform summaries' -Action {
       ANTHROPIC_BASE_URL = 'https://gateway.example.com/api'
     }
 
-    $currentPayload = node dist/src/cli/index.js current --json | ConvertFrom-Json
+    $currentPayload = node dist/src/cli/index.js current --json | Out-String | ConvertFrom-Json
     if ($currentPayload.schemaVersion -ne $publicJsonSchemaVersion -or -not $currentPayload.ok -or $currentPayload.action -ne 'current') {
       throw "unexpected current --json envelope: $($currentPayload | ConvertTo-Json -Depth 20)"
     }
@@ -810,7 +811,7 @@ Invoke-Step -Name 'current list json platform summaries' -Action {
       throw "current --json missing CODEX_MULTI_FILE_CONFIGURATION fact"
     }
 
-    $listPayload = node dist/src/cli/index.js list --json | ConvertFrom-Json
+    $listPayload = node dist/src/cli/index.js list --json | Out-String | ConvertFrom-Json
     if ($listPayload.schemaVersion -ne $publicJsonSchemaVersion -or -not $listPayload.ok -or $listPayload.action -ne 'list') {
       throw "unexpected list --json envelope: $($listPayload | ConvertTo-Json -Depth 20)"
     }
